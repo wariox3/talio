@@ -6,41 +6,50 @@
             <li class="breadcrumb-item active">Estados</li>
         </ol>
         <div class="row">
-            <div class="col-xl-3 col-md-6">
+            <div class="col-xl-4 col-md-6">
                 <div class="card bg-success text-white mb-4">
-                    <div class="card-body">Por enviar: 0</div>
+                    <div class="card-body">Por enviar: {{ arrEstados.enviar }}</div>
                     <div class="card-footer d-flex align-items-center justify-content-between">
-                        <a class="small text-white stretched-link" href="#">View Details</a>
+                        <a class="small text-white stretched-link" href="{{ path('documento_enviar') }}">Ver Detalle</a>
                         <div class="small text-white"><i class="fas fa-angle-right"></i></div>
                     </div>
                 </div>
             </div>
-            <div class="col-xl-3 col-md-6">
-                <div class="card bg-warning text-white mb-4">
-                    <div class="card-body">Pendientes: 0</div>
-                    <div class="card-footer d-flex align-items-center justify-content-between">
-                        <a class="small text-white stretched-link" href="#">View Details</a>
-                        <div class="small text-white"><i class="fas fa-angle-right"></i></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-3 col-md-6">
+            <div class="col-xl-4 col-md-6">
                 <div class="card bg-danger text-white mb-4">
-                    <div class="card-body">Errores: 0</div>
+                    <div class="card-body">Errores: {{ arrEstados.error }}</div>
                     <div class="card-footer d-flex align-items-center justify-content-between">
-                        <a class="small text-white stretched-link" href="#">View Details</a>
+                        <a class="small text-white stretched-link" href="#">Ver Detalle</a>
                         <div class="small text-white"><i class="fas fa-angle-right"></i></div>
                     </div>
                 </div>
             </div>
-            <div class="col-xl-3 col-md-6">
+            <div class="col-xl-4 col-md-6">
                 <div class="card bg-primary text-white mb-4">
-                    <div class="card-body">Respuesta: 0</div>
+                    <div class="card-body">Respuesta: {{ arrEstados.respuesta }}</div>
                     <div class="card-footer d-flex align-items-center justify-content-between">
-                        <a class="small text-white stretched-link" href="#">View Details</a>
+                        <a class="small text-white stretched-link" href="#">Ver Detalle</a>
                         <div class="small text-white"><i class="fas fa-angle-right"></i></div>
                     </div>
                 </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="container">
+                <h2>Servicio cola emitir:
+                    {% if arrServicios.colaEmitir %}
+                        <span class="badge bg-danger">Activo</span>
+                    {% else %}
+                        <span class="badge bg-danger">Inactivo</span>
+                    {% endif %}
+                </h2>
+                <h2>Servicio cola respuesta:
+                    {% if arrServicios.colaEmitir %}
+                        <span class="badge bg-danger">Activo</span>
+                    {% else %}
+                        <span class="badge bg-danger">Inactivo</span>
+                    {% endif %}
+                </h2>
             </div>
         </div>
     </div>
