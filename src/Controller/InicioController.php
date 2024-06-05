@@ -13,6 +13,19 @@ class InicioController extends AbstractController
     #[Route('/', name: 'inicio')]
     public function inicio(Request $request, Wolframio $wolframio): Response
     {
+        #https://www.chartjs.org/chartjs-plugin-zoom/latest/samples/fetch-data.html
+        $labels = [];
+        $data = [];
+        $respuesta = $wolframio->consumoGet('api/documento/tiempo');
+        if(!$respuesta['error']) {
+            $datos = $respuesta['datos'];
+            $arrDocumentos = $datos['documentos'];
+            foreach ($arrDocumentos as $item) {
+                $labels[] = $item['hora'];
+                $data[] = $item['cantidad'];
+            }
+        }
+
         $arrEstados = [
             "enviar" => 0,
             "error" => 0,
@@ -28,13 +41,15 @@ class InicioController extends AbstractController
             $arrEstados = $datos['estados'];
 
         }
-        $respuesta = $wolframio->consumoGet('api/documento/servicios');
+        $respuesta = $wolframio->consumoGet('api/servicio/estado');
         if(!$respuesta['error']) {
             $arrServicios = $respuesta['datos'];
         }
         return $this->render('inicio.html.twig', [
             'arrEstados' => $arrEstados,
-            'arrServicios' => $arrServicios
+            'arrServicios' => $arrServicios,
+            'labels' => $labels,
+            'data' => $data
         ]);
     }
 }
