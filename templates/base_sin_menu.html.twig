@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+    <title>{% block title %}Talio{% endblock %}</title>
+    <link rel="stylesheet" href="{{ asset('css/style.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
+    <script src="{{ asset('js/all.js') }}" crossorigin="anonymous"></script>
+</head>
+{% block body %}
+<body class="sb-nav-fixed">
+<div id="layoutSidenav">
+    <div id="layoutSidenav_content">
+        <main>
+            {% block content %}
+
+            {% endblock %}
+        </main>
+    </div>
+</div>
+</body>
+{% endblock %}
+<script src="{{ asset('js/bootstrap.bundle.min.js') }}" crossorigin="anonymous"></script>
+<script src="{{ asset('js/scripts.js') }}"></script>
+<script src="{{ asset('js/simple-datatables.min.js') }}" crossorigin="anonymous"></script>
+<script src="{{ asset('js/datatables-simple-demo.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ asset('js/general.js') }}"></script>
+{% block javascripts %}
+
+{% endblock %}
+</html>

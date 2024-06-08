@@ -1,0 +1,34 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% block content %}
+    {{ form_start(form) }}
+    <div class="container-fluid px-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-1"></i>
+                Documentos con error
+            </div>
+            <div class="card-body">
+                <table id="datatablesSimple">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Fecha</th>
+                        <th>Mensaje</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for error in errores %}
+                        <tr>
+                            <td class="">{{ error.id }}</td>
+                            <td>{{ error.fecha | date('Y-m-d H:i') }}</td>
+                            <td>{{ error.mensaje }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{ form_end(form) }}
+{% endblock %}
+
