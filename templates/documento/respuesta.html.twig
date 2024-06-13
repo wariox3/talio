@@ -1,0 +1,54 @@
+{% extends 'base.html.twig' %}
+{% block content %}
+    {{ form_start(form) }}
+    <div class="container-fluid px-4">
+        <h1 class="mt-4">Wolframio</h1>
+        <ol class="breadcrumb mb-4">
+            <li class="breadcrumb-item"><a href="{{ path('inicio') }}">Documento</a></li>
+            <li class="breadcrumb-item active">Respuesta</li>
+        </ol>
+        <div class="card mb-4">
+            <div class="card-body">
+                Estos documentos aun no se han notificado al cliente como enviados.
+            </div>
+        </div>
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-1"></i>
+                Respuestas pendientes por enviar
+            </div>
+
+            <div class="card-body">
+                {{ form_widget(form.btnRespuesta, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
+                <table id="datatablesSimple">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Prefijo</th>
+                        <th>Numero</th>
+                        <th>Fecha</th>
+                        <th>Cod</th>
+                        <th>Cuenta</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for documento in documentos %}
+                        <tr>
+                            <td class="">{{ documento.id }}</td>
+                            <td>{{ documento.prefijo }}</td>
+                            <td>{{ documento.numero }}</td>
+                            <td>{{ documento.fecha | date('Y-m-d') }}</td>
+                            <td>{{ documento.cuentaId }}</td>
+                            <td>{{ documento.cuentaNombre }}</td>
+                            <td><input class="form-check-input" type="checkbox" name="ChkSeleccionar[]" value="{{ documento.id }}"></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{ form_end(form) }}
+{% endblock %}
+

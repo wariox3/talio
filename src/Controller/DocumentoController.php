@@ -93,6 +93,43 @@ class DocumentoController extends AbstractController
             'form' => $form->createView()]);
     }
 
+    #[Route('/documento/respuesta', name: 'documento_respuesta')]
+    public function respuesta(Request $request, Wolframio $wolframio): Response
+    {
+        $form = $this->createFormBuilder()
+            ->add('btnRespuesta', SubmitType::class, array('label' => 'Activar'))
+            ->getForm();
+        $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+            if ($form->get('btnRespuesta')->isClicked()) {
+                $arrSeleccionados = $request->get('ChkSeleccionar');
+                if($arrSeleccionados) {
+                    foreach ($arrSeleccionados as $codigo) {
+                        $datos = [
+                            "documentoId" => $codigo
+                        ];
+                        $respuesta = $wolframio->consumoPost("api/documento/cliente/respuesta", $datos);
+                    }
+                }
+            }
+        }
+        $documentos = [];
+        $datos = [
+            'estadoEnviado' => true,
+            'estadoError' => false,
+            'estadoValidado' => true,
+            'estadoRespuestaValidadoCliente' => false
+        ];
+        $respuesta = $wolframio->consumoPost('api/documento/lista', $datos);
+        if(!$respuesta['error']) {
+            $arrDatos = $respuesta['datos'];
+            $documentos = $arrDatos['documentos'];
+        }
+        return $this->render('documento/respuesta.html.twig', [
+            'documentos' => $documentos,
+            'form' => $form->createView()]);
+    }
+
     #[Route('/documento/detalle/{id}', name: 'documento_detalle')]
     public function detalle(Request $request, Wolframio $wolframio, $id): Response
     {
