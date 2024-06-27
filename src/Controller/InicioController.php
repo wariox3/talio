@@ -45,11 +45,21 @@ class InicioController extends AbstractController
         if(!$respuesta['error']) {
             $arrServicios = $respuesta['datos'];
         }
+        $ultimosDocumentos = [];
+        $datos = [
+            'limiteRegistros' => 5
+        ];
+        $respuesta = $wolframio->consumoPost('api/documento/lista', $datos);
+        if(!$respuesta['error']) {
+            $arrDatos = $respuesta['datos'];
+            $ultimosDocumentos = $arrDatos['documentos'];
+        }
         return $this->render('inicio.html.twig', [
             'arrEstados' => $arrEstados,
             'arrServicios' => $arrServicios,
             'labels' => $labels,
-            'data' => $data
+            'data' => $data,
+            'ultimosDocumentos' => $ultimosDocumentos
         ]);
     }
 }

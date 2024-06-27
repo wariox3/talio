@@ -1,0 +1,55 @@
+{% extends 'base.html.twig' %}
+{% block content %}
+    {{ form_start(form) }}
+    <div class="container-fluid px-4">
+        <h1 class="mt-4">Wolframio</h1>
+        <ol class="breadcrumb mb-4">
+            <li class="breadcrumb-item"><a href="{{ path('inicio') }}">Cuenta</a></li>
+            <li class="breadcrumb-item active">Lista</li>
+        </ol>
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-1"></i>
+                Lista de cuentas
+            </div>
+
+            <div class="card-body">
+                {{ form_widget(form.btnEnviar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
+                <table id="datatablesSimple">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>NIT</th>
+                        <th>Nombre</th>
+                        <th>Correo</th>
+                        <th>Correo facturacion</th>
+                        <th>Suscriptor</th>
+                        <th>Set pruebas</th>
+                        <th title="Produccion">Prod</th>
+                        <th title="Notificar">Not</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for cuenta in cuentas %}
+                        <tr>
+                            <td class="">{{ cuenta.id }}</td>
+                            <td>{{ cuenta.numeroIdentificacion }}</td>
+                            <td>{{ cuenta.nombre }}</td>
+                            <td>{{ cuenta.correo }}</td>
+                            <td>{{ cuenta.correoFacturacionElectronica }}</td>
+                            <td>{{ cuenta.suscriptorSoftgic }}</td>
+                            <td>{{ cuenta.setPruebas }}</td>
+                            <td>{{ cuenta.estadoProduccion?'SI':'NO' }}</td>
+                            <td>{{ cuenta.notificar?'SI':'NO' }}</td>
+                            <td><input class="form-check-input" type="checkbox" name="ChkSeleccionar[]" value="{{ cuenta.id }}"></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{ form_end(form) }}
+{% endblock %}
+
