@@ -24,9 +24,9 @@
                         <th>Correo</th>
                         <th>Correo facturacion</th>
                         <th>Suscriptor</th>
-                        <th>Set pruebas</th>
                         <th title="Produccion">Prod</th>
                         <th title="Notificar">Not</th>
+                        <th></th>
                         <th></th>
                     </tr>
                     </thead>
@@ -39,9 +39,13 @@
                             <td>{{ cuenta.correo }}</td>
                             <td>{{ cuenta.correoFacturacionElectronica }}</td>
                             <td>{{ cuenta.suscriptorSoftgic }}</td>
-                            <td>{{ cuenta.setPruebas }}</td>
                             <td>{{ cuenta.estadoProduccion?'SI':'NO' }}</td>
                             <td>{{ cuenta.notificar?'SI':'NO' }}</td>
+                            <td>
+                                {% if cuenta.suscriptorSoftgic %}
+                                <a class="btn" href="javascript:abrirVentana('{{ path('cuenta_resolucion', { 'suscriptor': cuenta.suscriptorSoftgic}) }}', 'Archivos', 500, 1200)">Resoluciones</a>
+                                {% endif %}
+                            </td>
                             <td><input class="form-check-input" type="checkbox" name="ChkSeleccionar[]" value="{{ cuenta.id }}"></td>
                         </tr>
                     {% endfor %}

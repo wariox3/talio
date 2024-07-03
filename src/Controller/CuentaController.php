@@ -1,6 +1,7 @@
 <?php
 namespace App\Controller;
 
+use App\Utilidades\Softgic;
 use App\Utilidades\Wolframio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
@@ -40,5 +41,13 @@ class CuentaController extends AbstractController
         return $this->render('cuenta/lista.html.twig', [
             'cuentas' => $cuentas,
             'form' => $form->createView()]);
+    }
+
+    #[Route('/cuenta/resolucion/{suscriptor}', name: 'cuenta_resolucion')]
+    public function resolucion(Request $request, Softgic $softgic, $suscriptor): Response
+    {
+        $resoluciones = $softgic->resoluciones($suscriptor);
+        return $this->render('cuenta/resoluciones.html.twig', [
+            'resoluciones' => $resoluciones]);
     }
 }

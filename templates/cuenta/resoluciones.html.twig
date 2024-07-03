@@ -1,0 +1,38 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% block content %}
+    <div class="container-fluid px-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-1"></i>
+                Resoluciones
+            </div>
+            <div class="card-body">
+                <table id="datatablesSimple">
+                    <thead>
+                    <tr>
+                        <th>Numero</th>
+                        <th>Prefijo</th>
+                        <th>Fecha desde</th>
+                        <th>Fecha hasta</th>
+                        <th>Consecutivo desde</th>
+                        <th>Consecutivo hasta</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for resolucion in resoluciones %}
+                        <tr>
+                            <td class="">{{ resolucion.ResolucionNumero }}</td>
+                            <td>{{ resolucion.Prefijo }}</td>
+                            <td>{{ resolucion.VigenciaDesde | date('Y-m-d') }}</td>
+                            <td>{{ resolucion.VigenciaHasta | date('Y-m-d') }}</td>
+                            <td>{{ resolucion.ConsecutivoDesde }}</td>
+                            <td>{{ resolucion.ConsecutivoHasta }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
