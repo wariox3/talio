@@ -43,7 +43,7 @@
                             <td>{{ cuenta.notificar?'SI':'NO' }}</td>
                             <td>
                                 {% if cuenta.suscriptorSoftgic %}
-                                <a class="btn" href="javascript:abrirVentana('{{ path('cuenta_resolucion', { 'suscriptor': cuenta.suscriptorSoftgic}) }}', 'Archivos', 500, 1200)">Resoluciones</a>
+                                <a class="btn" href="javascript:abrirVentana('{{ path('wolframio_cuenta_resolucion', { 'suscriptor': cuenta.suscriptorSoftgic}) }}', 'Archivos', 500, 1200)">Resoluciones</a>
                                 {% endif %}
                             </td>
                             <td><input class="form-check-input" type="checkbox" name="ChkSeleccionar[]" value="{{ cuenta.id }}"></td>

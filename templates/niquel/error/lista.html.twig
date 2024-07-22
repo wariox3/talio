@@ -1,0 +1,54 @@
+{% extends 'base.html.twig' %}
+{% block content %}
+    {{ form_start(form) }}
+    <div class="container-fluid px-4">
+        <h1 class="mt-4">Niquel</h1>
+        <ol class="breadcrumb mb-4">
+            <li class="breadcrumb-item"><a href="{{ path('inicio') }}">Error</a></li>
+            <li class="breadcrumb-item active">Lista</li>
+        </ol>
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-1"></i>
+                Errores en ambientes
+            </div>
+
+            <div class="card-body">
+                <table id="datatablesSimple">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Fecha</th>
+                        <th>Archivo</th>
+                        <th>Mensaje</th>
+                        <th>Usuario</th>
+                        <th>Ruta</th>
+                        <th>Traza</th>
+                        <th>Entorno</th>
+                        <th>Contenedor</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for error in errores %}
+                        <tr>
+                            <td class="">{{ error.id }}</td>
+                            <td>{{ error.fecha | date('Y-m-d') }}</td>
+                            <td>{{ error.archivo }}</td>
+                            <td>{{ error.mensaje }}</td>
+                            <td>{{ error.usuario }}</td>
+                            <td>{{ error.ruta }}</td>
+                            <td>{{ error.traza }}</td>
+                            <td>{{ error.entorno }}</td>
+                            <td>{{ error.contenedor }}</td>
+                            <td><input class="form-check-input" type="checkbox" name="ChkSeleccionar[]" value="{{ error.id }}"></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{ form_end(form) }}
+{% endblock %}
+

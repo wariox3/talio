@@ -1,5 +1,5 @@
 <?php
-namespace App\Controller;
+namespace App\Controller\wolframio;
 
 use App\Utilidades\Wolframio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -10,7 +10,7 @@ use Symfony\Component\Routing\Annotation\Route;
 
 class DocumentoController extends AbstractController
 {
-    #[Route('/documento/enviar', name: 'documento_enviar')]
+    #[Route('/wolframio/documento/enviar', name: 'wolframio_documento_enviar')]
     public function enviar(Request $request, Wolframio $wolframio): Response
     {
         $form = $this->createFormBuilder()
@@ -39,12 +39,12 @@ class DocumentoController extends AbstractController
             $arrDatos = $respuesta['datos'];
             $documentos = $arrDatos['documentos'];
         }
-        return $this->render('documento/enviar.html.twig', [
+        return $this->render('wolframio/documento/enviar.html.twig', [
             'documentos' => $documentos,
             'form' => $form->createView()]);
     }
 
-    #[Route('/documento/error', name: 'documento_error')]
+    #[Route('/wolframio/documento/error', name: 'wolframio_documento_error')]
     public function error(Request $request, Wolframio $wolframio): Response
     {
         $form = $this->createFormBuilder()
@@ -88,12 +88,12 @@ class DocumentoController extends AbstractController
             $arrDatos = $respuesta['datos'];
             $documentos = $arrDatos['documentos'];
         }
-        return $this->render('documento/error.html.twig', [
+        return $this->render('wolframio/documento/error.html.twig', [
             'documentos' => $documentos,
             'form' => $form->createView()]);
     }
 
-    #[Route('/documento/respuesta', name: 'documento_respuesta')]
+    #[Route('/wolframio/documento/respuesta', name: 'wolframio_documento_respuesta')]
     public function respuesta(Request $request, Wolframio $wolframio): Response
     {
         $form = $this->createFormBuilder()
@@ -125,12 +125,12 @@ class DocumentoController extends AbstractController
             $arrDatos = $respuesta['datos'];
             $documentos = $arrDatos['documentos'];
         }
-        return $this->render('documento/respuesta.html.twig', [
+        return $this->render('wolframio/documento/respuesta.html.twig', [
             'documentos' => $documentos,
             'form' => $form->createView()]);
     }
 
-    #[Route('/documento/detalle/{id}', name: 'documento_detalle')]
+    #[Route('/wolframio/documento/detalle/{id}', name: 'wolframio_documento_detalle')]
     public function detalle(Request $request, Wolframio $wolframio, $id): Response
     {
         $form = $this->createFormBuilder()
@@ -150,7 +150,7 @@ class DocumentoController extends AbstractController
             $documento = $arrDatos['documento'];
             $errores = $documento['errores'];
         }
-        return $this->render('documento/detalle.html.twig', [
+        return $this->render('wolframio/documento/detalle.html.twig', [
             'documentos' => $documento,
             'errores' => $errores,
             'form' => $form->createView()]);

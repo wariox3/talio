@@ -1,5 +1,5 @@
 <?php
-namespace App\Controller;
+namespace App\Controller\wolframio;
 
 use App\Utilidades\Softgic;
 use App\Utilidades\Wolframio;
@@ -11,7 +11,7 @@ use Symfony\Component\Routing\Annotation\Route;
 
 class CuentaController extends AbstractController
 {
-    #[Route('/cuenta/lista', name: 'cuenta_lista')]
+    #[Route('/wolframio/cuenta/lista', name: 'wolframio_cuenta_lista')]
     public function lista(Request $request, Wolframio $wolframio): Response
     {
         $form = $this->createFormBuilder()
@@ -38,16 +38,16 @@ class CuentaController extends AbstractController
             $arrDatos = $respuesta['datos'];
             $cuentas = $arrDatos['cuentas'];
         }
-        return $this->render('cuenta/lista.html.twig', [
+        return $this->render('wolframio/cuenta/lista.html.twig', [
             'cuentas' => $cuentas,
             'form' => $form->createView()]);
     }
 
-    #[Route('/cuenta/resolucion/{suscriptor}', name: 'cuenta_resolucion')]
+    #[Route('/wolframio/cuenta/resolucion/{suscriptor}', name: 'wolframio_cuenta_resolucion')]
     public function resolucion(Request $request, Softgic $softgic, $suscriptor): Response
     {
         $resoluciones = $softgic->resoluciones($suscriptor);
-        return $this->render('cuenta/resoluciones.html.twig', [
+        return $this->render('wolframio/cuenta/resoluciones.html.twig', [
             'resoluciones' => $resoluciones]);
     }
 }

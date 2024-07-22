@@ -52,9 +52,9 @@
                     </a>
                     <div class="collapse" id="collapseLayouts" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                         <nav class="sb-sidenav-menu-nested nav">
-                            <a class="nav-link" href="{{ path('documento_enviar') }}">Enviar</a>
-                            <a class="nav-link" href="{{ path('documento_error') }}">Error</a>
-                            <a class="nav-link" href="{{ path('documento_respuesta') }}">Respuesta</a>
+                            <a class="nav-link" href="{{ path('wolframio_documento_enviar') }}">Enviar</a>
+                            <a class="nav-link" href="{{ path('wolframio_documento_error') }}">Error</a>
+                            <a class="nav-link" href="{{ path('wolframio_documento_respuesta') }}">Respuesta</a>
                         </nav>
                     </div>
                     <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#cuentas" aria-expanded="false" aria-controls="collapseLayouts">
@@ -64,7 +64,17 @@
                     </a>
                     <div class="collapse" id="cuentas" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                         <nav class="sb-sidenav-menu-nested nav">
-                            <a class="nav-link" href="{{ path('cuenta_lista') }}">Lista</a>
+                            <a class="nav-link" href="{{ path('wolframio_cuenta_lista') }}">Lista</a>
+                        </nav>
+                    </div>
+                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#niquel" aria-expanded="false" aria-controls="collapseLayouts">
+                        <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                        Niquel
+                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                    </a>
+                    <div class="collapse" id="niquel" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                        <nav class="sb-sidenav-menu-nested nav">
+                            <a class="nav-link" href="{{ path('niquel_error_lista') }}">Error</a>
                         </nav>
                     </div>
                 </div>
