@@ -28,6 +28,7 @@
                         <th>Entorno</th>
                         <th>Contenedor</th>
                         <th></th>
+                        <th></th>
                     </tr>
                     </thead>
                     <tbody>
@@ -41,6 +42,7 @@
                             <td>{{ error.ruta }}</td>
                             <td>{{ error.entorno }}</td>
                             <td>{{ error.contenedor }}</td>
+                            <td><a class="btn" href="javascript:abrirVentana('{{ path('niquel_error_detalle', { 'id': error.id}) }}', 'Archivos', 500, 1200)">Ver</a></td>
                             <td><input class="form-check-input" type="checkbox" name="ChkSeleccionar[]" value="{{ error.id }}"></td>
                         </tr>
                     {% endfor %}

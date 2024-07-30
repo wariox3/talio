@@ -48,4 +48,26 @@ class ErrorController extends AbstractController
             'form' => $form->createView()]);
     }
 
+    #[Route('/niquel/error/detalle/{id}', name: 'niquel_error_detalle')]
+    public function detalle(Request $request, Niquel $niquel, $id): Response
+    {
+        $form = $this->createFormBuilder()
+            ->getForm();
+        $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+
+        }
+        $error = [];
+        $datos = [
+            'errorId' => $id
+        ];
+        $respuesta = $niquel->consumoPost('api/error/detalle', $datos);
+        if(!$respuesta['error']) {
+            $arrDatos = $respuesta['datos'];
+            $error = $arrDatos['error'];
+        }
+        return $this->render('niquel/error/detalle.html.twig', [
+            'error' => $error,
+            'form' => $form->createView()]);
+    }
 }
