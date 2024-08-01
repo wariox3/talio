@@ -14,8 +14,16 @@
             </div>
 
             <div class="card-body">
-                {{ form_widget(form.btnFiltrar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
-                {{ form_widget(form.btnEliminar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
+                <div class="d-flex justify-content-between mb-3">
+                    <div class="d-flex align-items-center">
+                        <label for="{{ form.entorno.vars.id }}" class="me-2">Entorno:</label>
+                        {{ form_widget(form.entorno, { 'attr': {'class': 'form-control'} }) }}
+                    </div>
+                    <div>
+                        {{ form_widget(form.btnFiltrar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
+                        {{ form_widget(form.btnEliminar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
+                    </div>
+                </div>
                 <table id="datatablesSimple">
                     <thead>
                     <tr>
@@ -28,7 +36,14 @@
                         <th>Entorno</th>
                         <th>Contenedor</th>
                         <th></th>
-                        <th></th>
+                        <th class="text-center" title="seleccionar todos">
+                            <div>
+                                <input type="checkbox" name="ChkSeleccionar[]"
+                                       id="todosInput"
+                                       onclick="ChequearTodosTabla(this, 'ChkSeleccionar[]')"/>
+                                <label class="custom-control-label" for="todosInput"></label>
+                            </div>
+                        </th>
                     </tr>
                     </thead>
                     <tbody>
@@ -42,8 +57,17 @@
                             <td>{{ error.ruta }}</td>
                             <td>{{ error.entorno }}</td>
                             <td>{{ error.contenedor }}</td>
-                            <td><a class="btn" href="javascript:abrirVentana('{{ path('niquel_error_detalle', { 'id': error.id}) }}', 'Archivos', 500, 1200)">Ver</a></td>
-                            <td><input class="form-check-input" type="checkbox" name="ChkSeleccionar[]" value="{{ error.id }}"></td>
+                            <td><a class="btn"
+                                   href="javascript:abrirVentana('{{ path('niquel_error_detalle', { 'id': error.id}) }}', 'Archivos', 500, 1200)">Ver</a>
+                            </td>
+                            <td class="text-center">
+                                <div>
+                                    <input type="checkbox" name="ChkSeleccionar[]" class="custom-control-input"
+                                           value="{{ error.id }}"
+                                           id="{{ error.id }}"/>
+                                    <label class="custom-control-label" for="{{ error.id }}"></label>
+                                </div>
+                            </td>
                         </tr>
                     {% endfor %}
                     </tbody>
@@ -53,4 +77,3 @@
     </div>
     {{ form_end(form) }}
 {% endblock %}
-
