@@ -25,6 +25,7 @@
                     <thead>
                     <tr>
                         <th>Id</th>
+                        <th>IdCliente</th>
                         <th>Registro</th>
                         <th>Prefijo</th>
                         <th>Numero</th>
@@ -39,6 +40,7 @@
                     {% for documento in documentos %}
                         <tr>
                             <td class="">{{ documento.id }}</td>
+                            <td>{{ documento.documentoClienteId }}</td>
                             <td>{{ documento.fechaRegistro | date('Y-m-d H:i') }}</td>
                             <td>{{ documento.prefijo }}</td>
                             <td>{{ documento.numero }}</td>
