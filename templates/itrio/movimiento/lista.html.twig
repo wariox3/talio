@@ -57,7 +57,12 @@
                             <td>{{ movimiento.vr_total }}</td>
                             <td>{{ movimiento.vr_afectado }}</td>
                             <td>{{ movimiento.vr_saldo }}</td>
-                            <td>{{ movimiento.usuario_id }}</td>
+                            <td>
+                                {% if movimiento.usuario_id %}
+                                    <a class="btn"
+                                       href="javascript:abrirVentana('{{ path('itrio_movimiento_usuario', { 'id': movimiento.usuario_id}) }}', 'Archivos', 500, 1200)">{{ movimiento.usuario_id }}</a>
+                                {% endif %}
+                            </td>
                             <td>{{ movimiento.usuario_username }}</td>
                             <td>{{ movimiento.contenedor_movimiento_id }}</td>
                             <td>{{ movimiento.documento_fisico?'SI':'NO' }}</td>

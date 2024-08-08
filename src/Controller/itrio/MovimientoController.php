@@ -73,4 +73,24 @@ class MovimientoController extends AbstractController
         return $this->render('itrio/movimiento/subir.html.twig', [
             'form' => $form->createView()]);
     }
+
+    #[Route('/itrio/movimiento/usuario/{id}', name: 'itrio_movimiento_usuario')]
+    public function usuario(Request $request, SpaceDO $spaceDO, Itrio $itrio, $id): Response
+    {
+        $form = $this->createFormBuilder()
+            ->getForm();
+        $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+
+        }
+        $informacionesFacturacion = [];
+        $respuesta = $itrio->consumoGet("seguridad/usuario/detalle/{$id}/");
+        if(!$respuesta['error']) {
+            $arrDatos = $respuesta['datos'];
+            $informacionesFacturacion = $arrDatos['informaciones_facturaciones'];
+        }
+        return $this->render('itrio/movimiento/usuario.html.twig', [
+            'informacionesFacturacion' => $informacionesFacturacion,
+            'form' => $form->createView()]);
+    }
 }

@@ -1,0 +1,46 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% block content %}
+    {{ form_start(form) }}
+    <div class="container-fluid px-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-1"></i>
+                Documentos con error
+            </div>
+            <div class="card-body">
+                <table id="datatablesSimple">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>T_Nit</th>
+                        <th>Nit</th>
+                        <th>DV</th>
+                        <th>Nombre</th>
+                        <th>Direccion</th>
+                        <th>Telefono</th>
+                        <th>Correo</th>
+                        <th>Ciudad</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for informacionFacturacion in informacionesFacturacion %}
+                        <tr>
+                            <td>{{ informacionFacturacion.id }}</td>
+                            <td>{{ informacionFacturacion.identificacion_nombre }}</td>
+                            <td>{{ informacionFacturacion.numero_identificacion }}</td>
+                            <td>{{ informacionFacturacion.digito_verificacion }}</td>
+                            <td>{{ informacionFacturacion.nombre_corto }}</td>
+                            <td>{{ informacionFacturacion.direccion }}</td>
+                            <td>{{ informacionFacturacion.telefono }}</td>
+                            <td>{{ informacionFacturacion.correo }}</td>
+                            <td>{{ informacionFacturacion.ciudad_nombre }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{ form_end(form) }}
+{% endblock %}
+

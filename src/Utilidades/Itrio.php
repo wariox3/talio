@@ -55,11 +55,11 @@ class Itrio
     public function consumoGet($url) {
         $session = $this->requestStack->getSession();
         $client = HttpClient::create();
-        $urlCompleta = $_ENV['BASE_WOLFRAMIO'] .  $url;
+        $urlCompleta = $_ENV['BASE_ITRIO'] .  $url;
         try {
-            $headers = ['Authorization' => 'Bearer ' . $session->get('token')];
+            #$headers = ['Authorization' => 'Bearer ' . $session->get('token')];
             $response = $client->request('GET', $urlCompleta, [
-                'headers' => $headers,
+                #'headers' => $headers,
             ]);
             $status = $response->getStatusCode();
             if($status == 200) {
