@@ -38,7 +38,11 @@
                             <td>{{ cuenta.nombre }}</td>
                             <td>{{ cuenta.correo }}</td>
                             <td>{{ cuenta.correoFacturacionElectronica }}</td>
-                            <td>{{ cuenta.suscriptorSoftgic }}</td>
+                            <td>
+                                {% if cuenta.suscriptorSoftgic %}
+                                    <a class="btn" href="javascript:abrirVentana('{{ path('wolframio_cuenta_suscriptor', { 'suscriptor': cuenta.suscriptorSoftgic}) }}', 'Archivos', 500, 1200)">{{ cuenta.suscriptorSoftgic }}</a>
+                                {% endif %}
+                            </td>
                             <td>{{ cuenta.estadoProduccion?'SI':'NO' }}</td>
                             <td>{{ cuenta.notificar?'SI':'NO' }}</td>
                             <td>

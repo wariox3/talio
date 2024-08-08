@@ -11,16 +11,39 @@ class Softgic
 
     }
 
-    public function resoluciones($suscriptor): array
+    public function consultaSuscriptor($suscriptor): array
     {
-        $arrResoluciones = [];
         $respuesta = $this->consumirGet("ConValidacionPrevia/ResumenSuscriptor/{$suscriptor}", []);
         if($respuesta['error'] == false) {
             $datos = $respuesta['datos'];
-            $arrResoluciones = $datos['ResolucionesFacturas']['ResolucionesFacturacion'];
+            $arrRespuesta = [
+                'error' => false,
+                'suscriptor' => $datos['Suscriptor'],
+                'resoluciones' => $datos['ResolucionesFacturas']['ResolucionesFacturacion']
+            ];
+        } else {
+            $arrRespuesta = [
+                'error' => true
+            ];
         }
-        return $arrResoluciones;
+        return $arrRespuesta;
     }
+
+    public function actualizarSuscriptor($datos): array
+    {
+        $respuesta = $this->consumirPost("ConValidacionPrevia/HabilitarFacturador", $datos);
+        if($respuesta['error'] == false) {
+            $arrRespuesta = [
+                'error' => false
+            ];
+        } else {
+            $arrRespuesta = [
+                'error' => true
+            ];
+        }
+        return $arrRespuesta;
+    }
+
     private function consumirPost($url, $arDatos)
     {
         $url = "https://apps.kiai.co/api/{$url}";
@@ -31,7 +54,6 @@ class Softgic
         curl_setopt($curl, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
         $datosJSON = json_encode($arDatos);
         curl_setopt($curl, CURLOPT_POSTFIELDS, $datosJSON);
-
         $respuestaCruda = curl_exec($curl);
         $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
         curl_close($curl);
