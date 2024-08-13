@@ -15,22 +15,19 @@ class CuentaController extends AbstractController
     #[Route('/wolframio/cuenta/lista', name: 'wolframio_cuenta_lista')]
     public function lista(Request $request, Wolframio $wolframio): Response
     {
+        #$codigo = $request->request->get('OpCrear');
         $form = $this->createFormBuilder()
-            ->add('btnEnviar', SubmitType::class, array('label' => 'Enviar'))
             ->getForm();
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            if ($form->get('btnEnviar')->isClicked()) {
-                $arrSeleccionados = $request->get('ChkSeleccionar');
-                if($arrSeleccionados) {
-                    foreach ($arrSeleccionados as $codigo) {
-                        $datos = [
-                            "documentoId" => $codigo
-                        ];
-                        $respuesta = $wolframio->consumoPost("api/documento/enviar", $datos);
-                    }
-                }
-            }
+
+        }
+        if ($request->get('OpCrear')) {
+            $codigo = $request->get('OpCrear');
+            $datos = [
+                'cuentaId' => $codigo
+            ];
+            #$respuesta = $wolframio->consumoPost('api/cuenta/nuevo_suscriptor_kiai', $datos);
         }
         $cuentas = [];
         $datos = [];

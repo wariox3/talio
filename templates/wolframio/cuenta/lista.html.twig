@@ -14,7 +14,6 @@
             </div>
 
             <div class="card-body">
-                {{ form_widget(form.btnEnviar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
                 <table id="datatablesSimple">
                     <thead>
                     <tr>
@@ -41,13 +40,15 @@
                             <td>
                                 {% if cuenta.suscriptorSoftgic %}
                                     <a class="btn" href="javascript:abrirVentana('{{ path('wolframio_cuenta_suscriptor', { 'suscriptor': cuenta.suscriptorSoftgic}) }}', 'Archivos', 500, 1200)">{{ cuenta.suscriptorSoftgic }}</a>
+                                {% else %}
+                                    <button name="OpCrear" value="{{ cuenta.id }}">Crear</button>
                                 {% endif %}
                             </td>
                             <td>{{ cuenta.estadoProduccion?'SI':'NO' }}</td>
                             <td>{{ cuenta.notificar?'SI':'NO' }}</td>
                             <td>
                                 {% if cuenta.suscriptorSoftgic %}
-                                <a class="btn" href="javascript:abrirVentana('{{ path('wolframio_cuenta_resolucion', { 'suscriptor': cuenta.suscriptorSoftgic}) }}', 'Archivos', 500, 1200)">Resoluciones</a>
+                                    <a class="btn" href="javascript:abrirVentana('{{ path('wolframio_cuenta_resolucion', { 'suscriptor': cuenta.suscriptorSoftgic}) }}', 'Archivos', 500, 1200)">Resoluciones</a>
                                 {% endif %}
                             </td>
                             <td><input class="form-check-input" type="checkbox" name="ChkSeleccionar[]" value="{{ cuenta.id }}"></td>
