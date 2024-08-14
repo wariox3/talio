@@ -38,7 +38,8 @@ class Softgic
             ];
         } else {
             $arrRespuesta = [
-                'error' => true
+                'error' => true,
+                'mensaje' => $respuesta['mensaje']
             ];
         }
         return $arrRespuesta;

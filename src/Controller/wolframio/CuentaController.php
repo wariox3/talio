@@ -1,6 +1,7 @@
 <?php
 namespace App\Controller\wolframio;
 
+use App\Utilidades\Mensajes;
 use App\Utilidades\Softgic;
 use App\Utilidades\Wolframio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -102,10 +103,13 @@ class CuentaController extends AbstractController
                         "NitAliado" => "9011920484",
                         "SushTestSetId" => $form->get("setPruebas")->getData(),
                     ];
-                    $softgic->actualizarSuscriptor($arrDatos);
-                    echo "<script type='text/javascript'>window.close();window.opener.location.reload();</script>";
+                    $respuesta = $softgic->actualizarSuscriptor($arrDatos);
+                    if($respuesta['error']) {
+                        Mensajes::error($respuesta['mensaje']);
+                    } else {
+                        echo "<script type='text/javascript'>window.close();window.opener.location.reload();</script>";
+                    }
                 }
-
             }
         }
         return $this->render('wolframio/cuenta/suscriptor.html.twig', [
