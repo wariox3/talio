@@ -44,7 +44,19 @@
                                     <button name="OpCrear" value="{{ cuenta.id }}">Crear</button>
                                 {% endif %}
                             </td>
-                            <td>{{ cuenta.estadoProduccion?'SI':'NO' }}</td>
+                            <td>
+                                {% if cuenta.suscriptorSoftgic %}
+                                    {% if not cuenta.estadoProduccion %}
+                                        <button name="OpHabilitar" value="{{ cuenta.id }}">Set pruebas</button>
+                                    {% else %}
+                                        {{ cuenta.estadoProduccion?'SI':'NO' }}
+                                    {% endif %}
+                                {% else %}
+                                    {{ cuenta.estadoProduccion?'SI':'NO' }}
+                                {% endif %}
+                            </td>
+
+
                             <td>{{ cuenta.notificar?'SI':'NO' }}</td>
                             <td>
                                 {% if cuenta.suscriptorSoftgic %}

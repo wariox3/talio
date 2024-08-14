@@ -30,6 +30,13 @@ class CuentaController extends AbstractController
             ];
             #$respuesta = $wolframio->consumoPost('api/cuenta/nuevo_suscriptor_kiai', $datos);
         }
+        if ($request->get('OpHabilitar')) {
+            $codigo = $request->get('OpHabilitar');
+            $datos = [
+                'cuentaId' => $codigo
+            ];
+            #$respuesta = $wolframio->consumoPost('api/cuenta/nuevo_suscriptor_kiai', $datos);
+        }
         $cuentas = [];
         $datos = [];
         $respuesta = $wolframio->consumoPost('api/cuenta/lista', $datos);
