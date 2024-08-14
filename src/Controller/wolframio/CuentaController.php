@@ -78,6 +78,7 @@ class CuentaController extends AbstractController
             ->add('TipoPersona', TextType::class, ['data' => $datosSuscriptor?$datosSuscriptor['TipoPersona']:'', 'disabled' => true])
             ->add('CodigoRegimen', TextType::class, ['data' => $datosSuscriptor?$datosSuscriptor['CodigoRegimen']:''])
             ->add('NombreRegimen', TextType::class, ['data' => $datosSuscriptor?$datosSuscriptor['NombreRegimen']:'', 'disabled' => true])
+            ->add('setPruebas', TextType::class, ['data' => $datosSuscriptor?$datosSuscriptor['TestPruebas']:''])
             ->add('guardar', SubmitType::class, array('label' => 'Enviar'))
             ->getForm();
         $form->handleRequest($request);
@@ -99,7 +100,7 @@ class CuentaController extends AbstractController
                         "Regimen" => $form->get("CodigoRegimen")->getData(),
                         "CodigoPostal" => $form->get("CodigoPostal")->getData(),
                         "NitAliado" => "9011920484",
-                        "SushTestSetId" => $datosSuscriptor?$datosSuscriptor['TestPruebas']:'',
+                        "SushTestSetId" => $form->get("setPruebas")->getData(),
                     ];
                     $softgic->actualizarSuscriptor($arrDatos);
                     echo "<script type='text/javascript'>window.close();window.opener.location.reload();</script>";
