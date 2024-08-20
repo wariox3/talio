@@ -17,31 +17,22 @@ class MovimientoController extends AbstractController
     #[Route('/itrio/movimiento/lista', name: 'itrio_movimiento_lista')]
     public function lista(Request $request, Itrio $itrio): Response
     {
+        $filtros = [];
         $form = $this->createFormBuilder()
-            ->add('entorno', ChoiceType::class, ['choices' => ['prod' => 'prod', 'test' => 'test'], 'data' => 'prod'])
+            ->add('tipo', ChoiceType::class, ['choices' => ['PEDIDO' => 'PEDIDO', 'RECIBO' => 'RECIBO', 'TODOS' => ''], 'data' => 'TODOS'])
+            ->add('factura', ChoiceType::class, ['choices' => ['SI' => 'SI', 'NO' => 'NO', 'TODOS' => ''], 'data' => 'TODOS'])
             ->add('btnFiltrar', SubmitType::class, array('label' => 'Filtrar'))
-            ->add('btnEliminar', SubmitType::class, array('label' => 'Eliminar'))
             ->getForm();
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            if ($form->get('btnEliminar')->isClicked()) {
-                $arrSeleccionados = $request->get('ChkSeleccionar');
-                if($arrSeleccionados) {
-                    $erroresSeleccionados = [];
-                    foreach ($arrSeleccionados as $codigo) {
-                        $erroresSeleccionados[] = [
-                            "id" => $codigo,
-                        ];
-                    }
-                    $datos = [
-                        "errores" => $erroresSeleccionados
-                    ];
-                    $itrio->consumoPost('api/error/eliminar', $datos);
-                }
+            if ($form->get('btnFiltrar')->isClicked()) {
+                $filtros = $this->filtros($form);
             }
         }
         $movimientos = [];
-        $respuesta = $itrio->consumoPost('contenedor/movimiento/lista/', ['entorno' => $form->get('entorno')->getData()]);
+        $respuesta = $itrio->consumoPost('contenedor/movimiento/lista/', [
+            'filtros' => $filtros
+        ]);
         if(!$respuesta['error']) {
             $movimientos = $respuesta['datos'];
         }
@@ -92,5 +83,25 @@ class MovimientoController extends AbstractController
         return $this->render('itrio/movimiento/usuario.html.twig', [
             'informacionesFacturacion' => $informacionesFacturacion,
             'form' => $form->createView()]);
+    }
+
+    private function filtros($form)
+    {
+        $filtros = [];
+        $tipo = $form->get('tipo')->getData();
+        if($tipo) {
+            $filtros[] = ["propiedad" => "tipo", "valor1"=> "PEDIDO"]
+            ;
+        }
+        $factura = $form->get('factura')->getData();
+        if($factura) {
+            if($factura == 'SI') {
+                $filtros[] = ["propiedad" => "documento_fisico", "valor1"=> true];
+            }
+            if($factura == 'NO') {
+                $filtros[] = ["propiedad" => "documento_fisico", "valor1"=> false];
+            }
+        }
+        return $filtros;
     }
 }
