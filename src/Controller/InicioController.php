@@ -1,6 +1,7 @@
 <?php
 namespace App\Controller;
 
+use App\Utilidades\Niquel;
 use App\Utilidades\Wolframio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -11,7 +12,7 @@ class InicioController extends AbstractController
 {
 
     #[Route('/', name: 'inicio')]
-    public function inicio(Request $request, Wolframio $wolframio): Response
+    public function inicio(Request $request, Wolframio $wolframio, Niquel $niquel): Response
     {
         #https://www.chartjs.org/chartjs-plugin-zoom/latest/samples/fetch-data.html
         $labels = [];
@@ -39,7 +40,6 @@ class InicioController extends AbstractController
         if(!$respuesta['error']) {
             $datos = $respuesta['datos'];
             $arrEstados = $datos['estados'];
-
         }
         $respuesta = $wolframio->consumoGet('api/servicio/estado');
         if(!$respuesta['error']) {
@@ -54,9 +54,18 @@ class InicioController extends AbstractController
             $arrDatos = $respuesta['datos'];
             $ultimosDocumentos = $arrDatos['documentos'];
         }
+        $resumenErrores = [
+            'prod' => 0
+        ];
+        $respuesta = $niquel->consumoPost('api/error/resumen', []);
+        if(!$respuesta['error']) {
+            $arrDatos = $respuesta['datos'];
+            $resumenErrores = $arrDatos['resumen'];
+        }
         return $this->render('inicio.html.twig', [
             'arrEstados' => $arrEstados,
             'arrServicios' => $arrServicios,
+            'arrErrores' => $resumenErrores,
             'labels' => $labels,
             'data' => $data,
             'ultimosDocumentos' => $ultimosDocumentos
