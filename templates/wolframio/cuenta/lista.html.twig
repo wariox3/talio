@@ -23,6 +23,7 @@
                         <th>Correo</th>
                         <th>Correo facturacion</th>
                         <th>Suscriptor</th>
+                        <th>Empleador</th>
                         <th title="Produccion">Prod</th>
                         <th title="Notificar">Not</th>
                         <th></th>
@@ -45,6 +46,11 @@
                                 {% endif %}
                             </td>
                             <td>
+                                {% if cuenta.empleadorSoftgic %}
+                                    {{ cuenta.empleadorSoftgic }}
+                                {% endif %}
+                            </td>
+                            <td>
                                 {% if cuenta.suscriptorSoftgic %}
                                     {% if not cuenta.estadoProduccion %}
                                         <button name="OpHabilitar" value="{{ cuenta.id }}">Set pruebas</button>
@@ -55,8 +61,6 @@
                                     {{ cuenta.estadoProduccion?'SI':'NO' }}
                                 {% endif %}
                             </td>
-
-
                             <td>{{ cuenta.notificar?'SI':'NO' }}</td>
                             <td>
                                 {% if cuenta.suscriptorSoftgic %}
