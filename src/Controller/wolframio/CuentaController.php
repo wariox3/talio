@@ -16,9 +16,7 @@ class CuentaController extends AbstractController
     #[Route('/wolframio/cuenta/lista', name: 'wolframio_cuenta_lista')]
     public function lista(Request $request, Wolframio $wolframio): Response
     {
-        #$codigo = $request->request->get('OpCrear');
-        $form = $this->createFormBuilder()
-            ->getForm();
+        $form = $this->createFormBuilder()->getForm();
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
 
