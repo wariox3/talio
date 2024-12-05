@@ -47,7 +47,7 @@ class CuentaController extends AbstractController
             $datos = [
                 'cuentaId' => $codigo
             ];
-            $respuesta = $wolframio->consumoPost('/api/cuenta/softgic/empleador/habilitar', $datos);
+            $respuesta = $wolframio->consumoPost('api/cuenta/softgic/empleador/habilitar', $datos);
         }
         $cuentas = [];
         $datos = [];
