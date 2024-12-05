@@ -28,12 +28,12 @@ class CuentaController extends AbstractController
             ];
             $respuesta = $wolframio->consumoPost('api/cuenta/softgic/suscriptor/nuevo', $datos);
         }
-        if ($request->get('OpCrearNomina')) {
-            $codigo = $request->get('OpCrearNomina');
+        if ($request->get('OpCrearEmpleador')) {
+            $codigo = $request->get('OpCrearEmpleador');
             $datos = [
                 'cuentaId' => $codigo
             ];
-            $respuesta = $wolframio->consumoPost('api/cuenta/softgic/suscriptor_nomina/nuevo', $datos);
+            $respuesta = $wolframio->consumoPost('api/cuenta/softgic/empleador/nuevo', $datos);
         }
         if ($request->get('OpHabilitar')) {
             $codigo = $request->get('OpHabilitar');
@@ -41,6 +41,13 @@ class CuentaController extends AbstractController
                 'cuentaId' => $codigo
             ];
             #$respuesta = $wolframio->consumoPost('api/cuenta/nuevo_suscriptor_kiai', $datos);
+        }
+        if ($request->get('OpHabilitarNomina')) {
+            $codigo = $request->get('OpHabilitarNomina');
+            $datos = [
+                'cuentaId' => $codigo
+            ];
+            $respuesta = $wolframio->consumoPost('/api/cuenta/softgic/empleador/habilitar', $datos);
         }
         $cuentas = [];
         $datos = [];
