@@ -40,7 +40,7 @@ class CuentaController extends AbstractController
             $datos = [
                 'cuentaId' => $codigo
             ];
-            #$respuesta = $wolframio->consumoPost('api/cuenta/nuevo_suscriptor_kiai', $datos);
+            $respuesta = $wolframio->consumoPost('api/cuenta/softgic/suscriptor/habilitar', $datos);
         }
         if ($request->get('OpHabilitarNomina')) {
             $codigo = $request->get('OpHabilitarNomina');
