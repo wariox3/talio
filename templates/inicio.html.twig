@@ -54,7 +54,6 @@
                 <h2>Niquel errores produccion:
                     {% if arrErrores.prod > 0 %}
                         <span class="badge bg-danger">{{ arrErrores.prod }}</span>
-
                     {% else %}
                         <span class="badge bg-success">0</span>
                     {% endif %}
@@ -83,6 +82,7 @@
                             <thead>
                             <tr>
                                 <th>Id</th>
+                                <th>Tp</th>
                                 <th>Prefijo</th>
                                 <th>Numero</th>
                                 <th>Fecha</th>
@@ -94,6 +94,7 @@
                             {% for documento in ultimosDocumentos %}
                                 <tr>
                                     <td class="">{{ documento.id }}</td>
+                                    <td>{{ documento.documentoClaseAbreviatura }}</td>
                                     <td>{{ documento.prefijo }}</td>
                                     <td>{{ documento.numero }}</td>
                                     <td>{{ documento.fechaRegistro | date('Y-m-d H:i') }}</td>
