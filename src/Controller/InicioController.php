@@ -15,6 +15,9 @@ class InicioController extends AbstractController
     public function inicio(Request $request, Wolframio $wolframio, Niquel $niquel): Response
     {
         #https://www.chartjs.org/chartjs-plugin-zoom/latest/samples/fetch-data.html
+        $fecha = new \DateTime('now');
+        $anio = $fecha->format('Y');
+        $mes = $fecha->format('m');
         $labels = [];
         $data = [];
         $respuesta = $wolframio->consumoGet('api/documento/tiempo');
@@ -54,6 +57,16 @@ class InicioController extends AbstractController
             $arrDatos = $respuesta['datos'];
             $ultimosDocumentos = $arrDatos['documentos'];
         }
+        $cuentaPeriodo = [];
+        $datos = [
+            'anio' => $anio,
+            'mes' => $mes
+        ];
+        $respuesta = $wolframio->consumoPost('api/documento/cuenta_periodo', $datos);
+        if(!$respuesta['error']) {
+            $arrDatos = $respuesta['datos'];
+            $cuentaPeriodo = $arrDatos['documentos'];
+        }
         $resumenErrores = [
             'prod' => 0
         ];
@@ -68,7 +81,8 @@ class InicioController extends AbstractController
             'arrErrores' => $resumenErrores,
             'labels' => $labels,
             'data' => $data,
-            'ultimosDocumentos' => $ultimosDocumentos
+            'ultimosDocumentos' => $ultimosDocumentos,
+            'cuentaPeriodo' => $cuentaPeriodo
         ]);
     }
 }
