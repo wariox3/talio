@@ -2,6 +2,7 @@
 namespace App\Controller;
 
 use App\Utilidades\Niquel;
+use App\Utilidades\Tantalo;
 use App\Utilidades\Wolframio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,7 +13,7 @@ class InicioController extends AbstractController
 {
 
     #[Route('/', name: 'inicio')]
-    public function inicio(Request $request, Wolframio $wolframio, Niquel $niquel): Response
+    public function inicio(Request $request, Wolframio $wolframio, Niquel $niquel, Tantalo $tantalo): Response
     {
         #https://www.chartjs.org/chartjs-plugin-zoom/latest/samples/fetch-data.html
         $fecha = new \DateTime('now');
@@ -35,9 +36,12 @@ class InicioController extends AbstractController
             "error" => 0,
             "respuesta" => 0
         ];
-        $arrServicios = [
+        $arrServiciosWolframio = [
             "colaEmitir" => false,
             "colaRespuesta" => false
+        ];
+        $arrServiciosTantalo = [
+            "colaDecodificar" => false
         ];
         $respuesta = $wolframio->consumoPost("api/documento/estados", []);
         if(!$respuesta['error']) {
@@ -46,7 +50,11 @@ class InicioController extends AbstractController
         }
         $respuesta = $wolframio->consumoGet('api/servicio/estado');
         if(!$respuesta['error']) {
-            $arrServicios = $respuesta['datos'];
+            $arrServiciosWolframio = $respuesta['datos'];
+        }
+        $respuesta = $tantalo->consumoGet('api/servicio/estado');
+        if(!$respuesta['error']) {
+            $arrServiciosTantalo = $respuesta['datos'];
         }
         $ultimosDocumentos = [];
         $datos = [
@@ -77,7 +85,8 @@ class InicioController extends AbstractController
         }
         return $this->render('inicio.html.twig', [
             'arrEstados' => $arrEstados,
-            'arrServicios' => $arrServicios,
+            'arrServiciosWolframio' => $arrServiciosWolframio,
+            'arrServiciosTantalo' => $arrServiciosTantalo,
             'arrErrores' => $resumenErrores,
             'labels' => $labels,
             'data' => $data,
