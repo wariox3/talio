@@ -15,7 +15,7 @@ class ErrorController extends AbstractController
     public function lista(Request $request, Niquel $niquel): Response
     {
         $form = $this->createFormBuilder()
-            ->add('entorno', ChoiceType::class, ['choices' => ['prod' => 'prod', 'test' => 'test'], 'data' => 'prod'])
+            ->add('entorno', ChoiceType::class, ['required' => false, 'choices' => ['Todos' => '', 'prod' => 'prod', 'test' => 'test'], 'data' => ''])
             ->add('btnFiltrar', SubmitType::class, array('label' => 'Filtrar'))
             ->add('btnEliminar', SubmitType::class, array('label' => 'Eliminar'))
             ->getForm();

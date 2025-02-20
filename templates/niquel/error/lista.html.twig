@@ -35,6 +35,7 @@
                         <th>Ruta</th>
                         <th>Entorno</th>
                         <th>Contenedor</th>
+                        <th>Data</th>
                         <th></th>
                         <th class="text-center" title="seleccionar todos">
                             <div>
@@ -57,6 +58,7 @@
                             <td>{{ error.ruta }}</td>
                             <td>{{ error.entorno }}</td>
                             <td>{{ error.contenedor }}</td>
+                            <td><pre>{{ error.data|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></td>
                             <td><a class="btn"
                                    href="javascript:abrirVentana('{{ path('niquel_error_detalle', { 'id': error.id}) }}', 'Archivos', 500, 1200)">Ver</a>
                             </td>
