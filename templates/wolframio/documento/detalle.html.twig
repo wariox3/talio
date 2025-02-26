@@ -2,6 +2,19 @@
 {% block content %}
     {{ form_start(form) }}
     <div class="container-fluid px-4">
+        <table class="table table-condensed table-bordered tabla-informacion w-100">
+            <tr>
+                <td>Id:</td>
+                <td>{{ documento.id }}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td colspan="6"><pre>{{ documento.documento | json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></td>
+            </tr>
+        </table>
         <div class="card mb-4">
             <div class="card-header">
                 <i class="fas fa-table me-1"></i>

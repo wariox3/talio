@@ -151,7 +151,7 @@ class DocumentoController extends AbstractController
             $errores = $documento['errores'];
         }
         return $this->render('wolframio/documento/detalle.html.twig', [
-            'documentos' => $documento,
+            'documento' => $documento,
             'errores' => $errores,
             'form' => $form->createView()]);
     }

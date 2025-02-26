@@ -84,7 +84,7 @@
                     </div>
 
                     <div class="card-body">
-                        <table id="datatablesSimple">
+                        <table>
                             <thead>
                             <tr>
                                 <th>Id</th>
@@ -94,18 +94,27 @@
                                 <th>Fecha</th>
                                 <th>Cod</th>
                                 <th>Cuenta</th>
+                                <th>Total</th>
+                                <th>Env</th>
+                                <th>Val</th>
+                                <th>Err</th>
                             </tr>
                             </thead>
                             <tbody>
                             {% for documento in ultimosDocumentos %}
                                 <tr>
-                                    <td class="">{{ documento.id }}</td>
+                                    <td class=""><a href="javascript:abrirVentana('{{ path('wolframio_documento_detalle', { 'id': documento.id}) }}', 'DocumentoDetalle', 500, 1200)">{{ documento.id }}</a></td>
+                                    <td></td>
                                     <td>{{ documento.documentoClaseAbreviatura }}</td>
                                     <td>{{ documento.prefijo }}</td>
                                     <td>{{ documento.numero }}</td>
                                     <td>{{ documento.fechaRegistro | date('Y-m-d H:i') }}</td>
                                     <td>{{ documento.cuentaId }}</td>
                                     <td>{{ documento.cuentaNombre }}</td>
+                                    <td>{{ documento.total }}</td>
+                                    <td>{{ documento.estadoEnviado?'SI':'NO' }}</td>
+                                    <td>{{ documento.estadoValidado?'SI':'NO' }}</td>
+                                    <td>{{ documento.estadoError?'SI':'NO' }}</td>
                                 </tr>
                             {% endfor %}
                             </tbody>
