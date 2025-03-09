@@ -59,7 +59,7 @@
                             </td>
                             <td>
                                 {% if cuenta.empleadorSoftgic %}
-                                    {{ cuenta.empleadorSoftgic }}
+                                    <a class="btn" href="javascript:abrirVentana('{{ path('wolframio_cuenta_empleador', { 'empleador': cuenta.empleadorSoftgic}) }}', 'Archivos', 500, 1200)">{{ cuenta.empleadorSoftgic }}</a>
                                 {% else %}
                                     <button name="OpCrearEmpleador" value="{{ cuenta.id }}">Crear</button>
                                 {% endif %}

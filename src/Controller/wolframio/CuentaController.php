@@ -100,41 +100,38 @@ class CuentaController extends AbstractController
             ->add('CodigoRegimen', TextType::class, ['data' => $datosSuscriptor?$datosSuscriptor['CodigoRegimen']:''])
             ->add('NombreRegimen', TextType::class, ['data' => $datosSuscriptor?$datosSuscriptor['NombreRegimen']:'', 'disabled' => true])
             ->add('setPruebas', TextType::class, ['data' => $datosSuscriptor?$datosSuscriptor['TestPruebas']:''])
-            ->add('guardar', SubmitType::class, array('label' => 'Enviar'))
             ->getForm();
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            if ($form->get('guardar')->isClicked()) {
-                if($datosSuscriptor) {
-                    $arrDatos = [
-                        "SuscDocumento" => $form->get("Documento")->getData(),
-                        "SuscDv" => $form->get("Dv")->getData(),
-                        "EnviarSetPruebas" => false,
-                        "SuscRazonSocial" => $form->get("RazonSocial")->getData(),
-                        "SuscDireccion" => $form->get("Direccion")->getData(),
-                        "SuscObligaciones" => $form->get("Obligaciones")->getData(),
-                        "SuscNombres" => "NA",
-                        "SuscApellidos" => "NA",
-                        "SuscCorreo" => $form->get("Correo")->getData(),
-                        "SuscTelefono" => $form->get("Telefono")->getData(),
-                        "TipoPersona" => $form->get("CodigoPersona")->getData(),
-                        "Regimen" => $form->get("CodigoRegimen")->getData(),
-                        "CodigoPostal" => $form->get("CodigoPostal")->getData(),
-                        "NitAliado" => "9011920484",
-                        "SushTestSetId" => $form->get("setPruebas")->getData(),
-                    ];
-                    $respuesta = $softgic->actualizarSuscriptor($arrDatos);
-                    if($respuesta['error']) {
-                        Mensajes::error($respuesta['mensaje']);
-                    } else {
-                        echo "<script type='text/javascript'>window.close();window.opener.location.reload();</script>";
-                    }
-                }
-            }
         }
         return $this->render('wolframio/cuenta/suscriptor.html.twig', [
-            'alidado' => $datosSuscriptor?$datosSuscriptor['DocumentoAliado']:'',
-            'alidadoNombre' => $datosSuscriptor?$datosSuscriptor['NombreAliado']:'',
+            'aliado' => $datosSuscriptor?$datosSuscriptor['DocumentoAliado']:'',
+            'aliadoNombre' => $datosSuscriptor?$datosSuscriptor['NombreAliado']:'',
+            'form' => $form->createView()]);
+    }
+
+    #[Route('/wolframio/cuenta/empleador/{empleador}', name: 'wolframio_cuenta_empleador')]
+    public function empleador(Request $request, Softgic $softgic, $empleador): Response
+    {
+        $datosEmpleador = [];
+        $respuesta = $softgic->consultaEmpleador($empleador);
+        if(!$respuesta['error']) {
+            $datosEmpleador = $respuesta['empleador'];
+        }
+        $form = $this->createFormBuilder()
+            ->add('NIT', TextType::class, ['data' => $datosEmpleador?$datosEmpleador['NIT']:''])
+            ->add('DV', TextType::class, ['data' => $datosEmpleador?$datosEmpleador['DV']:''])
+            ->add('RazonSocial', TextType::class, ['data' => $datosEmpleador?$datosEmpleador['RazonSocial']:''])
+            ->add('Direccion', TextType::class, ['data' => $datosEmpleador?$datosEmpleador['Direccion']:''])
+            ->add('MunicipioCiudad', TextType::class, ['data' => $datosEmpleador?$datosEmpleador['MunicipioCiudad']:'', 'disabled' => true])
+            ->add('DepartamentoEstado', TextType::class, ['data' => $datosEmpleador?$datosEmpleador['DepartamentoEstado']:'', 'disabled' => true])
+            ->add('TestId', TextType::class, ['data' => $datosEmpleador?$datosEmpleador['TestId']:''])
+            ->getForm();
+        $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+
+        }
+        return $this->render('wolframio/cuenta/empleador.html.twig', [
             'form' => $form->createView()]);
     }
 }

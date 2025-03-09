@@ -29,17 +29,18 @@ class Softgic
         return $arrRespuesta;
     }
 
-    public function actualizarSuscriptor($datos): array
+    public function consultaEmpleador($empleador): array
     {
-        $respuesta = $this->consumirPost("ConValidacionPrevia/HabilitarFacturador", $datos);
+        $respuesta = $this->consumirGet("Empleadores/ObtenerPorId/{$empleador}", []);
         if($respuesta['error'] == false) {
+            $datos = $respuesta['datos'];
             $arrRespuesta = [
-                'error' => false
+                'error' => false,
+                'empleador' => $datos['Data']
             ];
         } else {
             $arrRespuesta = [
-                'error' => true,
-                'mensaje' => $respuesta['mensaje']
+                'error' => true
             ];
         }
         return $arrRespuesta;
