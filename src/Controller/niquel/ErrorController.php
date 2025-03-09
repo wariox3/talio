@@ -18,6 +18,7 @@ class ErrorController extends AbstractController
             ->add('entorno', ChoiceType::class, ['required' => false, 'choices' => ['Todos' => '', 'prod' => 'prod', 'test' => 'test'], 'data' => ''])
             ->add('btnFiltrar', SubmitType::class, array('label' => 'Filtrar'))
             ->add('btnEliminar', SubmitType::class, array('label' => 'Eliminar'))
+            ->add('btnLimpiar', SubmitType::class, array('label' => 'Limpiar'))
             ->getForm();
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
@@ -35,6 +36,9 @@ class ErrorController extends AbstractController
                     ];
                     $niquel->consumoPost('api/error/eliminar', $datos);
                 }
+            }
+            if ($form->get('btnLimpiar')->isClicked()) {
+                $niquel->consumoPost('api/error/limpiar', []);
             }
         }
         $errores = [];
