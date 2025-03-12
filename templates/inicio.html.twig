@@ -36,34 +36,34 @@
         </div>
         <div class="row">
             <div class="container">
-                <h2>Wolframio [cola emitir]:
+                <h3>Wolframio
+                    [cola emitir]:
                     {% if arrServiciosWolframio.colaEmitir %}
                         <span class="badge bg-success">Activo</span>
                     {% else %}
                         <span class="badge bg-danger">Inactivo</span>
                     {% endif %}
-                </h2>
-                <h2>Wolframio [cola respuesta]:
+                    [cola respuesta]:
                     {% if arrServiciosWolframio.colaRespuesta %}
                         <span class="badge bg-success">Activo</span>
                     {% else %}
                         <span class="badge bg-danger">Inactivo</span>
                     {% endif %}
-                </h2>
-                <h2>Tantalo [cola decodificar]:
+                </h3>
+                <h3>Tantalo [cola decodificar]:
                     {% if arrServiciosTantalo.colaDecodificar %}
                         <span class="badge bg-success">Activo</span>
                     {% else %}
                         <span class="badge bg-danger">Inactivo</span>
                     {% endif %}
-                </h2>
-                <h2>Niquel errores produccion:
+                </h3>
+                <h3>Niquel errores produccion:
                     {% if arrErrores.prod > 0 %}
                         <span class="badge bg-danger">{{ arrErrores.prod }}</span>
                     {% else %}
                         <span class="badge bg-success">0</span>
                     {% endif %}
-                </h2>
+                </h3>
             </div>
         </div>
         <div class="row">
@@ -152,6 +152,60 @@
                         </table>
                     </div>
                 </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-table me-1"></i>
+                        Negocios
+                    </div>
+
+                    <div class="card-body">
+                        <table id="documentoCuentaPeriodo">
+                            <thead>
+                            <tr>
+                                <th>Etapa</th>
+                                <th>Cantidad</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for negocio in negocios %}
+                                <tr>
+                                    <td>{{ negocio.negocioEtapa }}</td>
+                                    <td>{{ negocio.cantidad }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <i class="fas fa-table me-1"></i>
+                        Contactos
+                    </div>
+
+                    <div class="card-body">
+                        <table id="documentoCuentaPeriodo">
+                            <thead>
+                            <tr>
+                                <th>Cantidad</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for contacto in contactos %}
+                                <tr>
+                                    <td>{{ contacto.cantidad }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-xl-6">
             </div>
             <div class="col-xl-6">
 

@@ -1,6 +1,7 @@
 <?php
 namespace App\Controller;
 
+use App\Utilidades\Carbono;
 use App\Utilidades\Niquel;
 use App\Utilidades\Tantalo;
 use App\Utilidades\Wolframio;
@@ -13,7 +14,7 @@ class InicioController extends AbstractController
 {
 
     #[Route('/', name: 'inicio')]
-    public function inicio(Request $request, Wolframio $wolframio, Niquel $niquel, Tantalo $tantalo): Response
+    public function inicio(Request $request, Wolframio $wolframio, Niquel $niquel, Tantalo $tantalo, Carbono $carbono): Response
     {
         #https://www.chartjs.org/chartjs-plugin-zoom/latest/samples/fetch-data.html
         $fecha = new \DateTime('now');
@@ -83,6 +84,18 @@ class InicioController extends AbstractController
             $arrDatos = $respuesta['datos'];
             $resumenErrores = $arrDatos['resumen'];
         }
+        $negocios = [];
+        $respuesta = $carbono->consumoPost('api/negocio/pendiente', []);
+        if(!$respuesta['error']) {
+            $arrDatos = $respuesta['datos'];
+            $negocios = $arrDatos['negocios'];
+        }
+        $contactos = [];
+        $respuesta = $carbono->consumoPost('api/contacto/pendiente', []);
+        if(!$respuesta['error']) {
+            $arrDatos = $respuesta['datos'];
+            $contactos = $arrDatos['contactos'];
+        }
         return $this->render('inicio.html.twig', [
             'arrEstados' => $arrEstados,
             'arrServiciosWolframio' => $arrServiciosWolframio,
@@ -91,7 +104,9 @@ class InicioController extends AbstractController
             'labels' => $labels,
             'data' => $data,
             'ultimosDocumentos' => $ultimosDocumentos,
-            'cuentaPeriodo' => $cuentaPeriodo
+            'cuentaPeriodo' => $cuentaPeriodo,
+            'negocios' => $negocios,
+            'contactos' => $contactos
         ]);
     }
 }
