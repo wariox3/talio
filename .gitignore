@@ -19,3 +19,4 @@ symfony.lock
 /nbproject/*
 /.idea/
 /.idea/*
+/.env.dev
