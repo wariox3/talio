@@ -48,24 +48,15 @@
                     <div class="sb-sidenav-menu-heading">Opciones</div>
                     <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayouts" aria-expanded="false" aria-controls="collapseLayouts">
                         <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                        Documento
+                        Wolframio
                         <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
                     </a>
                     <div class="collapse" id="collapseLayouts" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                         <nav class="sb-sidenav-menu-nested nav">
-                            <a class="nav-link" href="{{ path('wolframio_documento_enviar') }}">Enviar</a>
-                            <a class="nav-link" href="{{ path('wolframio_documento_error') }}">Error</a>
-                            <a class="nav-link" href="{{ path('wolframio_documento_respuesta') }}">Respuesta</a>
-                        </nav>
-                    </div>
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#cuentas" aria-expanded="false" aria-controls="collapseLayouts">
-                        <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                        Cuenta
-                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                    </a>
-                    <div class="collapse" id="cuentas" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                        <nav class="sb-sidenav-menu-nested nav">
-                            <a class="nav-link" href="{{ path('wolframio_cuenta_lista') }}">Lista</a>
+                            <a class="nav-link" href="{{ path('wolframio_cuenta_lista') }}">Cuenta</a>
+                            <a class="nav-link" href="{{ path('wolframio_documento_enviar') }}">Documento enviar</a>
+                            <a class="nav-link" href="{{ path('wolframio_documento_error') }}">Documento error</a>
+                            <a class="nav-link" href="{{ path('wolframio_documento_respuesta') }}">Documento respuesta</a>
                         </nav>
                     </div>
                     <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#niquel" aria-expanded="false" aria-controls="collapseLayouts">
@@ -86,6 +77,16 @@
                     <div class="collapse" id="itrio" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
                         <nav class="sb-sidenav-menu-nested nav">
                             <a class="nav-link" href="{{ path('itrio_movimiento_lista') }}">Movimiento</a>
+                        </nav>
+                    </div>
+                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#kiai" aria-expanded="false" aria-controls="collapseLayouts">
+                        <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
+                        Kiai
+                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
+                    </a>
+                    <div class="collapse" id="kiai" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
+                        <nav class="sb-sidenav-menu-nested nav">
+                            <a class="nav-link" href="{{ path('kiai_consumo_lista') }}">Consumo</a>
                         </nav>
                     </div>
                 </div>

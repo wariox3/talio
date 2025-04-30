@@ -46,6 +46,23 @@ class Softgic
         return $arrRespuesta;
     }
 
+    public function consultaConsumo($aliado, $anio, $mes): array
+    {
+        $respuesta = $this->consumirGet("ConValidacionPrevia/ConsultarConsumosAliado/{$aliado}/{$anio}/{$mes}", []);
+        if($respuesta['error'] == false) {
+            $datos = $respuesta['datos'];
+            $arrRespuesta = [
+                'error' => false,
+                'consumos' => $datos
+            ];
+        } else {
+            $arrRespuesta = [
+                'error' => true
+            ];
+        }
+        return $arrRespuesta;
+    }
+
     private function consumirPost($url, $arDatos)
     {
         $url = "https://apps.kiai.co/api/{$url}";
