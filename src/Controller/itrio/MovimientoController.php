@@ -2,6 +2,7 @@
 namespace App\Controller\itrio;
 
 use App\Utilidades\Itrio;
+use App\Utilidades\Mensajes;
 use App\Utilidades\Niquel;
 use App\Utilidades\SpaceDO;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -17,7 +18,7 @@ class MovimientoController extends AbstractController
     #[Route('/itrio/movimiento/lista', name: 'itrio_movimiento_lista')]
     public function lista(Request $request, Itrio $itrio): Response
     {
-        $filtros = [];
+        $filtros = ['cadena' => ''];
         $form = $this->createFormBuilder()
             ->add('tipo', ChoiceType::class, ['choices' => ['PEDIDO' => 'PEDIDO', 'RECIBO' => 'RECIBO', 'TODOS' => ''], 'data' => 'TODOS'])
             ->add('factura', ChoiceType::class, ['choices' => ['SI' => 'SI', 'NO' => 'NO', 'TODOS' => ''], 'data' => 'TODOS'])
@@ -30,11 +31,11 @@ class MovimientoController extends AbstractController
             }
         }
         $movimientos = [];
-        $respuesta = $itrio->consumoPost('contenedor/movimiento/lista/', [
-            'filtros' => $filtros
-        ]);
-        if(!$respuesta['error']) {
-            $movimientos = $respuesta['datos'];
+        $respuesta = $itrio->consumoGet('contenedor/movimiento/' . $filtros['cadena']);
+        if($respuesta['error']) {
+            Mensajes::error($respuesta['mensaje']);
+        } else {
+            $movimientos = $respuesta['datos']['results'];
         }
         return $this->render('itrio/movimiento/lista.html.twig', [
             'movimientos' => $movimientos,
@@ -87,19 +88,21 @@ class MovimientoController extends AbstractController
 
     private function filtros($form)
     {
-        $filtros = [];
+        $filtros = ['cadena' => ''];
         $tipo = $form->get('tipo')->getData();
         if($tipo) {
-            $filtros[] = ["propiedad" => "tipo", "valor1"=> "PEDIDO"]
-            ;
+            if($filtros['cadena']) {
+                $filtros['cadena'] .= '&tipo=' . $tipo;
+            } else {
+                $filtros['cadena'] .= '?tipo=' . $tipo;
+            }
         }
         $factura = $form->get('factura')->getData();
         if($factura) {
-            if($factura == 'SI') {
-                $filtros[] = ["propiedad" => "documento_fisico", "valor1"=> true];
-            }
-            if($factura == 'NO') {
-                $filtros[] = ["propiedad" => "documento_fisico", "valor1"=> false];
+            if($filtros['cadena']) {
+                $filtros['cadena'] .= '&documento_fisico=True';
+            } else {
+                $filtros['cadena'] .= '?documento_fisico=False';
             }
         }
         return $filtros;

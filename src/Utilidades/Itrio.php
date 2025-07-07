@@ -57,9 +57,23 @@ class Itrio
         $client = HttpClient::create();
         $urlCompleta = $_ENV['BASE_ITRIO'] .  $url;
         try {
-            #$headers = ['Authorization' => 'Bearer ' . $session->get('token')];
+            $token = $session->get('token');
+            if (empty($token)) {
+                $respuesta = $this->autenticar();
+                if($respuesta["error"]) {
+                    return [
+                        "error" => true,
+                        "mensaje" => $respuesta["mensaje"]
+                    ];
+                } else {
+                    $token = $respuesta["token"];
+                    $session->set('token', $token);
+                }
+
+            }
+            $headers = ['Authorization' => 'Bearer ' . $token];
             $response = $client->request('GET', $urlCompleta, [
-                #'headers' => $headers,
+                'headers' => $headers,
             ]);
             $status = $response->getStatusCode();
             if($status == 200) {
@@ -104,6 +118,40 @@ class Itrio
             return [
                 "error" => true,
                 "mensaje" => $e->getMessage()
+            ];
+        }
+    }
+
+    public function autenticar()
+    {
+        $client = HttpClient::create();
+        $urlAutenticacion = $_ENV['BASE_ITRIO'] . 'seguridad/login/';
+        try {
+            $response = $client->request('POST', $urlAutenticacion, [
+                'json' => [
+                    'username' => $_ENV['ITRIO_USUARIO'],
+                    'password' => $_ENV['ITRIO_CLAVE'],
+                    'proyecto' => 'RUTEOAPP'
+                ]
+            ]);
+
+            $status = $response->getStatusCode();
+            if ($status == 200) {
+                $data = $response->toArray();
+                return [
+                    'error' => false,
+                    'token' => $data['token'],
+                ];
+            } else {
+                return [
+                    "error" => true,
+                    "mensaje" => "Error en la autenticacion"
+                ];
+            }
+        } catch (TransportExceptionInterface $e) {
+            return [
+                "error" => true,
+                "mensaje" => "Error en la autenticacion {$e->getMessage()}"
             ];
         }
     }

@@ -53,6 +53,7 @@
                     </thead>
                     <tbody>
                     {% for movimiento in movimientos %}
+                        {% set keys = movimiento|keys %}
                         <tr>
                             <td class="">{{ movimiento.id }}</td>
                             <td>{{ movimiento.tipo }}</td>
@@ -66,8 +67,8 @@
                                        href="javascript:abrirVentana('{{ path('itrio_movimiento_usuario', { 'id': movimiento.usuario_id}) }}', 'Archivos', 500, 1200)">{{ movimiento.usuario_id }}</a>
                                 {% endif %}
                             </td>
-                            <td>{{ movimiento.usuario_username }}</td>
-                            <td>{{ movimiento.contenedor_movimiento_id }}</td>
+                            <td>{{ movimiento[keys[12]] }}</td>
+                            <td>{{ movimiento.movimiento_referencia_id }}</td>
                             <td>{{ movimiento.documento_fisico?'SI':'NO' }}</td>
                             <td>
                                 {% if movimiento.tipo == 'PEDIDO' and movimiento.documento_fisico == false and movimiento.vr_saldo <= 0 %}
