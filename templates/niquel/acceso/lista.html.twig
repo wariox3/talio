@@ -1,0 +1,37 @@
+{% extends 'base.html.twig' %}
+{% block content %}
+    {{ form_start(form) }}
+    <div class="container-fluid px-4">
+        <h1 class="mt-4">Niquel</h1>
+        <ol class="breadcrumb mb-4">
+            <li class="breadcrumb-item"><a href="{{ path('inicio') }}">Accesos</a></li>
+            <li class="breadcrumb-item active">Lista</li>
+        </ol>
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-1"></i>
+                Accesos hosts
+            </div>
+
+            <div class="card-body">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Host</th>
+                        <th>Accesos</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for host in hosts %}
+                        <tr>
+                            <td class="">{{ host.host }}</td>
+                            <td>{{ host.total }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{ form_end(form) }}
+{% endblock %}

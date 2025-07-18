@@ -53,11 +53,12 @@ class Niquel
     }
 
     public function consumoGet($url) {
-        $session = $this->requestStack->getSession();
         $client = HttpClient::create();
-        $urlCompleta = $_ENV['BASE_WOLFRAMIO'] .  $url;
+        $urlCompleta = $_ENV['BASE_NIQUEL'] .  $url;
         try {
-            $headers = ['Authorization' => 'Bearer ' . $session->get('token')];
+            $headers = [
+                'Content-Type' => 'application/json',
+            ];
             $response = $client->request('GET', $urlCompleta, [
                 'headers' => $headers,
             ]);
@@ -71,7 +72,7 @@ class Niquel
             } else {
                 return [
                     "error" => true,
-                    "mensaje" => "El servidor no resopnde correctamente"
+                    "mensaje" => "El servidor no responde correctamente"
                 ];
             }
         } catch (TransportExceptionInterface $e) {
