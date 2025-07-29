@@ -9,6 +9,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -18,10 +19,11 @@ class MovimientoController extends AbstractController
     #[Route('/itrio/movimiento/lista', name: 'itrio_movimiento_lista')]
     public function lista(Request $request, Itrio $itrio): Response
     {
-        $filtros = ['cadena' => ''];
+        $filtros = ['cadena' => '?order=id'];
         $form = $this->createFormBuilder()
-            ->add('tipo', ChoiceType::class, ['choices' => ['PEDIDO' => 'PEDIDO', 'RECIBO' => 'RECIBO', 'TODOS' => ''], 'data' => 'TODOS'])
-            ->add('factura', ChoiceType::class, ['choices' => ['SI' => 'SI', 'NO' => 'NO', 'TODOS' => ''], 'data' => 'TODOS'])
+            ->add('factura', ChoiceType::class, ['choices' => ['SI' => 'SI', 'TODOS' => ''], 'data' => 'TODOS'])
+            ->add('pendiente', ChoiceType::class, ['choices' => ['SI' => 'SI', 'TODOS' => ''], 'data' => 'TODOS'])
+            ->add('id', TextType::class, ['required' => false])
             ->add('btnFiltrar', SubmitType::class, array('label' => 'Filtrar'))
             ->getForm();
         $form->handleRequest($request);
@@ -42,27 +44,52 @@ class MovimientoController extends AbstractController
             'form' => $form->createView()]);
     }
 
-    #[Route('/itrio/movimiento/subir/{id}', name: 'itrio_movimiento_subir')]
+    #[Route('/itrio/movimiento/detalle/{id}', name: 'itrio_movimiento_detalle')]
     public function detalle(Request $request, SpaceDO $spaceDO, Itrio $itrio, $id): Response
     {
+        $factura_id = null;
+        $informacionFacturacion = [];
+        $respuesta = $itrio->consumoGet("contenedor/movimiento/{$id}/");
+        if($respuesta['error']) {
+            Mensajes::error($respuesta['mensaje']);
+        } else {
+            $movimiento = $respuesta['datos'];
+            $factura_id = $movimiento['factura_id'];
+            if($movimiento['informacion_facturacion_id']) {
+                $respuesta = $itrio->consumoGet("contenedor/informacion_facturacion/{$movimiento['informacion_facturacion_id']}/");
+                if($respuesta['error'] == false) {
+                    $informacionFacturacion = $respuesta['datos'];
+                }
+            }
+        }
         $form = $this->createFormBuilder()
-            ->add('attachment', FileType::class)
-            ->add('cargar', SubmitType::class, array('label' => 'Cagar'))
+            ->add('factura_id', TextType::class, ['data' => $factura_id, 'empty_data' => null,  'required' => false ])
+            ->add('guardar', SubmitType::class, array('label' => 'Guardar'))
+            ->add('generar', SubmitType::class, array('label' => 'Generar factura'))
             ->getForm();
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            if ($form->get('cargar')->isClicked()) {
-                $objArchivo = $form['attachment']->getData();
-                $fileContent = file_get_contents($objArchivo->getPathname());
-                $contentType = $objArchivo->getMimeType();
-                $archivoDestino = "itrio/prod/movimiento/factura_{$id}.pdf";
-                $spaceDO->subirB64($archivoDestino, $fileContent, $contentType);
-                $itrio->consumoPost('contenedor/movimiento/marcar-adjunto/', ['id' => $id]);
-                echo "<script type='text/javascript'>window.close();window.opener.location.reload();</script>";
+            if ($form->get('guardar')->isClicked()) {
+                $datos = [
+                    'factura_id' => $form->get('factura_id')->getData(),
+                ];
+                $respuesta = $itrio->consumoPath("contenedor/movimiento/{$id}/", $datos);
+                echo "<script type='text/javascript'>window.close();</script>";
             }
-
+            if ($form->get('generar')->isClicked()) {
+                $datos = [
+                    'id' => $id,
+                ];
+                $respuesta = $itrio->consumoPost("contenedor/movimiento/crear-factura/", $datos);
+                if($respuesta['error']) {
+                    Mensajes::error($respuesta['mensaje']);
+                } else {
+                    echo "<script type='text/javascript'>window.close();</script>";
+                }
+            }
         }
-        return $this->render('itrio/movimiento/subir.html.twig', [
+        return $this->render('itrio/movimiento/detalle.html.twig', [
+            'informacionFacturacion' => $informacionFacturacion,
             'form' => $form->createView()]);
     }
 
@@ -88,22 +115,26 @@ class MovimientoController extends AbstractController
 
     private function filtros($form)
     {
-        $filtros = ['cadena' => ''];
-        $tipo = $form->get('tipo')->getData();
+        $filtros = ['cadena' => '?order=id'];
+        /*$tipo = $form->get('tipo')->getData();
         if($tipo) {
             if($filtros['cadena']) {
                 $filtros['cadena'] .= '&tipo=' . $tipo;
             } else {
                 $filtros['cadena'] .= '?tipo=' . $tipo;
             }
+        }*/
+        $pendiente = $form->get('pendiente')->getData();
+        if($pendiente) {
+            $filtros['cadena'] .= '&sin_factura=true';
         }
         $factura = $form->get('factura')->getData();
         if($factura) {
-            if($filtros['cadena']) {
-                $filtros['cadena'] .= '&documento_fisico=True';
-            } else {
-                $filtros['cadena'] .= '?documento_fisico=False';
-            }
+            $filtros['cadena'] .= '&genera_factura=true';
+        }
+        $id = $form->get('id')->getData();
+        if($id) {
+            $filtros['cadena'] .= '&id=' . $id;
         }
         return $filtros;
     }

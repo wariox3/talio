@@ -16,12 +16,16 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between mb-3">
                     <div class="d-flex align-items-center">
-                        <label for="" class="me-2">Tipo:</label>
-                        {{ form_widget(form.tipo, { 'attr': {'class': 'form-control'} }) }}
+                        <label for="" class="me-2">Factura</label>
+                        {{ form_widget(form.factura, { 'attr': {'class': 'form-control'} }) }}
                     </div>
                     <div class="d-flex align-items-center">
-                        <label for="" class="me-2">Factura:</label>
-                        {{ form_widget(form.factura, { 'attr': {'class': 'form-control'} }) }}
+                        <label for="" class="me-2">Pendiente:</label>
+                        {{ form_widget(form.pendiente, { 'attr': {'class': 'form-control'} }) }}
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <label for="" class="me-2">Id</label>
+                        {{ form_widget(form.id, { 'attr': {'class': 'form-control'} }) }}
                     </div>
                     <div>
                         {{ form_widget(form.btnFiltrar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
@@ -39,8 +43,7 @@
                         <th>Usuario_id</th>
                         <th>Usuario</th>
                         <th>Referencia</th>
-                        <th>Fis</th>
-                        <th></th>
+                        <th>Factura</th>
                         <th class="text-center" title="seleccionar todos">
                             <div>
                                 <input type="checkbox" name="ChkSeleccionar[]"
@@ -55,7 +58,10 @@
                     {% for movimiento in movimientos %}
                         {% set keys = movimiento|keys %}
                         <tr>
-                            <td class="">{{ movimiento.id }}</td>
+                            <td class="">
+                                <a class="btn"
+                                   href="javascript:abrirVentana('{{ path('itrio_movimiento_detalle', { 'id': movimiento.id}) }}', 'Archivos', 500, 1200)">{{ movimiento.id }}</a>
+                            </td>
                             <td>{{ movimiento.tipo }}</td>
                             <td>{{ movimiento.fecha | date('Y-m-d H:i') }}</td>
                             <td>{{ movimiento.vr_total }}</td>
@@ -67,15 +73,9 @@
                                        href="javascript:abrirVentana('{{ path('itrio_movimiento_usuario', { 'id': movimiento.usuario_id}) }}', 'Archivos', 500, 1200)">{{ movimiento.usuario_id }}</a>
                                 {% endif %}
                             </td>
-                            <td>{{ movimiento[keys[12]] }}</td>
+                            <td>{{ movimiento.usuario__username }}</td>
                             <td>{{ movimiento.movimiento_referencia_id }}</td>
-                            <td>{{ movimiento.documento_fisico?'SI':'NO' }}</td>
-                            <td>
-                                {% if movimiento.tipo == 'PEDIDO' and movimiento.documento_fisico == false and movimiento.vr_saldo <= 0 %}
-                                <a class="btn"
-                                   href="javascript:abrirVentana('{{ path('itrio_movimiento_subir', { 'id': movimiento.id}) }}', 'Archivos', 500, 1200)">Subir</a>
-                                {% endif %}
-                            </td>
+                            <td>{{ movimiento.factura_id }}</td>
                             <td class="text-center">
                                 <div>
                                     <input type="checkbox" name="ChkSeleccionar[]" class="custom-control-input"

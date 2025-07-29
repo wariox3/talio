@@ -1,0 +1,37 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% block content %}
+    {{ form_start(form) }}
+    <div class="container-fluid px-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-1"></i>
+                Asignar factura
+            </div>
+            <div class="card-body">
+                {{ form_widget(form.factura_id) }}
+                {{ form_errors(form.factura_id) }}
+                {{ form_widget(form.guardar) }}
+                {{ form_widget(form.generar) }}
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid px-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-1"></i>
+                Informacion facturacion
+            </div>
+            <div class="card-body">
+                <ul class="list-group">
+                    {% for clave, valor in informacionFacturacion %}
+                        <li class="list-group-item">
+                            <strong>{{ clave }}:</strong> {{ valor }}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {{ form_end(form) }}
+{% endblock %}
+
