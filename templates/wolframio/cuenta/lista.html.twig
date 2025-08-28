@@ -34,7 +34,9 @@
                     <tbody>
                     {% for cuenta in cuentas %}
                         <tr>
-                            <td class="">{{ cuenta.id }}</td>
+                            <td class="">
+                                <a class="btn" href="javascript:abrirVentana('{{ path('wolframio_cuenta_editar', { 'id': cuenta.id}) }}', 'Archivos', 500, 1200)">{{ cuenta.id }}</a>
+                            </td>
                             <td>{{ cuenta.numeroIdentificacion }}</td>
                             <td>{{ cuenta.nombre }}</td>
                             <td>{{ cuenta.correo }}</td>

@@ -34,6 +34,10 @@ class CuentaController extends AbstractController
                 'cuentaId' => $codigo
             ];
             $respuesta = $wolframio->consumoPost('api/cuenta/softgic/empleador/nuevo', $datos);
+            if($respuesta['error'] == true){
+                Mensajes::error($respuesta['mensaje']);
+            }
+
         }
         if ($request->get('OpHabilitar')) {
             $codigo = $request->get('OpHabilitar');
@@ -59,6 +63,38 @@ class CuentaController extends AbstractController
         }
         return $this->render('wolframio/cuenta/lista.html.twig', [
             'cuentas' => $cuentas,
+            'form' => $form->createView()]);
+    }
+
+    #[Route('/wolframio/cuenta/editar/{id}', name: 'wolframio_cuenta_editar')]
+    public function editar(Request $request, Wolframio $wolframio, Softgic $softgic, $id): Response
+    {
+        $datosCuenta = [];
+        $respuesta = $wolframio->consumoPost('api/cuenta/detalle', ['cuentaId' => $id]);
+        if(!$respuesta['error']) {
+            $datos = $respuesta['datos'];
+            $datosCuenta = $datos['cuenta'];
+        }
+        $form = $this->createFormBuilder()
+            ->add('setPruebas', TextType::class, ['data' => $datosCuenta?$datosCuenta['setPruebas']:''])
+            ->add('setPruebasNomina', TextType::class, ['data' => $datosCuenta?$datosCuenta['setPruebasNomina']:''])
+            ->add('btnGuardar', SubmitType::class, array('label' => 'Guardar'))
+            ->getForm();
+        $form->handleRequest($request);
+        if ($form->isSubmitted() && $form->isValid()) {
+            if ($form->get('btnGuardar')->isClicked()) {
+                $datos = [
+                    'cuentaId' => $id,
+                    'setPruebas' => $form->get('setPruebas')->getData(),
+                    'setPruebasNomina' => $form->get('setPruebasNomina')->getData(),
+                ];
+                $respuesta = $wolframio->consumoPost('api/cuenta/actualizar/v2', $datos);
+                if($respuesta['error'] == true){
+                    Mensajes::error($respuesta['mensaje']);
+                }
+            }
+        }
+        return $this->render('wolframio/cuenta/editar.html.twig', [
             'form' => $form->createView()]);
     }
 
