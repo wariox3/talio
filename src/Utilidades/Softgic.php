@@ -106,6 +106,8 @@ class Softgic
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($curl, CURLOPT_USERPWD, $_ENV['KIAI_TOKEN']);
         curl_setopt($curl, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($curl, CURLOPT_TIMEOUT, 30);
         $datosJSON = json_encode($arDatos);
         curl_setopt($curl, CURLOPT_POSTFIELDS, $datosJSON);
 
