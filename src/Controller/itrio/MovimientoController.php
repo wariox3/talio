@@ -24,23 +24,49 @@ class MovimientoController extends AbstractController
             ->add('factura', ChoiceType::class, ['choices' => ['SI' => 'SI', 'TODOS' => ''], 'data' => 'TODOS'])
             ->add('pendiente', ChoiceType::class, ['choices' => ['SI' => 'SI', 'TODOS' => ''], 'data' => 'TODOS'])
             ->add('id', TextType::class, ['required' => false])
+            ->add('pagina', TextType::class, ['required' => false])
             ->add('btnFiltrar', SubmitType::class, array('label' => 'Filtrar'))
+            ->add('btnExcel', SubmitType::class, array('label' => 'Excel'))
             ->getForm();
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
             if ($form->get('btnFiltrar')->isClicked()) {
                 $filtros = $this->filtros($form);
+                $pagina = $form->get('pagina')->getData();
+                if($pagina) {
+                    $filtros['cadena'] .= '&page='.$pagina;
+                }
+            }
+            if ($form->get('btnExcel')->isClicked()) {
+                $filtros = $this->filtros($form);
+                $respuesta = $itrio->consumoArchivoGet('contenedor/movimiento/' . $filtros['cadena']."&excel=true");
+                if($respuesta['error'] == false) {
+                    $response = new Response($respuesta["content"]);
+                    $contentType = 'application/vnd.ms-excel'; // valor por defecto
+                    if (isset($respuesta['headers']['content-type'][0])) {
+                        $contentType = $respuesta['headers']['content-type'][0];
+                    }
+                    $response->headers->set('Content-Type', $contentType);
+                    $response->headers->set('Content-Disposition', 'attachment; filename="movimientos.xlsx"');
+                    $response->headers->set('Pragma', 'no-cache');
+                    $response->headers->set('Expires', '0');
+                    return $response;
+                }
+
             }
         }
+        $registros = 0;
         $movimientos = [];
         $respuesta = $itrio->consumoGet('contenedor/movimiento/' . $filtros['cadena']);
         if($respuesta['error']) {
             Mensajes::error($respuesta['mensaje']);
         } else {
             $movimientos = $respuesta['datos']['results'];
+            $registros = $respuesta['datos']['count'];
         }
         return $this->render('itrio/movimiento/lista.html.twig', [
             'movimientos' => $movimientos,
+            'registros' => $registros,
             'form' => $form->createView()]);
     }
 

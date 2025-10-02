@@ -134,6 +134,53 @@ class Itrio
         }
     }
 
+    public function consumoArchivoGet($url) {
+        $session = $this->requestStack->getSession();
+        $client = HttpClient::create();
+        $urlCompleta = $_ENV['BASE_ITRIO'] .  $url;
+        try {
+            $token = $session->get('token');
+            if (empty($token)) {
+                $respuesta = $this->autenticar();
+                if($respuesta["error"]) {
+                    return [
+                        "error" => true,
+                        "mensaje" => $respuesta["mensaje"]
+                    ];
+                } else {
+                    $token = $respuesta["token"];
+                    $session->set('token', $token);
+                }
+
+            }
+            $headers = ['Authorization' => 'Bearer ' . $token];
+            $response = $client->request('GET', $urlCompleta, [
+                'headers' => $headers,
+            ]);
+            $status = $response->getStatusCode();
+            if($status == 200) {
+                $content = $response->getContent();
+                $responseHeaders = $response->getHeaders();
+                return [
+                    "error" => false,
+                    "content" => $content,
+                    "headers" => $responseHeaders,
+                    "status" => $status
+                ];
+            } else {
+                return [
+                    "error" => true,
+                    "mensaje" => "El servidor no resopnde correctamente"
+                ];
+            }
+        } catch (TransportExceptionInterface $e) {
+            return [
+                "error" => true,
+                "mensaje" => $e->getMessage()
+            ];
+        }
+    }
+
     public function consumoDelete($url) {
         $session = $this->requestStack->getSession();
         $client = HttpClient::create();

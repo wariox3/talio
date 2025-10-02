@@ -27,11 +27,17 @@
                         <label for="" class="me-2">Id</label>
                         {{ form_widget(form.id, { 'attr': {'class': 'form-control'} }) }}
                     </div>
+                    <div class="d-flex align-items-center">
+                        <label for="" class="me-2">Pagina</label>
+                        {{ form_widget(form.pagina, { 'attr': {'class': 'form-control'} }) }}
+                    </div>
                     <div>
+                        Registros {{ registros }}
                         {{ form_widget(form.btnFiltrar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
+                        {{ form_widget(form.btnExcel, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
                     </div>
                 </div>
-                <table id="datatablesSimple">
+                <table class="table">
                     <thead>
                     <tr>
                         <th>Id</th>
@@ -44,14 +50,6 @@
                         <th>Usuario</th>
                         <th>Referencia</th>
                         <th>Factura</th>
-                        <th class="text-center" title="seleccionar todos">
-                            <div>
-                                <input type="checkbox" name="ChkSeleccionar[]"
-                                       id="todosInput"
-                                       onclick="ChequearTodosTabla(this, 'ChkSeleccionar[]')"/>
-                                <label class="custom-control-label" for="todosInput"></label>
-                            </div>
-                        </th>
                     </tr>
                     </thead>
                     <tbody>
@@ -76,14 +74,6 @@
                             <td>{{ movimiento.usuario__username }}</td>
                             <td>{{ movimiento.movimiento_referencia_id }}</td>
                             <td>{{ movimiento.factura_id }}</td>
-                            <td class="text-center">
-                                <div>
-                                    <input type="checkbox" name="ChkSeleccionar[]" class="custom-control-input"
-                                           value="{{ movimiento.id }}"
-                                           id="{{ movimiento.id }}"/>
-                                    <label class="custom-control-label" for="{{ movimiento.id }}"></label>
-                                </div>
-                            </td>
                         </tr>
                     {% endfor %}
                     </tbody>
