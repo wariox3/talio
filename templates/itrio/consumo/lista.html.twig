@@ -1,0 +1,79 @@
+{% extends 'base.html.twig' %}
+{% block content %}
+    {{ form_start(form) }}
+    <div class="container-fluid px-4">
+        <h1 class="mt-4">Itrio</h1>
+        <ol class="breadcrumb mb-4">
+            <li class="breadcrumb-item"><a href="{{ path('inicio') }}">Consumos</a></li>
+            <li class="breadcrumb-item active">Lista</li>
+        </ol>
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="fas fa-table me-1"></i>
+                Consumos
+            </div>
+
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <div class="d-flex align-items-center">
+                        <label for="" class="me-2">Fecha desde:</label>
+                        {{ form_widget(form.fechaDesde, { 'attr': {'class': 'form-control'} }) }}
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <label for="" class="me-2">Fecha hasta:</label>
+                        {{ form_widget(form.fechaHasta, { 'attr': {'class': 'form-control'} }) }}
+                    </div>
+                    <div>
+                        {{ form_widget(form.btnFiltrar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
+                        {{ form_widget(form.btnExcel, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
+                    </div>
+                </div>
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Nombre</th>
+                        <th>Numero_identificacion</th>
+                        <th>Fecha</th>
+                        <th>Usuarios</th>
+                        <th>Plan_id</th>
+                        <th>Plan_nombre</th>
+                        <th>Plan_precio</th>
+                        <th>RedDoc</th>
+                        <th>Ruteo</th>
+                        <th>Usuario_id</th>
+                        <th>Usuario_username</th>
+                        <th>Fecha_ultima_conexion</th>
+                        <th>Cortesia</th>
+                        <th>Precio</th>
+                        <th>Consumo</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for consumo in consumos %}
+                        <tr>
+                            <td>{{ consumo.id }}</td>
+                            <td>{{ consumo.nombre }}</td>
+                            <td>{{ consumo.numero_identificacion }}</td>
+                            <td>{{ consumo.fecha | date('Y-m-d H:i') }}</td>
+                            <td>{{ consumo.usuarios }}</td>
+                            <td>{{ consumo.plan_id }}</td>
+                            <td>{{ consumo.plan_nombre }}</td>
+                            <td>{{ consumo.plan_precio }}</td>
+                            <td>{{ consumo.reddoc }}</td>
+                            <td>{{ consumo.ruteo }}</td>
+                            <td>{{ consumo.usuario_id }}</td>
+                            <td>{{ consumo.usuario_username }}</td>
+                            <td>{{ consumo.fecha_ultima_conexion | date('Y-m-d H:i') }}</td>
+                            <td>{{ consumo.cortesia }}</td>
+                            <td>{{ consumo.precio }}</td>
+                            <td>{{ consumo.vr_consumo }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {{ form_end(form) }}
+{% endblock %}
