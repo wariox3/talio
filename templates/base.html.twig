@@ -30,7 +30,7 @@
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                 <li><a class="dropdown-item" href="#!">Configuracion</a></li>
                 <li><hr class="dropdown-divider" /></li>
-                <li><a class="dropdown-item" href="#!">Salir</a></li>
+                <li><a class="dropdown-item" href="{{ path('logout') }}">Salir</a></li>
             </ul>
         </li>
     </ul>
@@ -97,7 +97,11 @@
             </div>
             <div class="sb-sidenav-footer">
                 <div class="small">Logged in as:</div>
-                Start Bootstrap
+                {% if app.session.get('usuario') %}
+                    {{ app.session.get('usuario') }}
+                {% else %}
+                    Start Bootstrap
+                {% endif %}
             </div>
         </nav>
     </div>

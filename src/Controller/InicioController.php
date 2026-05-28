@@ -12,10 +12,10 @@ use Symfony\Component\Routing\Annotation\Route;
 
 class InicioController extends AbstractController
 {
-
     #[Route('/', name: 'inicio')]
     public function inicio(Request $request, Wolframio $wolframio, Niquel $niquel, Tantalo $tantalo, Carbono $carbono): Response
     {
+
         #https://www.chartjs.org/chartjs-plugin-zoom/latest/samples/fetch-data.html
         $fecha = new \DateTime('now');
         $anio = $fecha->format('Y');
