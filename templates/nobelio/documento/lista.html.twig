@@ -6,6 +6,20 @@
     <span class="stamp">{{ total }} documento{{ total == 1 ? '' : 's' }}</span>
 {% endblock %}
 {% block content %}
+    {# La acción que toca en cada estado. Sale de las guardas de Nobelio: un
+       firmado/enviado/aceptado no se puede volver a emitir, solo se envía lo
+       firmado, y el estado solo se refresca en enviado y rechazado. Un
+       aceptado es terminal y no ofrece ninguna. #}
+    {% set accionesPorEstado = {
+        'borrador':  [{ 'accion': 'emitir', 'titulo': 'Emitir', 'pregunta': 'Emitir' }],
+        'generado':  [{ 'accion': 'emitir', 'titulo': 'Emitir', 'pregunta': 'Emitir' }],
+        'firmado':   [{ 'accion': 'enviar', 'titulo': 'Enviar', 'pregunta': 'Enviar a la DIAN' }],
+        'enviado':   [{ 'accion': 'actualizar-estado', 'titulo': 'Actualizar estado' }],
+        'rechazado': [
+            { 'accion': 'emitir', 'titulo': 'Emitir', 'pregunta': 'Volver a emitir' },
+            { 'accion': 'actualizar-estado', 'titulo': 'Actualizar estado' }
+        ],
+    } %}
     {{ form_start(form) }}
     <input type="hidden" name="pagina" value="{{ pagina }}">
     <div class="block">
@@ -38,7 +52,7 @@
                     <th>Estado</th>
                     <th class="num">Errores</th>
                     <th>Validación</th>
-                    <th></th>
+                    <th>Acciones</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -68,14 +82,21 @@
                         <td class="fecha">
                             {{- documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) -}}
                         </td>
-                        <td>
+                        {# Los botones viven dentro del form de filtros, asi que
+                           apuntan con form= al de acciones, que va fuera: los
+                           formularios no se pueden anidar. Cada uno lleva el id
+                           en su value y elige su ruta con formaction. #}
+                        <td class="acciones">
+                            {% for accion in accionesPorEstado[documento.estado_nombre]|default([]) %}
+                                <button type="submit" class="link" form="acciones-documento"
+                                        formaction="{{ path('nobelio_documento_accion', { 'accion': accion.accion }) }}"
+                                        name="id" value="{{ documento.id }}"
+                                        {% if accion.pregunta is defined %}onclick="return confirm('¿{{ accion.pregunta }} el documento {{ documento.numero }}?')"{% endif %}>{{ accion.titulo }}</button>
+                            {% endfor %}
                             {# Nobelio no deja borrar lo que la DIAN ya validó,
-                               asi que en un aceptado no se ofrece el boton.
-                               Vive dentro del form de filtros y apunta con
-                               form= al de borrado, que va fuera: los
-                               formularios no se pueden anidar. #}
+                               asi que en un aceptado no se ofrece el boton. #}
                             {% if documento.estado_nombre != 'aceptado' %}
-                                <button type="submit" class="link" form="eliminar-documento"
+                                <button type="submit" class="link" form="acciones-documento"
                                         name="id" value="{{ documento.id }}"
                                         onclick="return confirm('¿Eliminar el documento {{ documento.numero }}?')">Eliminar</button>
                             {% endif %}
@@ -97,7 +118,9 @@
         </div>
     </div>
     {{ form_end(form) }}
-    <form id="eliminar-documento" method="post" action="{{ path('nobelio_documento_eliminar') }}">
-        <input type="hidden" name="_token" value="{{ csrf_token('eliminar-documento') }}">
+    {# Un solo form para todas las acciones de la tabla: el borrado es su
+       action por defecto y las demas lo cambian con formaction. #}
+    <form id="acciones-documento" method="post" action="{{ path('nobelio_documento_eliminar') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('acciones-documento') }}">
     </form>
 {% endblock %}

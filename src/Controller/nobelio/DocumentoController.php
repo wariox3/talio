@@ -82,12 +82,52 @@ class DocumentoController extends AbstractController
         ]);
     }
 
+    /**
+     * Ejecuta sobre el documento la accion que toca en su estado.
+     *
+     * La accion va en la ruta y no en el cuerpo para que las unicas admitidas
+     * sean las del requirement: el id se concatena a la url del API y una
+     * accion libre dejaria construir cualquier ruta.
+     */
+    #[Route('/nobelio/documento/accion/{accion}', name: 'nobelio_documento_accion', methods: ['POST'],
+        requirements: ['accion' => 'emitir|enviar|actualizar-estado'])]
+    public function accion(Request $request, Nobelio $nobelio, string $accion): Response
+    {
+        $id = (string) $request->request->get('id', '');
+
+        if (!$this->isCsrfTokenValid('acciones-documento', (string) $request->request->get('_token'))) {
+            Mensajes::error('La petición no es válida.');
+        } elseif ($id === '') {
+            Mensajes::error('No se indicó sobre qué documento actuar.');
+        } else {
+            // Nobelio comprueba el estado y responde 400 explicando por que no
+            // se puede ("El documento ya está firmado", etc.); ese es el
+            // mensaje que se muestra.
+            $respuesta = $nobelio->consumoPost("api/documentos/documento/{$id}/{$accion}/");
+            if ($respuesta['error']) {
+                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            } else {
+                // Las tres acciones devuelven el estado en que queda; las que
+                // hablan con la DIAN añaden su descripcion, que es lo que
+                // explica un rechazo.
+                $datos = $respuesta['datos'];
+                $mensaje = "Documento en estado '" . ($datos['estado'] ?? '') . "'.";
+                if (!empty($datos['descripcion'])) {
+                    $mensaje .= " DIAN: {$datos['descripcion']}";
+                }
+                Mensajes::success($mensaje);
+            }
+        }
+
+        return $this->redirectToRoute('nobelio_documento_lista');
+    }
+
     #[Route('/nobelio/documento/eliminar', name: 'nobelio_documento_eliminar', methods: ['POST'])]
     public function eliminar(Request $request, Nobelio $nobelio): Response
     {
         $id = (string) $request->request->get('id', '');
 
-        if (!$this->isCsrfTokenValid('eliminar-documento', (string) $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('acciones-documento', (string) $request->request->get('_token'))) {
             Mensajes::error('La petición de borrado no es válida.');
         } elseif ($id === '') {
             Mensajes::error('No se indicó qué documento eliminar.');
