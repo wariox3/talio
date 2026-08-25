@@ -33,7 +33,7 @@
                             <a href="javascript:abrirVentana('{{ path('itrio_movimiento_detalle', { 'id': movimiento.id }) }}', 'Movimiento', 500, 1200)">{{ movimiento.id }}</a>
                         </td>
                         <td>{{ movimiento.tipo }}</td>
-                        <td class="nowrap">{{ movimiento.fecha|date('Y-m-d H:i') }}</td>
+                        <td class="fecha">{{ movimiento.fecha|date('Y-m-d H:i') }}</td>
                         <td class="num">{{ movimiento.vr_total|number_format(0, ',', '.') }}</td>
                         <td class="num">{{ movimiento.vr_afectado|number_format(0, ',', '.') }}</td>
                         <td class="num">{{ movimiento.vr_saldo|number_format(0, ',', '.') }}</td>

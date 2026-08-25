@@ -104,7 +104,7 @@
                         <td>{{ documento.documentoClaseAbreviatura }}</td>
                         <td>{{ documento.prefijo }}</td>
                         <td class="num">{{ documento.numero }}</td>
-                        <td class="nowrap">{{ documento.fechaRegistro|date('Y-m-d H:i') }}</td>
+                        <td class="fecha">{{ documento.fechaRegistro|date('Y-m-d H:i') }}</td>
                         <td class="num">{{ documento.cuentaId }}</td>
                         <td>{{ documento.cuentaNombre }}</td>
                         <td class="num">{{ documento.total|number_format(0, ',', '.') }}</td>

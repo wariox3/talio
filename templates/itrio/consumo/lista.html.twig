@@ -31,7 +31,7 @@
                         <td class="id">{{ consumo.id }}</td>
                         <td>{{ consumo.nombre }}</td>
                         <td class="num">{{ consumo.numero_identificacion }}</td>
-                        <td class="nowrap">{{ consumo.fecha|date('Y-m-d H:i') }}</td>
+                        <td class="fecha">{{ consumo.fecha|date('Y-m-d H:i') }}</td>
                         <td class="num">{{ consumo.usuarios }}</td>
                         <td class="num">{{ consumo.plan_id }}</td>
                         <td>{{ consumo.plan_nombre }}</td>
@@ -40,7 +40,7 @@
                         <td class="num">{{ consumo.ruteo }}</td>
                         <td class="num">{{ consumo.usuario_id }}</td>
                         <td>{{ consumo.usuario_username }}</td>
-                        <td class="nowrap">{{ consumo.fecha_ultima_conexion|date('Y-m-d H:i') }}</td>
+                        <td class="fecha">{{ consumo.fecha_ultima_conexion|date('Y-m-d H:i') }}</td>
                         <td class="num">{{ consumo.cortesia }}</td>
                         <td class="num">{{ consumo.precio|number_format(0, ',', '.') }}</td>
                         <td class="num">{{ consumo.vr_consumo|number_format(0, ',', '.') }}</td>

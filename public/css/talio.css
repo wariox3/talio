@@ -8,6 +8,9 @@
     /* Alto comun de la barra de marca y la barra superior, para que sus
        lineas divisorias se alineen. Solo se declara aqui: no cambia con el tema. */
     --barra: 52px;
+    /* Tope de alto de una tabla antes de scrollear por dentro. Solo
+       aplica si la tabla lo supera; las cortas quedan igual. */
+    --tabla-alto: calc(100vh - 200px);
 
     --ground: #F3F5F6;
     --surface: #FFFFFF;
@@ -26,6 +29,7 @@
     --warn-bg: #F6EFDF;
     --crit-bg: #F7E8E5;
     --focus: #1D5F66;
+    --sombra-scroll: rgba(22, 25, 28, .13);
     color-scheme: light;
 }
 
@@ -48,6 +52,7 @@
         --warn-bg: #272016;
         --crit-bg: #2A1917;
         --focus: #58AEB6;
+        --sombra-scroll: rgba(0, 0, 0, .5);
         color-scheme: dark;
     }
 }
@@ -70,6 +75,7 @@
     --warn-bg: #272016;
     --crit-bg: #2A1917;
     --focus: #58AEB6;
+    --sombra-scroll: rgba(0, 0, 0, .5);
     color-scheme: dark;
 }
 
@@ -336,13 +342,37 @@ pre {
 .fig a:hover { color: var(--accent); }
 
 /* -------------------------------------------------------------- tablas -- */
-.table-scroll { overflow-x: auto; }
+/* El contenedor es el que scrollea, en los dos ejes. Acotarlo en alto es lo
+   que permite que la cabecera quede fija; con tablas cortas el max-height no
+   llega a aplicarse y no se nota. Las sombras laterales avisan de que la
+   tabla sigue hacia los lados: las capas "local" tapan la sombra al llegar
+   al borde, las "scroll" la dejan ver mientras haya recorrido. */
+.table-scroll {
+    overflow: auto;
+    max-height: var(--tabla-alto);
+    background:
+        linear-gradient(to right, var(--surface) 30%, transparent) left center,
+        linear-gradient(to left, var(--surface) 30%, transparent) right center,
+        radial-gradient(farthest-side at 0 50%, var(--sombra-scroll), transparent) left center,
+        radial-gradient(farthest-side at 100% 50%, var(--sombra-scroll), transparent) right center;
+    background-repeat: no-repeat;
+    background-size: 32px 100%, 32px 100%, 11px 100%, 11px 100%;
+    background-attachment: local, local, scroll, scroll;
+    border: 1px solid var(--line-2);
+}
 
+/* border-collapse: separate es lo que permite que la cabecera fija conserve
+   sus bordes: con collapse los bordes son de la tabla y no viajan con el th.
+   Cada celda pinta solo derecha y abajo; el marco exterior lo pone
+   .table-scroll, asi que no hay lineas dobles. */
 table.data {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: .83rem;
 }
+table.data th, table.data td { border-right: 1px solid var(--line); }
+table.data th:last-child, table.data td:last-child { border-right: 0; }
 table.data th {
     text-align: left;
     font-family: "IBM Plex Mono", ui-monospace, monospace;
@@ -351,19 +381,30 @@ table.data th {
     text-transform: uppercase;
     color: var(--muted);
     font-weight: 500;
-    padding: 8px 14px 8px 0;
-    border-bottom: 1px solid var(--line-2);
+    padding: 8px 12px;
     white-space: nowrap;
+    border-bottom: 1px solid var(--line-2);
+    /* Fija al desplazar; el fondo opaco evita que las filas se transparenten
+       por debajo. */
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--surface);
 }
 table.data td {
-    padding: 8px 14px 8px 0;
+    padding: 8px 12px;
     border-bottom: 1px solid var(--line);
     color: var(--ink-2);
     vertical-align: top;
 }
-table.data th:first-child, table.data td:first-child { padding-left: 0; }
 table.data tbody tr:last-child td { border-bottom: 0; }
 table.data tbody tr:hover td { background: var(--surface-2); }
+
+/* Una celda vacía se distingue de una columna descuadrada. */
+table.data td:empty::after {
+    content: "–";
+    color: var(--line-2);
+}
 
 table.data td.num, table.data th.num {
     text-align: right;
@@ -378,22 +419,36 @@ table.data td.id {
 }
 table.data td.id a { color: var(--accent); }
 table.data td.nowrap, table.data th.nowrap { white-space: nowrap; }
+/* Las fechas son ISO y se leen en columna: en mono con cifras de ancho fijo
+   los dígitos quedan alineados entre filas. */
+table.data td.fecha {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
 table.data td.center, table.data th.center { text-align: center; }
 table.data td.wrap { white-space: normal; min-width: 220px; }
 
 /* tabla clave/valor */
-table.kv { width: 100%; border-collapse: collapse; font-size: .85rem; }
+table.kv {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: .85rem;
+    border: 1px solid var(--line-2);
+}
 table.kv th {
     text-align: left;
     font-weight: 500;
     color: var(--muted);
-    padding: 7px 16px 7px 0;
+    padding: 7px 14px;
     border-bottom: 1px solid var(--line);
+    border-right: 1px solid var(--line);
     white-space: nowrap;
     width: 1%;
 }
 table.kv td {
-    padding: 7px 0;
+    padding: 7px 14px;
     border-bottom: 1px solid var(--line);
     color: var(--ink);
 }
@@ -405,9 +460,7 @@ table.kv tr:last-child th, table.kv tr:last-child td { border-bottom: 0; }
     align-items: flex-end;
     gap: 18px;
     flex-wrap: wrap;
-    padding-bottom: 15px;
-    border-bottom: 1px solid var(--line);
-    margin-bottom: 6px;
+    margin-bottom: 18px;
 }
 .field { display: flex; flex-direction: column; gap: 3px; }
 .field > label {
@@ -471,6 +524,16 @@ button.ghost,
     border-color: var(--line-2);
 }
 button.ghost:hover, .btn-ghost:hover { background: var(--surface-2); color: var(--ink); border-color: var(--line-2); }
+
+button:disabled, input[type="submit"]:disabled {
+    opacity: .45;
+    cursor: default;
+}
+button:disabled:hover, input[type="submit"]:disabled:hover {
+    background: transparent;
+    color: var(--ink-2);
+    border-color: var(--line-2);
+}
 
 button.link {
     background: transparent;

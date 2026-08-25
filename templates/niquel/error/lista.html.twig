@@ -31,7 +31,7 @@
                 {% for error in errores %}
                     <tr>
                         <td class="id">{{ error.id }}</td>
-                        <td class="nowrap">{{ error.fecha|date('Y-m-d H:i') }}</td>
+                        <td class="fecha">{{ error.fecha|date('Y-m-d H:i') }}</td>
                         <td>{{ error.archivo }}</td>
                         <td class="wrap">{{ error.mensaje }}</td>
                         <td>{{ error.usuario }}</td>

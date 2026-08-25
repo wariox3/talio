@@ -21,8 +21,8 @@
                     <tr>
                         <td class="id">{{ resolucion.ResolucionNumero }}</td>
                         <td>{{ resolucion.Prefijo }}</td>
-                        <td class="nowrap">{{ resolucion.VigenciaDesde|date('Y-m-d') }}</td>
-                        <td class="nowrap">{{ resolucion.VigenciaHasta|date('Y-m-d') }}</td>
+                        <td class="fecha">{{ resolucion.VigenciaDesde|date('Y-m-d') }}</td>
+                        <td class="fecha">{{ resolucion.VigenciaHasta|date('Y-m-d') }}</td>
                         <td class="num">{{ resolucion.ConsecutivoDesde }}</td>
                         <td class="num">{{ resolucion.ConsecutivoHasta }}</td>
                     </tr>

@@ -1,6 +1,73 @@
 {% extends 'base.html.twig' %}
-{% block title %}Emisor · Talio{% endblock %}
-{% block ruta %}Nobelio <span>/</span> <b>Emisor</b>{% endblock %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Emisores · Talio{% endblock %}
+{% block ruta %}Nobelio <span>/</span> <b>Emisores</b>{% endblock %}
+{% block acciones %}
+    <span class="stamp">{{ total }} emisor{{ total == 1 ? '' : 'es' }}</span>
+{% endblock %}
 {% block content %}
-    <div class="block"></div>
+    {{ form_start(form) }}
+    <input type="hidden" name="pagina" value="{{ pagina }}">
+    <div class="block">
+        <div class="filters">
+            {{ ui.campo('Razón social, NIT o nombre comercial', form.search) }}
+            <div class="f-right">
+                {{ form_widget(form.btnFiltrar) }}
+                {# Siempre renderizados: si se dejan sin renderizar, form_end()
+                   llama a form_rest() y los vuelca sueltos al final del form. #}
+                {{ form_widget(form.btnAnterior, { 'attr': hayAnterior
+                    ? {'class': 'ghost'}
+                    : {'class': 'ghost', 'disabled': 'disabled'} }) }}
+                {{ form_widget(form.btnSiguiente, { 'attr': haySiguiente
+                    ? {'class': 'ghost'}
+                    : {'class': 'ghost', 'disabled': 'disabled'} }) }}
+                <span class="f-count">Página {{ pagina }}</span>
+            </div>
+        </div>
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Id</th>
+                    <th class="num">NIT</th>
+                    <th>Razón social</th>
+                    <th>Municipio</th>
+                    <th>Correo</th>
+                    <th>Teléfono</th>
+                    <th class="num">Cuenta</th>
+                    <th>Estado</th>
+                    <th>Facturación</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for emisor in emisores %}
+                    <tr>
+                        <td class="id">{{ emisor.id }}</td>
+                        <td class="num">
+                            {{- emisor.numero_identificacion }}{% if emisor.digito_verificacion %}-{{ emisor.digito_verificacion }}{% endif -%}
+                        </td>
+                        <td>{{ emisor.razon_social }}</td>
+                        <td>{{ emisor.municipio_nombre }}</td>
+                        <td>{{ emisor.correo }}</td>
+                        <td>{{ emisor.telefono }}</td>
+                        <td class="num">{{ emisor.cuenta }}</td>
+                        <td>{{ ui.estado(emisor.activo, 'Activo', 'Inactivo') }}</td>
+                        <td>{{ ui.estado(emisor.habilitado_facturacion, 'Habilitado', 'Sin habilitar') }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="9">
+                            {% if total == 0 %}
+                                No hay emisores que mostrar.
+                            {% else %}
+                                Esta página no tiene resultados.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{ form_end(form) }}
 {% endblock %}
