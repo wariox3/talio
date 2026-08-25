@@ -86,7 +86,7 @@ class Niquel
     public function consumoDelete($url) {
         $session = $this->requestStack->getSession();
         $client = HttpClient::create();
-        $urlCompleta = $_ENV['BASE'] .  $url;
+        $urlCompleta = $_ENV['BASE_NIQUEL'] .  $url;
         try {
             $headers = ['Authorization' => 'Bearer ' . $session->get('token')];
             $response = $client->request('DELETE', $urlCompleta, [
