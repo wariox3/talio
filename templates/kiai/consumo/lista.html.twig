@@ -1,18 +1,23 @@
 {% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Consumo Kiai · Talio{% endblock %}
+{% block ruta %}Kiai <span>/</span> <b>Consumo</b>{% endblock %}
 {% block content %}
     {{ form_start(form) }}
-    <div class="container-fluid px-4">
-        <h1 class="mt-4">Wolframio</h1>
-        <ol class="breadcrumb mb-4">
-            <li class="breadcrumb-item"><a href="{{ path('inicio') }}">Cuenta</a></li>
-            <li class="breadcrumb-item active">Lista</li>
-        </ol>
-        <div class="card mb-4">
-
-
-
+    <div class="block">
+        {{ ui.cabecera('Generar consumo') }}
+        <p class="hint" style="margin:0 0 16px;max-width:60ch;">
+            Consulta el consumo del aliado en Kiai para el periodo indicado y descarga
+            el resultado en Excel. No se muestra en pantalla: el informe se genera y se baja.
+        </p>
+        <div class="filters">
+            {{ ui.campo('Aliado', form.aliado) }}
+            {{ ui.campo('Año', form.anio) }}
+            {{ ui.campo('Mes', form.mes) }}
+            <div class="f-right">
+                {{ form_widget(form.btnGenerar) }}
+            </div>
         </div>
     </div>
     {{ form_end(form) }}
 {% endblock %}
-

@@ -6,76 +6,53 @@ use Symfony\Component\HttpFoundation\Session\Session;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
-
 class AppExtension extends AbstractExtension
 {
-    //private $em;
+    /**
+     * Tipos de flash que Mensajes puede emitir y la clase de aviso que les corresponde.
+     * Cualquier otro tipo cae en el aviso neutro.
+     */
+    private const CLASES = [
+        'success' => 'success',
+        'danger' => 'danger',
+        'error' => 'error',
+        'warning' => 'warning',
+        'info' => '',
+    ];
 
-//    public function __construct()
-//    {
-//        global $kernel;
-//        $this->em = $kernel->getContainer()->get("doctrine.orm.entity_manager");
-//    }
-
-
-    public function getFunctions()
+    public function getFunctions(): array
     {
         return [
-           // new TwigFunction('calcularTiempo', [$this, "getCalcularTiempo"]),
             new TwigFunction('notificar', [$this, 'getNotifies']),
-
         ];
     }
 
     /**
-     * Esta función se encarga de imprimir las notificaciones para usuario (Mensajes).
-     * @return string
+     * Imprime los mensajes pendientes para el usuario y vacía el flashbag.
      */
-    public function getNotifies()
+    public function getNotifies(): string
     {
         $session = new Session();
         $flashes = $session->getFlashBag()->all();
-        $html = [];
-        foreach ($flashes as $type => $messages) {
-            foreach ($messages as $message) {
-                $span = $this->createTag("span", "&times;", ['aria-hidden' => 'true']);
-                $button = $this->createTag("button", $span, ['class' => 'close', 'data-dismiss' => 'alert', 'aria-label' => 'Close']);
-                $alert = $this->createTag("div", $button . $message, ['class' => "alert alert-{$type}", 'data', 'style' => 'margin-top:5px;margin-bottom:5px;']);
-                $html[] = $alert;
+
+        $avisos = [];
+        foreach ($flashes as $tipo => $mensajes) {
+            $clase = self::CLASES[$tipo] ?? '';
+            foreach ($mensajes as $mensaje) {
+                $avisos[] = sprintf(
+                    '<div class="aviso %s"><span class="dot"></span><span>%s</span>'
+                    . '<button type="button" class="cerrar" aria-label="Cerrar aviso"'
+                    . ' onclick="this.parentNode.remove()">&times;</button></div>',
+                    htmlspecialchars($clase, ENT_QUOTES, 'UTF-8'),
+                    htmlspecialchars((string) $mensaje, ENT_QUOTES, 'UTF-8')
+                );
             }
         }
-        $session->getFlashBag()->clear();
-        return implode('', $html);
+
+        if (!$avisos) {
+            return '';
+        }
+
+        return '<div class="avisos">' . implode('', $avisos) . '</div>';
     }
-
-    /**
-     * Esta función nos permite obtener código html sin violar estandares de mezcla de código.
-     * @param $tag
-     * @param string $content
-     * @param array $attrs
-     * @return string
-     */
-    private function createTag($tag, $content = '', $attrs = [])
-    {
-        $attrs = implode(" ", array_map(function ($attr, $value) {
-            return "{$attr}=\"{$value}\"";
-        }, array_keys($attrs), $attrs));
-        return "<{$tag}" . ($attrs ? " {$attrs}" : "") . ">{$content}</{$tag}>";
-    }
-
-//    public function getCalcularTiempo($codigoTarea)
-//    {
-//        $dql = $this->em->createQueryBuilder()->from("App:TareaTiempo", "tt")
-//            ->select("SUM(tt.minutos) as Total")
-//            ->where("tt.codigoTareaFk = {$codigoTarea}")
-//            ->setMaxResults(1);
-//        $Tiempo = $dql->getQuery()->getOneOrNullResult();
-//        $result = 0;
-//        if ($Tiempo["Total"] != null) {
-//            $result = $Tiempo["Total"];
-//        }
-//        return $result;
-//    }
-
-
 }

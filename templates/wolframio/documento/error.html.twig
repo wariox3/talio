@@ -1,61 +1,52 @@
 {% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Documento Error · Talio{% endblock %}
+{% block ruta %}Wolframio <span>/</span> Documento <span>/</span> <b>Error</b>{% endblock %}
+{% block acciones %}<span class="stamp">{{ documentos|length }} registros</span>{% endblock %}
 {% block content %}
     {{ form_start(form) }}
-    <div class="container-fluid px-4">
-        <h1 class="mt-4">Wolframio</h1>
-        <ol class="breadcrumb mb-4">
-            <li class="breadcrumb-item"><a href="{{ path('inicio') }}">Documento</a></li>
-            <li class="breadcrumb-item active">Error</li>
-        </ol>
-        <div class="card mb-4">
-            <div class="card-body">
-                Estos documentos se enviaron a la DIAN pero generaron error.
+    <div class="block">
+        <p class="hint" style="margin:0 0 14px;">Estos documentos se enviaron a la DIAN pero generaron error.</p>
+        <div class="filters">
+            <div class="f-right">
+                {{ form_widget(form.btnActivar, { 'attr': {'class': 'ghost'} }) }}
+                {{ form_widget(form.btnActivarEnviar) }}
             </div>
         </div>
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-table me-1"></i>
-                Documentos con error
-            </div>
-
-            <div class="card-body">
-                {{ form_widget(form.btnActivar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
-                {{ form_widget(form.btnActivarEnviar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
-                <table id="datatablesSimple">
-                    <thead>
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Id</th><th class="num">Id cliente</th><th>Registro</th><th>Prefijo</th>
+                    <th class="num">Número</th><th>Fecha</th><th class="num">Cuenta</th><th>Nombre</th>
+                    <th></th><th class="center">Sel.</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for documento in documentos %}
                     <tr>
-                        <th>Id</th>
-                        <th>IdCliente</th>
-                        <th>Registro</th>
-                        <th>Prefijo</th>
-                        <th>Numero</th>
-                        <th>Fecha</th>
-                        <th>Cod</th>
-                        <th>Cuenta</th>
-                        <th></th>
-                        <th></th>
+                        <td class="id">{{ documento.id }}</td>
+                        <td class="num">{{ documento.documentoClienteId }}</td>
+                        <td class="nowrap">{{ documento.fechaRegistro|date('Y-m-d H:i') }}</td>
+                        <td>{{ documento.prefijo }}</td>
+                        <td class="num">{{ documento.numero }}</td>
+                        <td class="nowrap">{{ documento.fecha|date('Y-m-d') }}</td>
+                        <td class="num">{{ documento.cuentaId }}</td>
+                        <td>{{ documento.cuentaNombre }}</td>
+                        <td class="nowrap">
+                            <a href="javascript:abrirVentana('{{ path('wolframio_documento_detalle', { 'id': documento.id }) }}', 'Documento', 500, 1200)">Ver</a>
+                        </td>
+                        <td class="center">
+                            <input type="checkbox" name="ChkSeleccionar[]" value="{{ documento.id }}"
+                                   aria-label="Seleccionar documento {{ documento.id }}">
+                        </td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {% for documento in documentos %}
-                        <tr>
-                            <td class="">{{ documento.id }}</td>
-                            <td>{{ documento.documentoClienteId }}</td>
-                            <td>{{ documento.fechaRegistro | date('Y-m-d H:i') }}</td>
-                            <td>{{ documento.prefijo }}</td>
-                            <td>{{ documento.numero }}</td>
-                            <td>{{ documento.fecha | date('Y-m-d') }}</td>
-                            <td>{{ documento.cuentaId }}</td>
-                            <td>{{ documento.cuentaNombre }}</td>
-                            <td><a class="btn" href="javascript:abrirVentana('{{ path('wolframio_documento_detalle', { 'id': documento.id}) }}', 'Archivos', 500, 1200)">Ver</a></td>
-                            <td><input class="form-check-input" type="checkbox" name="ChkSeleccionar[]" value="{{ documento.id }}"></td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                {% else %}
+                    <tr><td colspan="10">No hay documentos con error.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
     {{ form_end(form) }}
 {% endblock %}
-

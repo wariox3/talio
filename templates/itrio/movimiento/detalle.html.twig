@@ -1,37 +1,32 @@
 {% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block ruta %}<b>Movimiento</b>{% endblock %}
 {% block content %}
     {{ form_start(form) }}
-    <div class="container-fluid px-4">
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-table me-1"></i>
-                Asignar factura
-            </div>
-            <div class="card-body">
+    <div class="block">
+        {{ ui.cabecera('Asignar factura') }}
+        <div class="filters">
+            <div class="field">
+                <label for="{{ form.factura_id.vars.id }}">Factura</label>
                 {{ form_widget(form.factura_id) }}
                 {{ form_errors(form.factura_id) }}
+            </div>
+            <div class="f-right">
                 {{ form_widget(form.guardar) }}
-                {{ form_widget(form.generar) }}
+                {{ form_widget(form.generar, { 'attr': {'class': 'ghost'} }) }}
             </div>
         </div>
     </div>
-    <div class="container-fluid px-4">
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-table me-1"></i>
-                Informacion facturacion
-            </div>
-            <div class="card-body">
-                <ul class="list-group">
-                    {% for clave, valor in informacionFacturacion %}
-                        <li class="list-group-item">
-                            <strong>{{ clave }}:</strong> {{ valor }}
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-        </div>
+    <div class="block">
+        {{ ui.cabecera('Información de facturación') }}
+        <table class="kv">
+            {% for clave, valor in informacionFacturacion %}
+                <tr>
+                    <th>{{ clave }}</th>
+                    <td>{{ valor }}</td>
+                </tr>
+            {% endfor %}
+        </table>
     </div>
     {{ form_end(form) }}
 {% endblock %}
-

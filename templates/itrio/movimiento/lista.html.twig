@@ -1,84 +1,56 @@
 {% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Movimientos · Talio{% endblock %}
+{% block ruta %}Itrio <span>/</span> <b>Movimientos</b>{% endblock %}
+{% block acciones %}<span class="stamp">{{ registros }} registros</span>{% endblock %}
 {% block content %}
     {{ form_start(form) }}
-    <div class="container-fluid px-4">
-        <h1 class="mt-4">Itrio</h1>
-        <ol class="breadcrumb mb-4">
-            <li class="breadcrumb-item"><a href="{{ path('inicio') }}">Movimiento</a></li>
-            <li class="breadcrumb-item active">Lista</li>
-        </ol>
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-table me-1"></i>
-                Movimientos
+    <div class="block">
+        <div class="filters">
+            {{ ui.campo('Factura', form.factura) }}
+            {{ ui.campo('Pendiente', form.pendiente) }}
+            {{ ui.campo('Id', form.id) }}
+            {{ ui.campo('Página', form.pagina) }}
+            <div class="f-right">
+                {{ form_widget(form.btnFiltrar) }}
+                {{ form_widget(form.btnExcel, { 'attr': {'class': 'ghost'} }) }}
             </div>
-
-            <div class="card-body">
-                <div class="d-flex justify-content-between mb-3">
-                    <div class="d-flex align-items-center">
-                        <label for="" class="me-2">Factura</label>
-                        {{ form_widget(form.factura, { 'attr': {'class': 'form-control'} }) }}
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <label for="" class="me-2">Pendiente:</label>
-                        {{ form_widget(form.pendiente, { 'attr': {'class': 'form-control'} }) }}
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <label for="" class="me-2">Id</label>
-                        {{ form_widget(form.id, { 'attr': {'class': 'form-control'} }) }}
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <label for="" class="me-2">Pagina</label>
-                        {{ form_widget(form.pagina, { 'attr': {'class': 'form-control'} }) }}
-                    </div>
-                    <div>
-                        Registros {{ registros }}
-                        {{ form_widget(form.btnFiltrar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
-                        {{ form_widget(form.btnExcel, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
-                    </div>
-                </div>
-                <table class="table">
-                    <thead>
+        </div>
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Id</th><th>Tipo</th><th>Fecha</th>
+                    <th class="num">Total</th><th class="num">Afectado</th><th class="num">Saldo</th>
+                    <th class="num">Usuario</th><th>Username</th>
+                    <th class="num">Referencia</th><th class="num">Factura</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for movimiento in movimientos %}
                     <tr>
-                        <th>Id</th>
-                        <th>Tipo</th>
-                        <th>Fecha</th>
-                        <th>Total</th>
-                        <th>Afectado</th>
-                        <th>Saldo</th>
-                        <th>Usuario_id</th>
-                        <th>Usuario</th>
-                        <th>Referencia</th>
-                        <th>Factura</th>
+                        <td class="id">
+                            <a href="javascript:abrirVentana('{{ path('itrio_movimiento_detalle', { 'id': movimiento.id }) }}', 'Movimiento', 500, 1200)">{{ movimiento.id }}</a>
+                        </td>
+                        <td>{{ movimiento.tipo }}</td>
+                        <td class="nowrap">{{ movimiento.fecha|date('Y-m-d H:i') }}</td>
+                        <td class="num">{{ movimiento.vr_total|number_format(0, ',', '.') }}</td>
+                        <td class="num">{{ movimiento.vr_afectado|number_format(0, ',', '.') }}</td>
+                        <td class="num">{{ movimiento.vr_saldo|number_format(0, ',', '.') }}</td>
+                        <td class="num">
+                            {% if movimiento.usuario_id %}
+                                <a href="javascript:abrirVentana('{{ path('itrio_movimiento_usuario', { 'id': movimiento.usuario_id }) }}', 'Usuario', 500, 1200)">{{ movimiento.usuario_id }}</a>
+                            {% endif %}
+                        </td>
+                        <td>{{ movimiento.usuario__username }}</td>
+                        <td class="num">{{ movimiento.movimiento_referencia_id }}</td>
+                        <td class="num">{{ movimiento.factura_id }}</td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {% for movimiento in movimientos %}
-                        {% set keys = movimiento|keys %}
-                        <tr>
-                            <td class="">
-                                <a class="btn"
-                                   href="javascript:abrirVentana('{{ path('itrio_movimiento_detalle', { 'id': movimiento.id}) }}', 'Archivos', 500, 1200)">{{ movimiento.id }}</a>
-                            </td>
-                            <td>{{ movimiento.tipo }}</td>
-                            <td>{{ movimiento.fecha | date('Y-m-d H:i') }}</td>
-                            <td>{{ movimiento.vr_total }}</td>
-                            <td>{{ movimiento.vr_afectado }}</td>
-                            <td>{{ movimiento.vr_saldo }}</td>
-                            <td>
-                                {% if movimiento.usuario_id %}
-                                    <a class="btn"
-                                       href="javascript:abrirVentana('{{ path('itrio_movimiento_usuario', { 'id': movimiento.usuario_id}) }}', 'Archivos', 500, 1200)">{{ movimiento.usuario_id }}</a>
-                                {% endif %}
-                            </td>
-                            <td>{{ movimiento.usuario__username }}</td>
-                            <td>{{ movimiento.movimiento_referencia_id }}</td>
-                            <td>{{ movimiento.factura_id }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                {% else %}
+                    <tr><td colspan="10">Sin movimientos para este filtro.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
     {{ form_end(form) }}

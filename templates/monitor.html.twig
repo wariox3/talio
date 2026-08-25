@@ -1,256 +1,183 @@
 {% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+
+{% block title %}Monitor · Talio{% endblock %}
+{% block ruta %}<b>Monitor</b>{% endblock %}
+
+{% block acciones %}
+    {% set detenidos = (arrServiciosWolframio.colaEmitir ? 0 : 1)
+        + (arrServiciosWolframio.colaRespuesta ? 0 : 1)
+        + (arrServiciosTantalo.colaDecodificar ? 0 : 1) %}
+    {% if detenidos > 0 %}
+        <span class="tag crit"><span class="dot"></span>{{ detenidos }} cola{{ detenidos > 1 ? 's' }} detenida{{ detenidos > 1 ? 's' }}</span>
+    {% else %}
+        <span class="tag ok"><span class="dot"></span>Todas las colas activas</span>
+    {% endif %}
+    <span class="stamp">{{ "now"|date('H:i:s') }}</span>
+{% endblock %}
+
 {% block content %}
-    <div class="container-fluid px-4">
-        <h1 class="mt-4">Monitor</h1>
-        <ol class="breadcrumb mb-4">
-            <li class="breadcrumb-item active">Estados</li>
-        </ol>
-        <div class="row">
-            <div class="col-xl-4 col-md-6">
-                <div class="card bg-success text-white mb-4">
-                    <div class="card-body">Por enviar: {{ arrEstados.enviar }}</div>
-                    <div class="card-footer d-flex align-items-center justify-content-between">
-                        <a class="small text-white stretched-link" href="{{ path('wolframio_documento_enviar') }}">Ver Detalle</a>
-                        <div class="small text-white"><i class="fas fa-angle-right"></i></div>
-                    </div>
-                </div>
+    <div class="block">
+        {{ ui.cabecera('Servicios') }}
+        <div class="states">
+            <div class="st">
+                <b>Wolframio</b>
+                <span class="val">{{ ui.estadoCritico(arrServiciosWolframio.colaEmitir, 'Cola emitir', 'Cola emitir detenida') }}</span>
             </div>
-            <div class="col-xl-4 col-md-6">
-                <div class="card bg-danger text-white mb-4">
-                    <div class="card-body">Errores: {{ arrEstados.error }}</div>
-                    <div class="card-footer d-flex align-items-center justify-content-between">
-                        <a class="small text-white stretched-link" href="{{ path('wolframio_documento_error') }}">Ver Detalle</a>
-                        <div class="small text-white"><i class="fas fa-angle-right"></i></div>
-                    </div>
-                </div>
+            <div class="st">
+                <b>Wolframio</b>
+                <span class="val">{{ ui.estadoCritico(arrServiciosWolframio.colaRespuesta, 'Cola respuesta', 'Cola respuesta detenida') }}</span>
             </div>
-            <div class="col-xl-4 col-md-6">
-                <div class="card bg-primary text-white mb-4">
-                    <div class="card-body">Respuesta: {{ arrEstados.respuesta }}</div>
-                    <div class="card-footer d-flex align-items-center justify-content-between">
-                        <a class="small text-white stretched-link" href="{{ path('wolframio_documento_respuesta') }}">Ver Detalle</a>
-                        <div class="small text-white"><i class="fas fa-angle-right"></i></div>
-                    </div>
-                </div>
+            <div class="st">
+                <b>Tántalo</b>
+                <span class="val">{{ ui.estadoCritico(arrServiciosTantalo.colaDecodificar, 'Cola decodificar', 'Cola decodificar detenida') }}</span>
             </div>
-        </div>
-        <div class="row">
-            <div class="container">
-                <h3>Wolframio
-                    [cola emitir]:
-                    {% if arrServiciosWolframio.colaEmitir %}
-                        <span class="badge bg-success">Activo</span>
-                    {% else %}
-                        <span class="badge bg-danger">Inactivo</span>
-                    {% endif %}
-                    [cola respuesta]:
-                    {% if arrServiciosWolframio.colaRespuesta %}
-                        <span class="badge bg-success">Activo</span>
-                    {% else %}
-                        <span class="badge bg-danger">Inactivo</span>
-                    {% endif %}
-                </h3>
-                <h3>Tantalo [cola decodificar]:
-                    {% if arrServiciosTantalo.colaDecodificar %}
-                        <span class="badge bg-success">Activo</span>
-                    {% else %}
-                        <span class="badge bg-danger">Inactivo</span>
-                    {% endif %}
-                </h3>
-                <h3>Niquel errores produccion:
+            <div class="st">
+                <b>Níquel</b>
+                <span class="val">
                     {% if arrErrores.prod > 0 %}
-                        <span class="badge bg-danger">{{ arrErrores.prod }}</span>
+                        <span class="tag warn"><span class="dot"></span>{{ arrErrores.prod }} errores en producción</span>
                     {% else %}
-                        <span class="badge bg-success">0</span>
+                        <span class="tag ok"><span class="dot"></span>Sin errores en producción</span>
                     {% endif %}
-                </h3>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-xl-6">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <i class="fas fa-chart-area me-1"></i>
-                        Documentos por hora
-                    </div>
-                    <div class="card-body"><canvas id="myChart" width="100%" height="40"></canvas></div>
-                </div>
-            </div>
-            <div class="col-xl-6">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <i class="fas fa-table me-1"></i>
-                        Ultimos documentos
-                    </div>
-
-                    <div class="card-body">
-                        <table>
-                            <thead>
-                            <tr>
-                                <th>Id</th>
-                                <th>Tp</th>
-                                <th>Prefijo</th>
-                                <th>Numero</th>
-                                <th>Fecha</th>
-                                <th>Cod</th>
-                                <th>Cuenta</th>
-                                <th>Total</th>
-                                <th>Env</th>
-                                <th>Val</th>
-                                <th>Err</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {% for documento in ultimosDocumentos %}
-                                <tr>
-                                    <td class=""><a href="javascript:abrirVentana('{{ path('wolframio_documento_detalle', { 'id': documento.id}) }}', 'DocumentoDetalle', 500, 1200)">{{ documento.id }}</a></td>
-                                    <td></td>
-                                    <td>{{ documento.documentoClaseAbreviatura }}</td>
-                                    <td>{{ documento.prefijo }}</td>
-                                    <td>{{ documento.numero }}</td>
-                                    <td>{{ documento.fechaRegistro | date('Y-m-d H:i') }}</td>
-                                    <td>{{ documento.cuentaId }}</td>
-                                    <td>{{ documento.cuentaNombre }}</td>
-                                    <td>{{ documento.total }}</td>
-                                    <td>{{ documento.estadoEnviado?'SI':'NO' }}</td>
-                                    <td>{{ documento.estadoValidado?'SI':'NO' }}</td>
-                                    <td>{{ documento.estadoError?'SI':'NO' }}</td>
-                                </tr>
-                            {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-xl-6">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <i class="fas fa-table me-1"></i>
-                        Documentos por cuenta periodo
-                    </div>
-
-                    <div class="card-body">
-                        <table id="documentoCuentaPeriodo">
-                            <thead>
-                            <tr>
-                                <th>Id</th>
-                                <th>Nombre</th>
-                                <th>Cantidad</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {% for documento in cuentaPeriodo %}
-                                <tr>
-                                    <td class="">{{ documento.cuentaId }}</td>
-                                    <td>{{ documento.cuentaNombre }}</td>
-                                    <td>{{ documento.cantidad }}</td>
-                                </tr>
-                            {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-            <div class="col-xl-6">
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <i class="fas fa-table me-1"></i>
-                        Negocios
-                    </div>
-
-                    <div class="card-body">
-                        <table id="documentoCuentaPeriodo">
-                            <thead>
-                            <tr>
-                                <th>Etapa</th>
-                                <th>Cantidad</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {% for negocio in negocios %}
-                                <tr>
-                                    <td>{{ negocio.negocioEtapa }}</td>
-                                    <td>{{ negocio.cantidad }}</td>
-                                </tr>
-                            {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="card mb-4">
-                    <div class="card-header">
-                        <i class="fas fa-table me-1"></i>
-                        Contactos
-                    </div>
-
-                    <div class="card-body">
-                        <table id="documentoCuentaPeriodo">
-                            <thead>
-                            <tr>
-                                <th>Cantidad</th>
-                            </tr>
-                            </thead>
-                            <tbody>
-                            {% for contacto in contactos %}
-                                <tr>
-                                    <td>{{ contacto.cantidad }}</td>
-                                </tr>
-                            {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-xl-6">
-            </div>
-            <div class="col-xl-6">
-
+                </span>
             </div>
         </div>
     </div>
 
-{% endblock %}
-{% block javascripts %}
-    <script>
-        const labels = {{ labels | json_encode |raw   }};
-        const data = {{ data | json_encode |raw   }};
-        const ctx = document.getElementById('myChart');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [{
-                    label: '# documentos',
-                    data,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                },
-                plugins: {
-                    title: {
-                        display: true,
-                        position: 'bottom',
-                        text: (ctx) => 'Hora'
-                    }
-                },
-                transitions: {
-                    zoom: {
-                        animation: {
-                            duration: 100
-                        }
-                    }
-                }
-            }
-        });
-    </script>
+    <div class="block">
+        {{ ui.cabecera('Documentos') }}
+        <div class="figs">
+            <div class="fig">
+                <span class="fig-l">Por enviar</span>
+                <span class="fig-v"><a href="{{ path('wolframio_documento_enviar') }}">{{ arrEstados.enviar }}</a></span>
+                <span class="fig-f">En cola</span>
+            </div>
+            <div class="fig">
+                <span class="fig-l">En error</span>
+                <span class="fig-v"><a href="{{ path('wolframio_documento_error') }}">{{ arrEstados.error }}</a></span>
+                <span class="fig-f">
+                    {% if arrEstados.error > 0 %}
+                        <span class="tag crit"><span class="dot"></span>Requiere revisión</span>
+                    {% else %}
+                        Sin errores
+                    {% endif %}
+                </span>
+            </div>
+            <div class="fig">
+                <span class="fig-l">Esperando respuesta</span>
+                <span class="fig-v"><a href="{{ path('wolframio_documento_respuesta') }}">{{ arrEstados.respuesta }}</a></span>
+                <span class="fig-f">Pendientes de notificar</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="block">
+        {{ ui.cabecera('Documentos por hora', 'Últimas 24 h') }}
+        <div class="chart-wrap">
+            <svg data-grafica
+                 data-labels='{{ labels|json_encode|raw }}'
+                 data-valores='{{ data|json_encode|raw }}'
+                 data-unidad="doc"></svg>
+            <div class="chart-tip"></div>
+        </div>
+        <div class="chart-cap"><i></i>Documentos emitidos</div>
+    </div>
+
+    <div class="block">
+        {{ ui.cabecera('Últimos documentos') }}
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Id</th><th>Tipo</th><th>Prefijo</th><th class="num">Número</th>
+                    <th>Registro</th><th class="num">Cuenta</th><th>Nombre</th>
+                    <th class="num">Total</th><th>Estado</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for documento in ultimosDocumentos %}
+                    <tr>
+                        <td class="id">
+                            <a href="javascript:abrirVentana('{{ path('wolframio_documento_detalle', { 'id': documento.id }) }}', 'Documento', 500, 1200)">{{ documento.id }}</a>
+                        </td>
+                        <td>{{ documento.documentoClaseAbreviatura }}</td>
+                        <td>{{ documento.prefijo }}</td>
+                        <td class="num">{{ documento.numero }}</td>
+                        <td class="nowrap">{{ documento.fechaRegistro|date('Y-m-d H:i') }}</td>
+                        <td class="num">{{ documento.cuentaId }}</td>
+                        <td>{{ documento.cuentaNombre }}</td>
+                        <td class="num">{{ documento.total|number_format(0, ',', '.') }}</td>
+                        <td class="nowrap">
+                            {% if documento.estadoError %}
+                                <span class="tag crit"><span class="dot"></span>Error</span>
+                            {% elseif documento.estadoValidado %}
+                                <span class="tag ok"><span class="dot"></span>Validado</span>
+                            {% elseif documento.estadoEnviado %}
+                                <span class="tag warn"><span class="dot"></span>En espera</span>
+                            {% else %}
+                                <span class="tag idle"><span class="dot"></span>Por enviar</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="9">Sin documentos recientes.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="block">
+        {{ ui.cabecera('Documentos por cuenta', "now"|date('Y-m')) }}
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr><th class="num">Cuenta</th><th>Nombre</th><th class="num">Cantidad</th></tr>
+                </thead>
+                <tbody>
+                {% for documento in cuentaPeriodo %}
+                    <tr>
+                        <td class="num">{{ documento.cuentaId }}</td>
+                        <td>{{ documento.cuentaNombre }}</td>
+                        <td class="num">{{ documento.cantidad }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="3">Sin documentos en el periodo.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="block">
+        {{ ui.cabecera('Carbono · pendientes') }}
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr><th>Etapa del negocio</th><th class="num">Cantidad</th></tr>
+                </thead>
+                <tbody>
+                {% for negocio in negocios %}
+                    <tr>
+                        <td>{{ negocio.negocioEtapa }}</td>
+                        <td class="num">{{ negocio.cantidad }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="2">Sin negocios pendientes.</td></tr>
+                {% endfor %}
+                {% for contacto in contactos %}
+                    <tr>
+                        <td>Contactos pendientes</td>
+                        <td class="num">{{ contacto.cantidad }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
 {% endblock %}
 
+{% block javascripts %}
+    <script src="{{ asset('js/grafica.js') }}"></script>
+{% endblock %}

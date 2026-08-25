@@ -1,81 +1,68 @@
 {% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Errores · Talio{% endblock %}
+{% block ruta %}Níquel <span>/</span> <b>Errores</b>{% endblock %}
+{% block acciones %}<span class="stamp">{{ errores|length }} registros</span>{% endblock %}
 {% block content %}
     {{ form_start(form) }}
-    <div class="container-fluid px-4">
-        <h1 class="mt-4">Niquel</h1>
-        <ol class="breadcrumb mb-4">
-            <li class="breadcrumb-item"><a href="{{ path('inicio') }}">Error</a></li>
-            <li class="breadcrumb-item active">Lista</li>
-        </ol>
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-table me-1"></i>
-                Errores en ambientes
+    <div class="block">
+        <div class="filters">
+            {{ ui.campo('Entorno', form.entorno) }}
+            <div class="f-right">
+                {{ form_widget(form.btnFiltrar) }}
+                {{ form_widget(form.btnEliminar, { 'attr': {'class': 'ghost'} }) }}
+                {{ form_widget(form.btnLimpiar, { 'attr': {'class': 'ghost'} }) }}
             </div>
-
-            <div class="card-body">
-                <div class="d-flex justify-content-between mb-3">
-                    <div class="d-flex align-items-center">
-                        <label for="{{ form.entorno.vars.id }}" class="me-2">Entorno:</label>
-                        {{ form_widget(form.entorno, { 'attr': {'class': 'form-control'} }) }}
-                    </div>
-                    <div>
-                        {{ form_widget(form.btnFiltrar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
-                        {{ form_widget(form.btnEliminar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
-                        {{ form_widget(form.btnLimpiar, { 'attr': {'class': 'btn btn-sm btn-primary'} }) }}
-                    </div>
-                </div>
-                <table id="datatablesSimple">
-                    <thead>
+        </div>
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Id</th><th>Fecha</th><th>Archivo</th><th>Mensaje</th>
+                    <th>Usuario</th><th>Ruta</th><th>Entorno</th><th>Contenedor</th>
+                    <th>Data</th><th></th>
+                    <th class="center" title="Seleccionar todos">
+                        <input type="checkbox" id="todosInput" aria-label="Seleccionar todos"
+                               onclick="ChequearTodosTabla(this, 'ChkSeleccionar[]')">
+                    </th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for error in errores %}
                     <tr>
-                        <th>Id</th>
-                        <th>Fecha</th>
-                        <th>Archivo</th>
-                        <th>Mensaje</th>
-                        <th>Usuario</th>
-                        <th>Ruta</th>
-                        <th>Entorno</th>
-                        <th>Contenedor</th>
-                        <th>Data</th>
-                        <th></th>
-                        <th class="text-center" title="seleccionar todos">
-                            <div>
-                                <input type="checkbox" name="ChkSeleccionar[]"
-                                       id="todosInput"
-                                       onclick="ChequearTodosTabla(this, 'ChkSeleccionar[]')"/>
-                                <label class="custom-control-label" for="todosInput"></label>
-                            </div>
-                        </th>
+                        <td class="id">{{ error.id }}</td>
+                        <td class="nowrap">{{ error.fecha|date('Y-m-d H:i') }}</td>
+                        <td>{{ error.archivo }}</td>
+                        <td class="wrap">{{ error.mensaje }}</td>
+                        <td>{{ error.usuario }}</td>
+                        <td>{{ error.ruta }}</td>
+                        <td>
+                            {% if error.entorno == 'prod' %}
+                                <span class="tag crit"><span class="dot"></span>prod</span>
+                            {% else %}
+                                <span class="tag idle"><span class="dot"></span>{{ error.entorno }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ error.contenedor }}</td>
+                        <td>
+                            <details>
+                                <summary>Ver</summary>
+                                <pre>{{ error.data|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                            </details>
+                        </td>
+                        <td class="nowrap">
+                            <a href="javascript:abrirVentana('{{ path('niquel_error_detalle', { 'id': error.id }) }}', 'Error', 500, 1200)">Traza</a>
+                        </td>
+                        <td class="center">
+                            <input type="checkbox" name="ChkSeleccionar[]" value="{{ error.id }}"
+                                   id="err{{ error.id }}" aria-label="Seleccionar error {{ error.id }}">
+                        </td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {% for error in errores %}
-                        <tr>
-                            <td class="">{{ error.id }}</td>
-                            <td>{{ error.fecha | date('Y-m-d H:i') }}</td>
-                            <td>{{ error.archivo }}</td>
-                            <td>{{ error.mensaje }}</td>
-                            <td>{{ error.usuario }}</td>
-                            <td>{{ error.ruta }}</td>
-                            <td>{{ error.entorno }}</td>
-                            <td>{{ error.contenedor }}</td>
-                            <td><pre>{{ error.data|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></td>
-                            <td><a class="btn"
-                                   href="javascript:abrirVentana('{{ path('niquel_error_detalle', { 'id': error.id}) }}', 'Archivos', 500, 1200)">Ver</a>
-                            </td>
-                            <td class="text-center">
-                                <div>
-                                    <input type="checkbox" name="ChkSeleccionar[]" class="custom-control-input"
-                                           value="{{ error.id }}"
-                                           id="{{ error.id }}"/>
-                                    <label class="custom-control-label" for="{{ error.id }}"></label>
-                                </div>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                {% else %}
+                    <tr><td colspan="11">Sin errores registrados en este entorno.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
     {{ form_end(form) }}

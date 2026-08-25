@@ -1,144 +1,87 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="utf-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <meta name="description" content="" />
-    <meta name="author" content="" />
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Talio{% endblock %}</title>
-    <link rel="stylesheet" href="{{ asset('css/style.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}">
-    <script src="{{ asset('js/all.js') }}" crossorigin="anonymous"></script>
-    <script src="{{ asset('js/general.js') }}" crossorigin="anonymous"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+    <link rel="stylesheet" href="{{ asset('css/talio.css') }}">
 </head>
-{% block body %}
-<body class="sb-nav-fixed">
-<nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-    <!-- Navbar Brand-->
-    <a class="navbar-brand ps-3" href="index.html">Talio V1.0</a>
-    <!-- Sidebar Toggle-->
-    <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" href="#!"><i class="fas fa-bars"></i></button>
-    <!-- Navbar Search-->
-    <form class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
+<body>
+<div class="app">
+    <nav class="side">
+        <div class="brand">
+            <b><a href="{{ path('inicio') }}">Talio</a></b>
+            <span>1.0</span>
+        </div>
 
-    </form>
-    <!-- Navbar-->
-    <ul class="navbar-nav ms-auto ms-md-0 me-3 me-lg-4">
-        <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-user fa-fw"></i></a>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
-                <li><a class="dropdown-item" href="#!">Configuracion</a></li>
-                <li><hr class="dropdown-divider" /></li>
-                <li><a class="dropdown-item" href="{{ path('logout') }}">Salir</a></li>
-            </ul>
-        </li>
-    </ul>
-</nav>
-<div id="layoutSidenav">
-    <div id="layoutSidenav_nav">
-        <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
-            <div class="sb-sidenav-menu">
-                <div class="nav">
-                    <div class="sb-sidenav-menu-heading">Core</div>
-                    <a class="nav-link" href="{{ path('inicio') }}">
-                        <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
-                        Inicio
-                    </a>
-                    <a class="nav-link" href="{{ path('monitor') }}">
-                        <div class="sb-nav-link-icon"><i class="fas fa-desktop"></i></div>
-                        Monitor
-                    </a>
-                    <div class="sb-sidenav-menu-heading">Opciones</div>
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayouts" aria-expanded="false" aria-controls="collapseLayouts">
-                        <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                        Wolframio
-                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                    </a>
-                    <div class="collapse" id="collapseLayouts" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                        <nav class="sb-sidenav-menu-nested nav">
-                            <a class="nav-link" href="{{ path('wolframio_cuenta_lista') }}">Cuenta</a>
-                            <a class="nav-link" href="{{ path('wolframio_documento_enviar') }}">Documento enviar</a>
-                            <a class="nav-link" href="{{ path('wolframio_documento_error') }}">Documento error</a>
-                            <a class="nav-link" href="{{ path('wolframio_documento_respuesta') }}">Documento respuesta</a>
-                        </nav>
-                    </div>
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#niquel" aria-expanded="false" aria-controls="collapseLayouts">
-                        <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                        Niquel
-                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                    </a>
-                    <div class="collapse" id="niquel" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                        <nav class="sb-sidenav-menu-nested nav">
-                            <a class="nav-link" href="{{ path('niquel_error_lista') }}">Error</a>
-                            <a class="nav-link" href="{{ path('niquel_acceso_lista') }}">Acceso</a>
-                        </nav>
-                    </div>
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#itrio" aria-expanded="false" aria-controls="collapseLayouts">
-                        <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                        Itrio
-                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                    </a>
-                    <div class="collapse" id="itrio" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                        <nav class="sb-sidenav-menu-nested nav">
-                            <a class="nav-link" href="{{ path('itrio_movimiento_lista') }}">Movimiento</a>
-                            <a class="nav-link" href="{{ path('itrio_consumo_lista') }}">Consumo</a>
-                            <a class="nav-link" href="{{ path('itrio_contenedor_lista') }}">Contenedor</a>
-                            <a class="nav-link" href="{{ path('itrio_usuario_lista') }}">Usuarios</a>
-                        </nav>
-                    </div>
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#kiai" aria-expanded="false" aria-controls="collapseLayouts">
-                        <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                        Kiai
-                        <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                    </a>
-                    <div class="collapse" id="kiai" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                        <nav class="sb-sidenav-menu-nested nav">
-                            <a class="nav-link" href="{{ path('kiai_consumo_lista') }}">Consumo</a>
-                        </nav>
-                    </div>
-                </div>
-            </div>
-            <div class="sb-sidenav-footer">
-                <div class="small">Logged in as:</div>
-                {% if app.session.get('usuario') %}
-                    {{ app.session.get('usuario') }}
-                {% else %}
-                    Start Bootstrap
-                {% endif %}
-            </div>
-        </nav>
-    </div>
-    <div id="layoutSidenav_content">
-        <main>
-            {{ notificar()| raw }}
-            {% block content %}
+        <div class="nav-sec">
+            <div class="nav-head">General</div>
+            <a class="nav-a {{ app.request.get('_route') == 'inicio' ? 'on' }}" href="{{ path('inicio') }}">Inicio</a>
+            <a class="nav-a {{ app.request.get('_route') == 'monitor' ? 'on' }}" href="{{ path('monitor') }}">Monitor</a>
+        </div>
 
-            {% endblock %}
-        </main>
-        <footer class="py-4 bg-light mt-auto">
-            <div class="container-fluid px-4">
-                <div class="d-flex align-items-center justify-content-between small">
-                    <div class="text-muted">Copyright &copy; Semantica Digital S.A.S</div>
-                    <div>
-                        <a href="#">Privacy Policy</a>
-                        &middot;
-                        <a href="#">Terminos &amp; Condiciones</a>
-                    </div>
+        {% set ruta = app.request.get('_route') %}
+        <div class="nav-sec">
+            <div class="nav-head">Servicios</div>
+
+            <details class="nav-group" {{ ruta starts with 'wolframio_' ? 'open' }}>
+                <summary>Wolframio</summary>
+                <div class="nav-sub">
+                    <a class="{{ ruta == 'wolframio_cuenta_lista' ? 'on' }}" href="{{ path('wolframio_cuenta_lista') }}">Cuenta</a>
+                    <a class="{{ ruta == 'wolframio_documento_enviar' ? 'on' }}" href="{{ path('wolframio_documento_enviar') }}">Documento enviar</a>
+                    <a class="{{ ruta == 'wolframio_documento_error' ? 'on' }}" href="{{ path('wolframio_documento_error') }}">Documento error</a>
+                    <a class="{{ ruta == 'wolframio_documento_respuesta' ? 'on' }}" href="{{ path('wolframio_documento_respuesta') }}">Documento respuesta</a>
                 </div>
-            </div>
-        </footer>
+            </details>
+
+            <details class="nav-group" {{ ruta starts with 'niquel_' ? 'open' }}>
+                <summary>Níquel</summary>
+                <div class="nav-sub">
+                    <a class="{{ ruta == 'niquel_error_lista' ? 'on' }}" href="{{ path('niquel_error_lista') }}">Error</a>
+                    <a class="{{ ruta == 'niquel_acceso_lista' ? 'on' }}" href="{{ path('niquel_acceso_lista') }}">Acceso</a>
+                </div>
+            </details>
+
+            <details class="nav-group" {{ ruta starts with 'itrio_' ? 'open' }}>
+                <summary>Itrio</summary>
+                <div class="nav-sub">
+                    <a class="{{ ruta == 'itrio_movimiento_lista' ? 'on' }}" href="{{ path('itrio_movimiento_lista') }}">Movimiento</a>
+                    <a class="{{ ruta == 'itrio_consumo_lista' ? 'on' }}" href="{{ path('itrio_consumo_lista') }}">Consumo</a>
+                    <a class="{{ ruta == 'itrio_contenedor_lista' ? 'on' }}" href="{{ path('itrio_contenedor_lista') }}">Contenedor</a>
+                    <a class="{{ ruta == 'itrio_usuario_lista' ? 'on' }}" href="{{ path('itrio_usuario_lista') }}">Usuarios</a>
+                </div>
+            </details>
+
+            <details class="nav-group" {{ ruta starts with 'kiai_' ? 'open' }}>
+                <summary>Kiai</summary>
+                <div class="nav-sub">
+                    <a class="{{ ruta == 'kiai_consumo_lista' ? 'on' }}" href="{{ path('kiai_consumo_lista') }}">Consumo</a>
+                </div>
+            </details>
+        </div>
+
+        <div class="side-foot">
+            {{ app.user ? app.user.userIdentifier : 'Sin sesión' }}
+            <small><a href="{{ path('logout') }}">Salir</a></small>
+        </div>
+    </nav>
+
+    <div class="main">
+        <div class="topbar">
+            <div class="path">{% block ruta %}{% endblock %}</div>
+            <div class="right">{% block acciones %}{% endblock %}</div>
+        </div>
+
+        {{ notificar()|raw }}
+
+        {% block content %}{% endblock %}
     </div>
 </div>
-</body>
-{% endblock %}
-<script src="{{ asset('js/bootstrap.bundle.min.js') }}" crossorigin="anonymous"></script>
-<script src="{{ asset('js/scripts.js') }}"></script>
-<script src="{{ asset('js/simple-datatables.min.js') }}" crossorigin="anonymous"></script>
-<script src="{{ asset('js/datatables-simple-demo.js') }}"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{{ asset('js/general.js') }}"></script>
-{% block javascripts %}
 
-{% endblock %}
+<script src="{{ asset('js/general.js') }}"></script>
+{% block javascripts %}{% endblock %}
+</body>
 </html>

@@ -1,38 +1,36 @@
 {% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block ruta %}<b>Resoluciones</b>{% endblock %}
 {% block content %}
-    <div class="container-fluid px-4">
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-table me-1"></i>
-                Resoluciones
-            </div>
-            <div class="card-body">
-                <table id="datatablesSimple">
-                    <thead>
+    <div class="block">
+        {{ ui.cabecera('Resoluciones', resoluciones|length ~ ' registros') }}
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Número</th>
+                    <th>Prefijo</th>
+                    <th>Desde</th>
+                    <th>Hasta</th>
+                    <th class="num">Consec. desde</th>
+                    <th class="num">Consec. hasta</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for resolucion in resoluciones %}
                     <tr>
-                        <th>Numero</th>
-                        <th>Prefijo</th>
-                        <th>Fecha desde</th>
-                        <th>Fecha hasta</th>
-                        <th>Consecutivo desde</th>
-                        <th>Consecutivo hasta</th>
+                        <td class="id">{{ resolucion.ResolucionNumero }}</td>
+                        <td>{{ resolucion.Prefijo }}</td>
+                        <td class="nowrap">{{ resolucion.VigenciaDesde|date('Y-m-d') }}</td>
+                        <td class="nowrap">{{ resolucion.VigenciaHasta|date('Y-m-d') }}</td>
+                        <td class="num">{{ resolucion.ConsecutivoDesde }}</td>
+                        <td class="num">{{ resolucion.ConsecutivoHasta }}</td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {% for resolucion in resoluciones %}
-                        <tr>
-                            <td class="">{{ resolucion.ResolucionNumero }}</td>
-                            <td>{{ resolucion.Prefijo }}</td>
-                            <td>{{ resolucion.VigenciaDesde | date('Y-m-d') }}</td>
-                            <td>{{ resolucion.VigenciaHasta | date('Y-m-d') }}</td>
-                            <td>{{ resolucion.ConsecutivoDesde }}</td>
-                            <td>{{ resolucion.ConsecutivoHasta }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                {% else %}
+                    <tr><td colspan="6">Sin resoluciones.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 {% endblock %}
-

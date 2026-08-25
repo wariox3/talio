@@ -1,17 +1,9 @@
 {% extends 'base_sin_menu.html.twig' %}
+{% block ruta %}<b>Detalle del error</b>{% endblock %}
 {% block content %}
     {{ form_start(form) }}
-    <div class="container-fluid px-4">
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-table me-1"></i>
-                Detalle error
-            </div>
-            <div class="card-body">
-                {{ error.traza|raw  }}
-            </div>
-        </div>
+    <div class="block">
+        {{ error.traza|raw }}
     </div>
     {{ form_end(form) }}
 {% endblock %}
-

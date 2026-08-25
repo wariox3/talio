@@ -1,17 +1,11 @@
 {% extends 'base_sin_menu.html.twig' %}
+{% block ruta %}Suscriptor <b>{{ aliado }}</b> · {{ aliadoNombre }}{% endblock %}
 {% block content %}
     {{ form_start(form) }}
-    <div class="container-fluid px-4">
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-table me-1"></i>
-                Informacion suscriptor {{ aliado }} | {{ aliadoNombre }}
-            </div>
-            <div class="card-body">
-                {{ form_widget(form) }}
-            </div>
+    <div class="block">
+        <div class="form-stack">
+            {{ form_widget(form) }}
         </div>
     </div>
     {{ form_end(form) }}
 {% endblock %}
-

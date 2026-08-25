@@ -1,96 +1,77 @@
 {% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Cuentas · Talio{% endblock %}
+{% block ruta %}Wolframio <span>/</span> <b>Cuentas</b>{% endblock %}
+{% block acciones %}<span class="stamp">{{ cuentas|length }} registros</span>{% endblock %}
 {% block content %}
     {{ form_start(form) }}
-    <div class="container-fluid px-4">
-        <h1 class="mt-4">Wolframio</h1>
-        <ol class="breadcrumb mb-4">
-            <li class="breadcrumb-item"><a href="{{ path('inicio') }}">Cuenta</a></li>
-            <li class="breadcrumb-item active">Lista</li>
-        </ol>
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-table me-1"></i>
-                Lista de cuentas
-            </div>
-
-            <div class="card-body">
-                <table id="datatablesSimple">
-                    <thead>
+    <div class="block">
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Id</th><th class="num">NIT</th><th>Nombre</th>
+                    <th>Correo</th><th>Correo facturación</th>
+                    <th>Suscriptor</th><th title="Producción facturación">Prod. fac.</th>
+                    <th>Empleador</th><th title="Producción nómina">Prod. nóm.</th>
+                    <th>Notifica</th><th></th><th class="center">Sel.</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for cuenta in cuentas %}
                     <tr>
-                        <th>Id</th>
-                        <th>NIT</th>
-                        <th>Nombre</th>
-                        <th>Correo</th>
-                        <th>Correo facturacion</th>
-                        <th>Suscriptor (fac)</th>
-                        <th title="Produccion facturacion">Prod</th>
-                        <th>Empleador (nom)</th>
-                        <th title="Produccion nomina">Prod</th>
-                        <th title="Notificar">Not</th>
-                        <th></th>
-                        <th></th>
+                        <td class="id">
+                            <a href="javascript:abrirVentana('{{ path('wolframio_cuenta_editar', { 'id': cuenta.id }) }}', 'Cuenta', 500, 1200)">{{ cuenta.id }}</a>
+                        </td>
+                        <td class="num">{{ cuenta.numeroIdentificacion }}</td>
+                        <td>{{ cuenta.nombre }}</td>
+                        <td>{{ cuenta.correo }}</td>
+                        <td>{{ cuenta.correoFacturacionElectronica }}</td>
+                        <td class="nowrap">
+                            {% if cuenta.suscriptorSoftgic %}
+                                <a href="javascript:abrirVentana('{{ path('wolframio_cuenta_suscriptor', { 'suscriptor': cuenta.suscriptorSoftgic }) }}', 'Suscriptor', 500, 1200)">{{ cuenta.suscriptorSoftgic }}</a>
+                            {% else %}
+                                <button class="link" name="OpCrear" value="{{ cuenta.id }}">Crear</button>
+                            {% endif %}
+                        </td>
+                        <td class="nowrap">
+                            {% if cuenta.suscriptorSoftgic and not cuenta.estadoProduccion %}
+                                <button class="link" name="OpHabilitar" value="{{ cuenta.id }}">Set pruebas</button>
+                            {% else %}
+                                {{ ui.estado(cuenta.estadoProduccion, 'Producción', 'Pruebas') }}
+                            {% endif %}
+                        </td>
+                        <td class="nowrap">
+                            {% if cuenta.empleadorSoftgic %}
+                                <a href="javascript:abrirVentana('{{ path('wolframio_cuenta_empleador', { 'empleador': cuenta.empleadorSoftgic }) }}', 'Empleador', 500, 1200)">{{ cuenta.empleadorSoftgic }}</a>
+                            {% else %}
+                                <button class="link" name="OpCrearEmpleador" value="{{ cuenta.id }}">Crear</button>
+                            {% endif %}
+                        </td>
+                        <td class="nowrap">
+                            {% if cuenta.empleadorSoftgic and not cuenta.estadoProduccionNomina %}
+                                <button class="link" name="OpHabilitarNomina" value="{{ cuenta.id }}">Set pruebas</button>
+                            {% else %}
+                                {{ ui.estado(cuenta.estadoProduccionNomina, 'Producción', 'Pruebas') }}
+                            {% endif %}
+                        </td>
+                        <td>{{ ui.estado(cuenta.notificar, 'Sí', 'No') }}</td>
+                        <td class="nowrap">
+                            {% if cuenta.suscriptorSoftgic %}
+                                <a href="javascript:abrirVentana('{{ path('wolframio_cuenta_resolucion', { 'suscriptor': cuenta.suscriptorSoftgic }) }}', 'Resoluciones', 500, 1200)">Resoluciones</a>
+                            {% endif %}
+                        </td>
+                        <td class="center">
+                            <input type="checkbox" name="ChkSeleccionar[]" value="{{ cuenta.id }}"
+                                   aria-label="Seleccionar cuenta {{ cuenta.id }}">
+                        </td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {% for cuenta in cuentas %}
-                        <tr>
-                            <td class="">
-                                <a class="btn" href="javascript:abrirVentana('{{ path('wolframio_cuenta_editar', { 'id': cuenta.id}) }}', 'Archivos', 500, 1200)">{{ cuenta.id }}</a>
-                            </td>
-                            <td>{{ cuenta.numeroIdentificacion }}</td>
-                            <td>{{ cuenta.nombre }}</td>
-                            <td>{{ cuenta.correo }}</td>
-                            <td>{{ cuenta.correoFacturacionElectronica }}</td>
-                            <td>
-                                {% if cuenta.suscriptorSoftgic %}
-                                    <a class="btn" href="javascript:abrirVentana('{{ path('wolframio_cuenta_suscriptor', { 'suscriptor': cuenta.suscriptorSoftgic}) }}', 'Archivos', 500, 1200)">{{ cuenta.suscriptorSoftgic }}</a>
-                                {% else %}
-                                    <button name="OpCrear" value="{{ cuenta.id }}">Crear</button>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if cuenta.suscriptorSoftgic %}
-                                    {% if not cuenta.estadoProduccion %}
-                                        <button name="OpHabilitar" value="{{ cuenta.id }}">Set pruebas</button>
-                                    {% else %}
-                                        {{ cuenta.estadoProduccion?'SI':'NO' }}
-                                    {% endif %}
-                                {% else %}
-                                    {{ cuenta.estadoProduccion?'SI':'NO' }}
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if cuenta.empleadorSoftgic %}
-                                    <a class="btn" href="javascript:abrirVentana('{{ path('wolframio_cuenta_empleador', { 'empleador': cuenta.empleadorSoftgic}) }}', 'Archivos', 500, 1200)">{{ cuenta.empleadorSoftgic }}</a>
-                                {% else %}
-                                    <button name="OpCrearEmpleador" value="{{ cuenta.id }}">Crear</button>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if cuenta.empleadorSoftgic %}
-                                    {% if not cuenta.estadoProduccionNomina %}
-                                        <button name="OpHabilitarNomina" value="{{ cuenta.id }}">Set pruebas</button>
-                                    {% else %}
-                                        {{ cuenta.estadoProduccionNomina?'SI':'NO' }}
-                                    {% endif %}
-                                {% else %}
-                                    {{ cuenta.estadoProduccionNomina?'SI':'NO' }}
-                                {% endif %}
-                            </td>
-                            <td>{{ cuenta.notificar?'SI':'NO' }}</td>
-                            <td>
-                                {% if cuenta.suscriptorSoftgic %}
-                                    <a class="btn" href="javascript:abrirVentana('{{ path('wolframio_cuenta_resolucion', { 'suscriptor': cuenta.suscriptorSoftgic}) }}', 'Archivos', 500, 1200)">Resoluciones</a>
-                                {% endif %}
-                            </td>
-                            <td><input class="form-check-input" type="checkbox" name="ChkSeleccionar[]" value="{{ cuenta.id }}"></td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                {% else %}
+                    <tr><td colspan="12">Sin cuentas.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
     {{ form_end(form) }}
 {% endblock %}
-

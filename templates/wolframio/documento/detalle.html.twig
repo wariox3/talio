@@ -1,47 +1,32 @@
 {% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block ruta %}Documento <b>{{ documento.id }}</b>{% endblock %}
 {% block content %}
     {{ form_start(form) }}
-    <div class="container-fluid px-4">
-        <table class="table table-condensed table-bordered tabla-informacion w-100">
-            <tr>
-                <td>Id:</td>
-                <td>{{ documento.id }}</td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-            </tr>
-            <tr>
-                <td colspan="6"><pre>{{ documento.documento | json_encode(constant('JSON_PRETTY_PRINT')) }}</pre></td>
-            </tr>
-        </table>
-        <div class="card mb-4">
-            <div class="card-header">
-                <i class="fas fa-table me-1"></i>
-                Documentos con error
-            </div>
-            <div class="card-body">
-                <table id="datatablesSimple">
-                    <thead>
+    <div class="block">
+        {{ ui.cabecera('Contenido') }}
+        <pre>{{ documento.documento|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+    </div>
+    <div class="block">
+        {{ ui.cabecera('Errores', errores|length ~ ' registros') }}
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr><th>Id</th><th>Fecha</th><th>Mensaje</th></tr>
+                </thead>
+                <tbody>
+                {% for error in errores %}
                     <tr>
-                        <th>Id</th>
-                        <th>Fecha</th>
-                        <th>Mensaje</th>
+                        <td class="id">{{ error.id }}</td>
+                        <td class="nowrap">{{ error.fecha|date('Y-m-d H:i') }}</td>
+                        <td class="wrap">{{ error.mensaje }}</td>
                     </tr>
-                    </thead>
-                    <tbody>
-                    {% for error in errores %}
-                        <tr>
-                            <td class="">{{ error.id }}</td>
-                            <td>{{ error.fecha | date('Y-m-d H:i') }}</td>
-                            <td>{{ error.mensaje }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                {% else %}
+                    <tr><td colspan="3">Sin errores registrados.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
     {{ form_end(form) }}
 {% endblock %}
-
