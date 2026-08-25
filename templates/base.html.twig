@@ -55,6 +55,13 @@
                 </div>
             </details>
 
+            <details class="nav-group" {{ ruta starts with 'nobelio_' ? 'open' }}>
+                <summary>Nobelio</summary>
+                <div class="nav-sub">
+                    <a class="{{ ruta == 'nobelio_emisor_lista' ? 'on' }}" href="{{ path('nobelio_emisor_lista') }}">Emisor</a>
+                </div>
+            </details>
+
             <details class="nav-group" {{ ruta starts with 'kiai_' ? 'open' }}>
                 <summary>Kiai</summary>
                 <div class="nav-sub">

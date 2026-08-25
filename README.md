@@ -48,11 +48,20 @@ completo.
 | `BASE_WOLFRAMIO` | `Utilidades/Wolframio.php` | URL base de la API de Wolframio. |
 | `BASE_CARBONO` | `Utilidades/Carbono.php` | URL base de la API de Carbono. |
 | `BASE_TANTALO` | `Utilidades/Tantalo.php`, `Carbono.php` | URL base de la API de Tántalo. |
+| `BASE_NOBELIO` | — *(ningún consumidor)* | URL base de Nobelio. Declarada para otro proyecto; hoy **no la lee ningún código de talio**. Ver nota abajo. |
 | `KIAI_TOKEN` | `Utilidades/Softgic.php` | Va como `CURLOPT_USERPWD`, formato `usuario:clave`. |
 | `DO_REGION` | `Utilidades/SpaceDO.php` | Región de Spaces. Arma el endpoint `https://{DO_REGION}.digitaloceanspaces.com`. |
 | `DO_CLAVE_ACCESO` | `Utilidades/SpaceDO.php` | Access key de Spaces. |
 | `DO_CLAVE_SECRETA` | `Utilidades/SpaceDO.php` | Secret key de Spaces. |
 | `DO_BUCKET` | `Utilidades/SpaceDO.php` | Nombre del bucket. |
+
+**Sobre `BASE_NOBELIO`.** Se añadió para otro proyecto y de momento no tiene
+consumidor aquí: no existe `src/Utilidades/Nobelio.php` ni ninguna referencia a
+`$_ENV['BASE_NOBELIO']`. Cambiarla o dejarla vacía no afecta a talio. Si algún
+día se consume desde esta aplicación, lo natural es añadir una utilidad
+`Nobelio` siguiendo el patrón de `Niquel.php` o `Tantalo.php` y actualizar esta
+tabla. Si el consumo se queda en el otro proyecto, conviene sacarla de `.env` y
+de `.env.example` para no dejar aquí configuración que nadie usa.
 
 Las `BASE_*` **deben terminar en `/`**, porque el código concatena sin
 separador: `$_ENV['BASE_X'] . $url`.
