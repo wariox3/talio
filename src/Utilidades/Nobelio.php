@@ -24,6 +24,11 @@ class Nobelio
         return $this->peticion('POST', $url, ['json' => $datos]);
     }
 
+    public function consumoDelete(string $url): array
+    {
+        return $this->peticion('DELETE', $url, []);
+    }
+
     public function autenticar(): array
     {
         $usuario = $_ENV['NOBELIO_USUARIO'] ?? '';

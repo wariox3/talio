@@ -1,0 +1,229 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Emisor {{ emisor.id }} · Talio{% endblock %}
+{% block ruta %}
+    Nobelio <span>/</span>
+    <a href="{{ path('nobelio_emisor_lista') }}">Emisores</a> <span>/</span>
+    <b>{{ emisor.razon_social }}</b>
+{% endblock %}
+{% block acciones %}
+    {{ ui.estado(emisor.activo, 'Activo', 'Inactivo') }}
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Emisor') }}
+        <dl class="ficha">
+            <dt>Id</dt>
+            <dd>{{ emisor.id }}</dd>
+            <dt>Cuenta</dt>
+            <dd>{{ emisor.cuenta }}</dd>
+
+            <dt>Razón social</dt>
+            <dd>{{ emisor.razon_social }}</dd>
+            <dt>Nombre comercial</dt>
+            <dd>{{ emisor.nombre_comercial }}</dd>
+
+            <dt>Tipo de identificación</dt>
+            <dd>{{ emisor.tipo_identificacion }}</dd>
+            <dt>Número de identificación</dt>
+            <dd>
+                {{- emisor.numero_identificacion }}{% if emisor.digito_verificacion %}-{{ emisor.digito_verificacion }}{% endif -%}
+            </dd>
+
+            <dt>Tipo de organización</dt>
+            <dd>{{ emisor.tipo_organizacion }}</dd>
+            <dt>Responsabilidades</dt>
+            <dd>
+                {% for codigo in emisor.responsabilidades %}
+                    {{ codigo }}{% if not loop.last %}, {% endif %}
+                {% else %}
+                    Sin responsabilidades declaradas.
+                {% endfor %}
+            </dd>
+
+            <dt>País</dt>
+            <dd>{{ emisor.pais }}</dd>
+            <dt>Departamento</dt>
+            <dd>{{ emisor.departamento }}</dd>
+
+            <dt>Municipio</dt>
+            <dd>{{ emisor.municipio }}</dd>
+            <dt>Dirección</dt>
+            <dd>{{ emisor.direccion }}</dd>
+
+            <dt>Teléfono</dt>
+            <dd>{{ emisor.telefono }}</dd>
+            <dt>Correo</dt>
+            <dd>{{ emisor.correo }}</dd>
+
+            <dt>Estado</dt>
+            <dd>{{ ui.estado(emisor.activo, 'Activo', 'Inactivo') }}</dd>
+            <dt>Facturación</dt>
+            <dd>{{ ui.estado(emisor.habilitado_facturacion, 'Habilitado', 'Sin habilitar') }}</dd>
+        </dl>
+    </div>
+    <div class="block tabs">
+        <div class="tabs-head" role="tablist">
+            <button type="button" class="tab is-active" role="tab" aria-selected="true" data-panel="certificados">
+                Certificado <span class="stamp">{{ certificados|length }}</span>
+            </button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-panel="software">
+                Software <span class="stamp">{{ software|length }}</span>
+            </button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-panel="resoluciones">
+                Resoluciones <span class="stamp">{{ resoluciones|length }}</span>
+            </button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-panel="documentos">
+                Documentos <span class="stamp">{{ documentos|length }}</span>
+            </button>
+        </div>
+
+        <div class="tab-panel" id="certificados" role="tabpanel">
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Alias</th>
+                        <th>Archivo</th>
+                        <th>Vigente desde</th>
+                        <th>Vigente hasta</th>
+                        <th>Estado</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for certificado in certificados %}
+                        <tr>
+                            <td class="id">{{ certificado.id }}</td>
+                            <td>{{ certificado.alias }}</td>
+                            <td>{{ certificado.nombre_archivo }}</td>
+                            <td class="fecha">{{ certificado.vigente_desde }}</td>
+                            <td class="fecha">{{ certificado.vigente_hasta }}</td>
+                            <td>{{ ui.estado(certificado.activo, 'Activo', 'Inactivo') }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="6">Este emisor no tiene certificado cargado.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="software" role="tabpanel" hidden>
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Identificador</th>
+                        <th>Test set id</th>
+                        <th>Set de pruebas</th>
+                        <th>Estado</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for programa in software %}
+                        <tr>
+                            <td class="id">{{ programa.id }}</td>
+                            <td class="id">{{ programa.identificador }}</td>
+                            <td class="id">{{ programa.test_set_id }}</td>
+                            <td>{{ ui.estado(programa.set_pruebas_aceptado, 'Aceptado', 'Sin aceptar') }}</td>
+                            <td>{{ ui.estado(programa.activo, 'Activo', 'Inactivo') }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="5">Este emisor no tiene software registrado.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="resoluciones" role="tabpanel" hidden>
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th class="num">Tipo</th>
+                        <th class="num">Número</th>
+                        <th>Fecha</th>
+                        <th>Prefijo</th>
+                        <th class="num">Rango desde</th>
+                        <th class="num">Rango hasta</th>
+                        <th>Vigente desde</th>
+                        <th>Vigente hasta</th>
+                        <th class="num">Consec. actual</th>
+                        <th>Estado</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for resolucion in resoluciones %}
+                        <tr>
+                            <td class="id">{{ resolucion.id }}</td>
+                            <td class="num">{{ resolucion.tipo_factura }}</td>
+                            <td class="num">{{ resolucion.numero_resolucion }}</td>
+                            <td class="fecha">{{ resolucion.fecha_resolucion }}</td>
+                            <td>{{ resolucion.prefijo }}</td>
+                            <td class="num">{{ resolucion.rango_desde }}</td>
+                            <td class="num">{{ resolucion.rango_hasta }}</td>
+                            <td class="fecha">{{ resolucion.vigente_desde }}</td>
+                            <td class="fecha">{{ resolucion.vigente_hasta }}</td>
+                            <td class="num">{{ resolucion.consecutivo_actual }}</td>
+                            <td>{{ ui.estado(resolucion.activa, 'Activa', 'Inactiva') }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="11">Este emisor no tiene resoluciones registradas.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="documentos" role="tabpanel" hidden>
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Tipo</th>
+                        <th>Emisión</th>
+                        <th>Adquiriente</th>
+                        <th class="num">Total</th>
+                        <th>Estado</th>
+                        <th class="num">Errores</th>
+                        <th>Validación</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for documento in documentos %}
+                        <tr>
+                            <td class="id">{{ documento.numero }}</td>
+                            <td>{{ documento.documento_tipo_nombre }}</td>
+                            <td class="fecha">{{ documento.fecha_emision }}</td>
+                            <td>{{ documento.adquiriente.razon_social }}</td>
+                            <td class="num">{{ documento.total_a_pagar|number_format(0, ',', '.') }}</td>
+                            <td>{{ documento.estado_nombre|capitalize }}</td>
+                            <td class="num">
+                                {%- set errores = documento.errores|default([]) -%}
+                                {% if errores %}
+                                    <a href="javascript:abrirVentana('{{ path('nobelio_documento_errores', { 'id': documento.id }) }}', 'Errores', 500, 900)">{{ errores|length }}</a>
+                                {% else %}
+                                    0
+                                {% endif %}
+                            </td>
+                            {# El false deja la hora en la zona que trae el API
+                               (-05:00); sin el, Twig la pasaria a la zona por
+                               defecto de PHP, que aqui es UTC. #}
+                            <td class="fecha">
+                                {{- documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) -}}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="8">Este emisor no tiene documentos.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

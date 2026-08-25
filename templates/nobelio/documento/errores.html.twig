@@ -1,0 +1,36 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Errores · Talio{% endblock %}
+{% block ruta %}Errores del documento <b>{{ documento.numero|default('') }}</b>{% endblock %}
+{% block acciones %}
+    <span class="stamp">{{ errores|length }} error{{ errores|length == 1 ? '' : 'es' }}</span>
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Errores') }}
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Regla</th>
+                    <th>Tipo</th>
+                    <th>Mensaje</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for error in errores %}
+                    <tr>
+                        <td class="id">{{ error.id }}</td>
+                        <td class="id">{{ error.regla }}</td>
+                        <td>{{ error.tipo_display|default(error.tipo) }}</td>
+                        <td class="wrap">{{ error.mensaje }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="4">Este documento no tiene errores.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

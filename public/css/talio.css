@@ -265,11 +265,14 @@ pre {
 }
 
 /* -------------------------------------------------------------- blocks -- */
+/* La linea separa bloques, no cierra el ultimo: va como border-top del
+   siguiente. Con border-bottom + :last-child sobraba una linea al final,
+   porque form_end() deja campos ocultos despues del bloque y este ya no
+   es el ultimo hijo. */
 .block {
     padding: 20px 22px;
-    border-bottom: 1px solid var(--line);
 }
-.block:last-child { border-bottom: 0; }
+.block + .block { border-top: 1px solid var(--line); }
 .block--tight { padding-top: 14px; padding-bottom: 14px; }
 
 .block-head {
@@ -453,6 +456,70 @@ table.kv td {
     color: var(--ink);
 }
 table.kv tr:last-child th, table.kv tr:last-child td { border-bottom: 0; }
+
+/* ---------------------------------------------------------------- ficha -- */
+/* Rejilla de detalle: cuatro columnas en pares titulo/dato. Las lineas
+   interiores las ponen las celdas (derecha y arriba) y el marco lo pone el
+   contenedor; con el borde arriba en vez de abajo, una ultima fila
+   incompleta no deja media linea colgando ni dobla el marco. */
+.ficha {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+    border: 1px solid var(--line-2);
+    margin: 0;
+    font-size: .85rem;
+}
+.ficha > dt,
+.ficha > dd {
+    margin: 0;
+    padding: 7px 14px;
+    border-top: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.ficha > :nth-child(-n+4) { border-top: 0; }
+.ficha > :nth-child(4n) { border-right: 0; }
+.ficha > dt { color: var(--muted); white-space: nowrap; }
+.ficha > dd { color: var(--ink); }
+
+/* --------------------------------------------------------------- tabs -- */
+/* Pestanas: la cabecera son botones y cada panel un hijo directo de .tabs.
+   El estado vive en la clase .is-active y en el atributo hidden; el JS solo
+   los intercambia (ver pestanas en general.js). */
+.tabs-head {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid var(--line-2);
+    margin-bottom: 16px;
+}
+/* Las pestanas ya traen su propia linea: la separacion con el bloque de
+   arriba sobra y quedarian dos lineas casi seguidas. */
+.block + .block.tabs { border-top: 0; }
+.tabs-head .tab {
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    color: var(--muted);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .7rem;
+    font-weight: 500;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+    /* Baja un pixel para pisar la linea de la cabecera: es lo que deja la
+       pestana activa abierta por abajo, unida a su panel. */
+    margin-bottom: -1px;
+}
+.tabs-head .tab:hover { background: var(--surface-2); color: var(--ink); border-color: transparent; }
+.tabs-head .tab.is-active,
+.tabs-head .tab.is-active:hover {
+    background: var(--surface);
+    border-color: var(--line-2);
+    color: var(--ink);
+}
+.tabs-head .tab .stamp { margin-left: 7px; }
+.tab-panel[hidden] { display: none; }
 
 /* ------------------------------------------------------------ formulario */
 .filters {
@@ -661,5 +728,11 @@ button.link:hover { background: transparent; color: var(--accent-2); }
     .app { grid-template-columns: minmax(0, 1fr); }
     .side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
     .block, .topbar, .aviso { padding-left: 16px; padding-right: 16px; }
+    /* Un solo par por fila: el titulo y el dato se quedan juntos. */
+    .ficha { grid-template-columns: auto minmax(0, 1fr); }
+    .ficha > :nth-child(-n+4) { border-top: 1px solid var(--line); }
+    .ficha > :nth-child(-n+2) { border-top: 0; }
+    .ficha > :nth-child(4n) { border-right: 1px solid var(--line); }
+    .ficha > :nth-child(2n) { border-right: 0; }
     .fig { border-right: 0; padding-right: 0; }
 }

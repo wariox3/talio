@@ -1,0 +1,103 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Documentos · Talio{% endblock %}
+{% block ruta %}Nobelio <span>/</span> <b>Documentos</b>{% endblock %}
+{% block acciones %}
+    <span class="stamp">{{ total }} documento{{ total == 1 ? '' : 's' }}</span>
+{% endblock %}
+{% block content %}
+    {{ form_start(form) }}
+    <input type="hidden" name="pagina" value="{{ pagina }}">
+    <div class="block">
+        <div class="filters">
+            {{ ui.campo('Estado', form.estado) }}
+            <div class="f-right">
+                {{ form_widget(form.btnFiltrar) }}
+                {# Siempre renderizados: si se dejan sin renderizar, form_end()
+                   llama a form_rest() y los vuelca sueltos al final del form. #}
+                {{ form_widget(form.btnAnterior, { 'attr': hayAnterior
+                    ? {'class': 'ghost'}
+                    : {'class': 'ghost', 'disabled': 'disabled'} }) }}
+                {{ form_widget(form.btnSiguiente, { 'attr': haySiguiente
+                    ? {'class': 'ghost'}
+                    : {'class': 'ghost', 'disabled': 'disabled'} }) }}
+                <span class="f-count">Página {{ pagina }}</span>
+            </div>
+        </div>
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Número</th>
+                    <th>Tipo</th>
+                    <th class="num">Emisor</th>
+                    <th>Emisión</th>
+                    <th>Adquiriente</th>
+                    <th class="num">Total</th>
+                    <th>Estado</th>
+                    <th class="num">Errores</th>
+                    <th>Validación</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for documento in documentos %}
+                    <tr>
+                        <td class="id">{{ documento.id }}</td>
+                        <td class="id">{{ documento.numero }}</td>
+                        <td>{{ documento.documento_tipo_nombre }}</td>
+                        <td class="num">
+                            <a href="{{ path('nobelio_emisor_detalle', { 'id': documento.emisor }) }}">{{ documento.emisor }}</a>
+                        </td>
+                        <td class="fecha">{{ documento.fecha_emision }}</td>
+                        <td>{{ documento.adquiriente.razon_social }}</td>
+                        <td class="num">{{ documento.total_a_pagar|number_format(0, ',', '.') }}</td>
+                        <td>{{ documento.estado_nombre|capitalize }}</td>
+                        <td class="num">
+                            {%- set errores = documento.errores|default([]) -%}
+                            {% if errores %}
+                                <a href="javascript:abrirVentana('{{ path('nobelio_documento_errores', { 'id': documento.id }) }}', 'Errores', 500, 900)">{{ errores|length }}</a>
+                            {% else %}
+                                0
+                            {% endif %}
+                        </td>
+                        {# El false deja la hora en la zona que trae el API
+                           (-05:00); sin el, Twig la pasaria a la zona por
+                           defecto de PHP, que aqui es UTC. #}
+                        <td class="fecha">
+                            {{- documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) -}}
+                        </td>
+                        <td>
+                            {# Nobelio no deja borrar lo que la DIAN ya validó,
+                               asi que en un aceptado no se ofrece el boton.
+                               Vive dentro del form de filtros y apunta con
+                               form= al de borrado, que va fuera: los
+                               formularios no se pueden anidar. #}
+                            {% if documento.estado_nombre != 'aceptado' %}
+                                <button type="submit" class="link" form="eliminar-documento"
+                                        name="id" value="{{ documento.id }}"
+                                        onclick="return confirm('¿Eliminar el documento {{ documento.numero }}?')">Eliminar</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="11">
+                            {% if total == 0 %}
+                                No hay documentos que mostrar.
+                            {% else %}
+                                Esta página no tiene resultados.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{ form_end(form) }}
+    <form id="eliminar-documento" method="post" action="{{ path('nobelio_documento_eliminar') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('eliminar-documento') }}">
+    </form>
+{% endblock %}

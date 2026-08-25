@@ -70,4 +70,56 @@ class EmisorController extends AbstractController
             'haySiguiente' => $haySiguiente,
         ]);
     }
+
+    #[Route('/nobelio/emisor/detalle/{id}', name: 'nobelio_emisor_detalle', requirements: ['id' => '\\d+'])]
+    public function detalle(Nobelio $nobelio, int $id): Response
+    {
+        $respuesta = $nobelio->consumoGet("api/emisores/emisor/{$id}/");
+        if ($respuesta['error']) {
+            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            return $this->redirectToRoute('nobelio_emisor_lista');
+        }
+
+        $emisor = $respuesta['datos'];
+
+        $certificados = [];
+        $listaCertificados = $nobelio->consumoGet('api/emisores/certificado/', ['emisor' => $id]);
+        if ($listaCertificados['error']) {
+            Mensajes::error("Nobelio: {$listaCertificados['mensaje']}");
+        } else {
+            $certificados = $listaCertificados['datos']['results'] ?? [];
+        }
+
+        $software = [];
+        $listaSoftware = $nobelio->consumoGet('api/emisores/software/', ['emisor' => $id]);
+        if ($listaSoftware['error']) {
+            Mensajes::error("Nobelio: {$listaSoftware['mensaje']}");
+        } else {
+            $software = $listaSoftware['datos']['results'] ?? [];
+        }
+
+        $resoluciones = [];
+        $listaResoluciones = $nobelio->consumoGet('api/emisores/resolucion/', ['emisor' => $id]);
+        if ($listaResoluciones['error']) {
+            Mensajes::error("Nobelio: {$listaResoluciones['mensaje']}");
+        } else {
+            $resoluciones = $listaResoluciones['datos']['results'] ?? [];
+        }
+
+        $documentos = [];
+        $listaDocumentos = $nobelio->consumoGet('api/documentos/documento/', ['emisor' => $id]);
+        if ($listaDocumentos['error']) {
+            Mensajes::error("Nobelio: {$listaDocumentos['mensaje']}");
+        } else {
+            $documentos = $listaDocumentos['datos']['results'] ?? [];
+        }
+
+        return $this->render('nobelio/emisor/detalle.html.twig', [
+            'emisor' => $emisor,
+            'certificados' => $certificados,
+            'software' => $software,
+            'resoluciones' => $resoluciones,
+            'documentos' => $documentos,
+        ]);
+    }
 }
