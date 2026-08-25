@@ -1,0 +1,38 @@
+{#
+    Componentes compartidos de la consola.
+    Uso:  {% import '_macros.html.twig' as ui %}
+#}
+
+{# Cabecera de bloque: etiqueta en versalitas + sello opcional a la derecha. #}
+{% macro cabecera(titulo, sello) %}
+    <div class="block-head">
+        <h2>{{ titulo }}</h2>
+        {% if sello %}<span class="stamp">{{ sello }}</span>{% endif %}
+    </div>
+{% endmacro %}
+
+{# Campo de filtro: etiqueta + widget de Symfony. #}
+{% macro campo(etiqueta, widget) %}
+    <div class="field">
+        <label for="{{ widget.vars.id }}">{{ etiqueta }}</label>
+        {{ form_widget(widget) }}
+    </div>
+{% endmacro %}
+
+{# Etiqueta de estado: punto de color + palabra. Nunca color solo. #}
+{% macro estado(activo, siTexto, noTexto) %}
+    {% if activo %}
+        <span class="tag ok"><span class="dot"></span>{{ siTexto|default('Sí') }}</span>
+    {% else %}
+        <span class="tag idle"><span class="dot"></span>{{ noTexto|default('No') }}</span>
+    {% endif %}
+{% endmacro %}
+
+{# Igual que estado(), pero el caso negativo es un problema, no un simple "no". #}
+{% macro estadoCritico(correcto, okTexto, malTexto) %}
+    {% if correcto %}
+        <span class="tag ok"><span class="dot"></span>{{ okTexto|default('Sí') }}</span>
+    {% else %}
+        <span class="tag crit"><span class="dot"></span>{{ malTexto|default('No') }}</span>
+    {% endif %}
+{% endmacro %}
