@@ -620,7 +620,9 @@ button.link:hover { background: transparent; color: var(--accent-2); }
 /* Celda de acciones de una tabla: los botones se leen en linea y no parten
    la fila aunque haya dos o tres. */
 table.data td.acciones { white-space: nowrap; }
-table.data td.acciones button + button { margin-left: 12px; }
+/* Vale igual para los enlaces: no todo lo que va en la celda es un boton del
+   form —una descarga es un GET— y la separacion tiene que ser la misma. */
+table.data td.acciones > * + * { margin-left: 12px; }
 
 /* formulario apilado (form_widget(form) completo) */
 .form-stack { display: flex; flex-direction: column; gap: 14px; max-width: 620px; }

@@ -8,6 +8,7 @@ use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Attribute\Route;
 
 class DocumentoController extends AbstractController
@@ -112,6 +113,39 @@ class DocumentoController extends AbstractController
             'detalles' => $documento['detalles'] ?? [],
             'errores' => $documento['errores'] ?? [],
         ]);
+    }
+
+    /**
+     * Descarga el XML firmado del documento.
+     *
+     * Va por consumoArchivo() y no por consumoGet(): el endpoint devuelve el
+     * archivo, no JSON. El contenido se recibe entero en memoria —un XML UBL
+     * son unas decenas de KB— y se reemite como descarga.
+     */
+    #[Route('/nobelio/documento/xml/{id}', name: 'nobelio_documento_xml',
+        requirements: ['id' => '[0-9a-fA-F-]{36}'])]
+    public function xml(Nobelio $nobelio, string $id): Response
+    {
+        // Solo hay XML desde que el documento se firma; antes Nobelio responde
+        // 400 "El documento aún no está firmado" y ese es el mensaje que sale.
+        $respuesta = $nobelio->consumoArchivo("api/documentos/documento/{$id}/xml/");
+        if ($respuesta['error']) {
+            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+
+            return $this->redirectToRoute('nobelio_documento_lista');
+        }
+
+        $descarga = new Response($respuesta['contenido'], Response::HTTP_OK, [
+            'Content-Type' => $respuesta['tipo'],
+        ]);
+        $descarga->headers->set('Content-Disposition', $descarga->headers->makeDisposition(
+            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+            // El nombre lo pone Nobelio con el numero del documento; el id solo
+            // es el respaldo por si la cabecera no viniera.
+            $respuesta['nombre'] !== '' ? $respuesta['nombre'] : "documento-{$id}.xml",
+        ));
+
+        return $descarga;
     }
 
     /**

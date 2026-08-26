@@ -97,6 +97,13 @@
                                         name="id" value="{{ documento.id }}"
                                         {% if accion.pregunta is defined %}onclick="return confirm('¿{{ accion.pregunta }} el documento {{ documento.numero }}?')"{% endif %}>{{ accion.titulo }}</button>
                             {% endfor %}
+                            {# El XML se guarda al firmar, asi que un borrador o
+                               un generado todavia no tienen que descargar. Es
+                               una descarga, no una accion: va como enlace GET
+                               y fuera del form. #}
+                            {% if documento.estado_nombre not in ['borrador', 'generado'] %}
+                                <a href="{{ path('nobelio_documento_xml', { 'id': documento.id }) }}">XML</a>
+                            {% endif %}
                             {# Nobelio no deja borrar lo que la DIAN ya validó,
                                asi que en un aceptado no se ofrece el boton. #}
                             {% if documento.estado_nombre != 'aceptado' %}

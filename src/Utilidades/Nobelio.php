@@ -29,6 +29,20 @@ class Nobelio
         return $this->peticion('DELETE', $url, []);
     }
 
+    /**
+     * GET de un endpoint que devuelve archivo en vez de JSON (xml/, pdf/).
+     *
+     * consumoGet() no sirve para estos: hace json_decode sobre los bytes, que
+     * da null, y como el HTTP fue 200 devuelve 'datos' vacio sin marcar error.
+     * En exito esta devuelve el contenido crudo en 'contenido', con el tipo y
+     * el nombre que anuncien las cabeceras. El error sigue siendo JSON: los
+     * endpoints binarios fallan con el mismo cuerpo que el resto del API.
+     */
+    public function consumoArchivo(string $url, array $parametros = []): array
+    {
+        return $this->peticion('GET', $url, ['query' => $parametros], true);
+    }
+
     public function autenticar(): array
     {
         $usuario = $_ENV['NOBELIO_USUARIO'] ?? '';
@@ -68,16 +82,16 @@ class Nobelio
         }
     }
 
-    private function peticion(string $metodo, string $url, array $opciones): array
+    private function peticion(string $metodo, string $url, array $opciones, bool $archivo = false): array
     {
-        $respuesta = $this->enviar($metodo, $url, $opciones);
+        $respuesta = $this->enviar($metodo, $url, $opciones, $archivo);
 
         if ($respuesta['error'] && ($respuesta['estado'] ?? 0) === 401) {
             $autenticacion = $this->autenticar();
             if ($autenticacion['error']) {
                 return $autenticacion;
             }
-            $respuesta = $this->enviar($metodo, $url, $opciones);
+            $respuesta = $this->enviar($metodo, $url, $opciones, $archivo);
         }
 
         unset($respuesta['estado']);
@@ -85,7 +99,7 @@ class Nobelio
         return $respuesta;
     }
 
-    private function enviar(string $metodo, string $url, array $opciones): array
+    private function enviar(string $metodo, string $url, array $opciones, bool $archivo = false): array
     {
         try {
             $client = HttpClient::create();
@@ -95,7 +109,18 @@ class Nobelio
             $status = $response->getStatusCode();
 
             if ($status >= 200 && $status < 300) {
-                return ['error' => false, 'datos' => $this->decodificar($response)];
+                if (!$archivo) {
+                    return ['error' => false, 'datos' => $this->decodificar($response)];
+                }
+
+                $cabeceras = $response->getHeaders(false);
+
+                return [
+                    'error' => false,
+                    'contenido' => $response->getContent(false),
+                    'tipo' => $cabeceras['content-type'][0] ?? 'application/octet-stream',
+                    'nombre' => $this->nombreDeArchivo($cabeceras['content-disposition'][0] ?? ''),
+                ];
             }
 
             return [
@@ -123,6 +148,24 @@ class Nobelio
         }
 
         return ($_ENV['BASE_NOBELIO'] ?? '') . $ruta . ($query !== null ? '?' . $query : '');
+    }
+
+    /**
+     * Nombre que anuncia el Content-Disposition, o cadena vacia si no trae.
+     *
+     * Nobelio manda `attachment; filename="FE1.xml"` con el numero del
+     * documento, que es mejor nombre que cualquiera que se arme aqui a partir
+     * del id.
+     */
+    private function nombreDeArchivo(string $cabecera): string
+    {
+        if (!preg_match('/filename\*?=(?:UTF-8\'\')?"?([^";]+)"?/i', $cabecera, $coincidencias)) {
+            return '';
+        }
+
+        // basename() corta cualquier ruta: el nombre llega de fuera y termina
+        // en una cabecera de descarga.
+        return basename(trim(urldecode($coincidencias[1])));
     }
 
     private function decodificar($response): array

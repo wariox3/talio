@@ -111,19 +111,28 @@ Cada recurso registrado en un router de DRF expone el juego REST completo:
 | `api/documentos/documento/{id}/consultar/` | `GET` · consulta sin efectos sobre el documento. |
 | `api/documentos/documento/{id}/consultar-zip/` | `GET` · **devuelve JSON, no un ZIP**. Consulta el estado del *envío* contra la DIAN (`GetStatusZip` por `track_id`). Usar `consumoGet()`. |
 | `api/documentos/documento/{id}/actualizar-estado/` | `POST` · aplica el resultado al documento. |
-| `api/documentos/documento/{id}/xml/` · `pdf/` | **Únicas descargas binarias** (`FileResponse` / `HttpResponse`). ⚠️ `Nobelio` **no las cubre**: son JSON para la clase, así que `consumoGet()` devuelve `datos` vacío sin marcar error. Ver nota abajo. |
+| `api/documentos/documento/{id}/xml/` · `pdf/` | **Únicas descargas binarias** (`FileResponse` / `HttpResponse`). ⚠️ Usar `consumoArchivo()`, **nunca `consumoGet()`**. Ver nota abajo. |
 
-**Alcance de `Nobelio`.** La clase expone solo `consumoGet()`, `consumoPost()` y
-`autenticar()`, que es lo que necesitan las pantallas de hoy. Los verbos
-`PUT`/`PATCH`/`DELETE` y la descarga binaria se añaden cuando haga falta —
-`peticion()` ya acepta cualquier método, así que un verbo nuevo es una línea.
+**Alcance de `Nobelio`.** La clase expone `consumoGet()`, `consumoPost()`,
+`consumoDelete()`, `consumoArchivo()` y `autenticar()`. `PUT`/`PATCH` se añaden
+cuando hagan falta: `peticion()` ya acepta cualquier método, así que un verbo
+nuevo es una línea.
 
-Lo que **no** es una línea es la descarga: `xml/` y `pdf/` devuelven archivo, y
-todo el camino interno de la clase pasa por `decodificar()`, que hace
-`json_decode`. Sobre los bytes de un PDF eso da `null` → `datos` vacío → y
-como el HTTP fue 200, `error` queda en `false`. Un éxito silencioso. Para
-bajarlos hay que añadir una vía que retorne `$response->getContent(false)` sin
-decodificar, no reutilizar `consumoGet()`.
+**Las descargas van por `consumoArchivo()`.** `xml/` y `pdf/` devuelven archivo,
+y el camino normal de la clase pasa por `decodificar()`, que hace `json_decode`.
+Sobre los bytes de un PDF eso da `null` → `datos` vacío → y como el HTTP fue
+200, `error` queda en `false`: un éxito silencioso, sin archivo y sin aviso. Por
+eso `consumoArchivo()` no decodifica y devuelve otras claves:
+
+| Clave | Contenido |
+|---|---|
+| `contenido` | Los bytes crudos (**no** `datos`). |
+| `tipo` | El `Content-Type` que anuncia Nobelio. |
+| `nombre` | El nombre del `Content-Disposition` (`FE1.xml`), o `''` si no viene. |
+
+El error sí sigue siendo JSON —los endpoints binarios fallan con el mismo cuerpo
+que el resto del API—, así que `error`/`mensaje` funcionan igual que siempre.
+Ejemplo de uso en `DocumentoController::xml()`.
 
 Las `BASE_*` **deben terminar en `/`**, porque el código concatena sin
 separador: `$_ENV['BASE_X'] . $url`.
