@@ -21,6 +21,22 @@ framework:
         # viva.
         cookie_lifetime: 28800
         gc_maxlifetime: 28800
+        # Directorio propio en vez del compartido del sistema
+        # (/var/lib/php/sessions), para no depender del gc_maxlifetime de otras
+        # apps: el cron de Debian aplica a todo el directorio el mayor valor que
+        # encuentre entre los php.ini de las SAPIs. Fijar save_path hace que
+        # Symfony use session.handler.native_file, que crea el directorio si no
+        # existe. No va en cache_dir —el default de Symfony— porque un
+        # cache:clear echaria a todo el mundo.
+        save_path: '%kernel.project_dir%/var/sesiones'
+        # Con un save_path propio, /usr/lib/php/sessionclean ya no limpia: ese
+        # script solo mira el save_path de los php.ini, no el que la app fija en
+        # tiempo de ejecucion. Y el recolector de PHP viene desactivado en Debian
+        # (gc_probability = 0) justo porque delega en ese cron, asi que hay que
+        # reactivarlo o los archivos se acumularian sin caducar nunca: 1 de cada
+        # 100 peticiones hace la limpieza.
+        gc_probability: 1
+        gc_divisor: 100
 
     #esi: true
     #fragments: true

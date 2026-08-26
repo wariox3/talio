@@ -128,6 +128,31 @@ decodificar, no reutilizar `consumoGet()`.
 Las `BASE_*` **deben terminar en `/`**, porque el código concatena sin
 separador: `$_ENV['BASE_X'] . $url`.
 
+## Sesión
+
+Configurada en `config/packages/framework.yaml`. Dura **8 horas** y guarda sus
+archivos en `var/sesiones/`, no en el directorio compartido del sistema
+(`/var/lib/php/sessions`).
+
+| Opción | Valor | Por qué |
+|---|---|---|
+| `cookie_lifetime` | `28800` | Lo que el navegador guarda la cookie. Es vida **absoluta**: se fija al entrar y no se renueva en cada petición. |
+| `gc_maxlifetime` | `28800` | Lo que el servidor conserva los datos. Es **inactividad**. Sin esto mandaría el `php.ini` con los 1440 s de PHP (24 min). |
+| `save_path` | `var/sesiones` | Directorio propio: en el compartido, el `gc_maxlifetime` efectivo es el mayor de todas las apps del servidor. |
+| `gc_probability` / `gc_divisor` | `1` / `100` | El recolector de PHP, reactivado. Ver abajo. |
+
+**Sobre la limpieza.** En Debian/Ubuntu el recolector de PHP viene apagado
+(`session.gc_probability = 0`) porque quien borra las sesiones viejas es un
+cron: `/etc/cron.d/php` → `/usr/lib/php/sessionclean`. Ese script lee el
+`save_path` de los `php.ini` de cada SAPI, así que **no conoce** el que Talio
+fija en tiempo de ejecución y nunca tocaría `var/sesiones/`. Por eso, junto con
+el `save_path` propio hay que reactivar el recolector de PHP: van juntos, y
+quitar uno sin el otro deja los archivos acumulándose sin caducar.
+
+El token de Nobelio vive dentro de esta sesión (`Nobelio::CLAVE_TOKEN`) y dura
+12 h, pero eso es transparente: `Nobelio::peticion()` reautentica solo ante un
+401. Lo que devuelve al login es la caducidad de la sesión, no la del token.
+
 ## Pendientes conocidos
 
 - **`Carbono::consumoGet()`** (`src/Utilidades/Carbono.php:58`) usa
