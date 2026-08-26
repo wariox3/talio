@@ -51,7 +51,11 @@ class DocumentoController extends AbstractController
             }
         }
 
-        $parametros = ['page' => $pagina];
+        // Lo mas reciente primero. La hora desempata dentro del mismo dia, que
+        // es lo normal en un lote de facturacion. Coincide con el orden por
+        // defecto del modelo en Nobelio, pero se pide explicito para no quedar
+        // a merced de que alla lo cambien.
+        $parametros = ['page' => $pagina, 'ordering' => '-fecha_emision,-hora_emision'];
         if ($estado !== '') {
             $parametros['estado'] = $estado;
         }
