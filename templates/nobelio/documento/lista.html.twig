@@ -97,12 +97,18 @@
                                         name="id" value="{{ documento.id }}"
                                         {% if accion.pregunta is defined %}onclick="return confirm('¿{{ accion.pregunta }} el documento {{ documento.numero }}?')"{% endif %}>{{ accion.titulo }}</button>
                             {% endfor %}
-                            {# El XML se guarda al firmar, asi que un borrador o
-                               un generado todavia no tienen que descargar. Es
-                               una descarga, no una accion: va como enlace GET
-                               y fuera del form. #}
+                            {# El XML se guarda al firmar y el attached lo
+                               envuelve, asi que un borrador o un generado
+                               todavia no tienen que descargar. Son descargas,
+                               no acciones: van como enlaces GET fuera del form.
+                               El attached es lo que se le entrega al
+                               adquiriente: el XML firmado y el acuse de la DIAN
+                               en un solo documento. Nobelio lo arma aunque la
+                               DIAN no haya respondido —sirve para revisarlo—,
+                               pero entonces no acredita la validacion. #}
                             {% if documento.estado_nombre not in ['borrador', 'generado'] %}
-                                <a href="{{ path('nobelio_documento_xml', { 'id': documento.id }) }}">XML</a>
+                                <a href="{{ path('nobelio_documento_descargar', { 'archivo': 'xml', 'id': documento.id }) }}">XML</a>
+                                <a href="{{ path('nobelio_documento_descargar', { 'archivo': 'attached', 'id': documento.id }) }}">Attached</a>
                             {% endif %}
                             {# Nobelio no deja borrar lo que la DIAN ya validó,
                                asi que en un aceptado no se ofrece el boton. #}

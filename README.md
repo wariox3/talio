@@ -105,13 +105,14 @@ Cada recurso registrado en un router de DRF expone el juego REST completo:
 | `api/emisores/software/` · `certificado/` · `resolucion/` | Recursos del emisor. |
 | `api/emisores/certificado/cargar/` | `POST` multipart · sube el `.p12`. |
 | `api/emisores/resolucion/consulta-dian/` · `importar-dian/` | Consulta e importa resoluciones desde la DIAN. |
-| `api/documentos/documento/` | Documentos electrónicos. |
+| `api/documentos/documento/` | Documentos electrónicos. Filtra por `emisor`, `estado` y `documento_tipo`, y ordena con `?ordering=` (campos permitidos en `ordering_fields` del ViewSet; el `-` invierte). |
 | `api/documentos/documento/{id}/emitir/` | `POST` · XML UBL + CUFE + firma. |
 | `api/documentos/documento/{id}/enviar/` | `POST` · envía al WS de la DIAN. |
 | `api/documentos/documento/{id}/consultar/` | `GET` · consulta sin efectos sobre el documento. |
 | `api/documentos/documento/{id}/consultar-zip/` | `GET` · **devuelve JSON, no un ZIP**. Consulta el estado del *envío* contra la DIAN (`GetStatusZip` por `track_id`). Usar `consumoGet()`. |
 | `api/documentos/documento/{id}/actualizar-estado/` | `POST` · aplica el resultado al documento. |
-| `api/documentos/documento/{id}/xml/` · `pdf/` | **Únicas descargas binarias** (`FileResponse` / `HttpResponse`). ⚠️ Usar `consumoArchivo()`, **nunca `consumoGet()`**. Ver nota abajo. |
+| `api/documentos/documento/{id}/xml/` · `pdf/` · `attached/` | **Descargas** (`FileResponse` / `HttpResponse`). ⚠️ Usar `consumoArchivo()`, **nunca `consumoGet()`**. Ver nota abajo. |
+| `api/documentos/documento/{id}/notificar/` | `POST` multipart · arma el paquete para el adquiriente. Devuelve JSON, salvo con `?descargar=1`. El envío por correo **aún no existe** en Nobelio (`enviado: false`). |
 
 **Alcance de `Nobelio`.** La clase expone `consumoGet()`, `consumoPost()`,
 `consumoDelete()`, `consumoArchivo()` y `autenticar()`. `PUT`/`PATCH` se añaden
@@ -132,7 +133,7 @@ eso `consumoArchivo()` no decodifica y devuelve otras claves:
 
 El error sí sigue siendo JSON —los endpoints binarios fallan con el mismo cuerpo
 que el resto del API—, así que `error`/`mensaje` funcionan igual que siempre.
-Ejemplo de uso en `DocumentoController::xml()`.
+Ejemplo de uso en `DocumentoController::descargar()`.
 
 Las `BASE_*` **deben terminar en `/`**, porque el código concatena sin
 separador: `$_ENV['BASE_X'] . $url`.

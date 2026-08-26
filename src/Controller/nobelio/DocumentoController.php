@@ -116,19 +116,22 @@ class DocumentoController extends AbstractController
     }
 
     /**
-     * Descarga el XML firmado del documento.
+     * Descarga un archivo del documento: el XML firmado o el AttachedDocument.
      *
-     * Va por consumoArchivo() y no por consumoGet(): el endpoint devuelve el
-     * archivo, no JSON. El contenido se recibe entero en memoria —un XML UBL
-     * son unas decenas de KB— y se reemite como descarga.
+     * Los dos endpoints devuelven archivo y no JSON, asi que van por
+     * consumoArchivo(); el contenido se recibe entero en memoria —un XML UBL
+     * son unas decenas de KB— y se reemite como descarga. Cual se pide va en la
+     * ruta y acotado por el requirement, igual que en accion(): se concatena a
+     * la url del API y uno libre dejaria construir cualquier ruta.
      */
-    #[Route('/nobelio/documento/xml/{id}', name: 'nobelio_documento_xml',
-        requirements: ['id' => '[0-9a-fA-F-]{36}'])]
-    public function xml(Nobelio $nobelio, string $id): Response
+    #[Route('/nobelio/documento/descargar/{archivo}/{id}', name: 'nobelio_documento_descargar',
+        requirements: ['archivo' => 'xml|attached', 'id' => '[0-9a-fA-F-]{36}'])]
+    public function descargar(Nobelio $nobelio, string $archivo, string $id): Response
     {
-        // Solo hay XML desde que el documento se firma; antes Nobelio responde
-        // 400 "El documento aún no está firmado" y ese es el mensaje que sale.
-        $respuesta = $nobelio->consumoArchivo("api/documentos/documento/{$id}/xml/");
+        // Ninguno de los dos existe antes de firmar —el attached envuelve el
+        // XML firmado—; Nobelio responde 400 explicando por que y ese es el
+        // mensaje que sale.
+        $respuesta = $nobelio->consumoArchivo("api/documentos/documento/{$id}/{$archivo}/");
         if ($respuesta['error']) {
             Mensajes::error("Nobelio: {$respuesta['mensaje']}");
 
@@ -140,9 +143,9 @@ class DocumentoController extends AbstractController
         ]);
         $descarga->headers->set('Content-Disposition', $descarga->headers->makeDisposition(
             ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            // El nombre lo pone Nobelio con el numero del documento; el id solo
-            // es el respaldo por si la cabecera no viniera.
-            $respuesta['nombre'] !== '' ? $respuesta['nombre'] : "documento-{$id}.xml",
+            // El nombre lo pone Nobelio con el numero del documento ("FE1.xml",
+            // "adFE1.xml"); el id solo es el respaldo por si no viniera.
+            $respuesta['nombre'] !== '' ? $respuesta['nombre'] : "{$archivo}-{$id}.xml",
         ));
 
         return $descarga;
