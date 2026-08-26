@@ -53,6 +53,7 @@
                     <th>Envío</th>
                     <th class="num">Errores</th>
                     <th>Validación</th>
+                    <th>Notificado</th>
                     <th>Acciones</th>
                 </tr>
                 </thead>
@@ -86,6 +87,10 @@
                         <td class="fecha">
                             {{- documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) -}}
                         </td>
+                        {# Mientras Nobelio no tenga el envio por correo, esto
+                           marca que el paquete se armo y se entrego a quien lo
+                           pidio, no que le haya llegado al adquiriente. #}
+                        <td>{{ ui.estado(documento.notificado, 'Sí', 'No') }}</td>
                         {# Los botones viven dentro del form de filtros, asi que
                            apuntan con form= al de acciones, que va fuera: los
                            formularios no se pueden anidar. Cada uno lleva el id
@@ -110,6 +115,19 @@
                                 <a href="{{ path('nobelio_documento_descargar', { 'archivo': 'xml', 'id': documento.id }) }}">XML</a>
                                 <a href="{{ path('nobelio_documento_descargar', { 'archivo': 'attached', 'id': documento.id }) }}">Attached</a>
                             {% endif %}
+                            {# Solo se notifica lo aceptado: entregarle al
+                               adquiriente un documento sin validar le haria
+                               creer que tiene una factura valida. Va aparte del
+                               mapa de acciones porque no comparte ruta con
+                               ellas —su respuesta no es un estado— y porque no
+                               es exclusiva: un aceptado puede ademas volver a
+                               notificarse. #}
+                            {% if documento.estado_nombre == 'aceptado' %}
+                                <button type="submit" class="link" form="acciones-documento"
+                                        formaction="{{ path('nobelio_documento_notificar') }}"
+                                        name="id" value="{{ documento.id }}"
+                                        onclick="return confirm('¿{{ documento.notificado ? 'Volver a notificar' : 'Notificar' }} el documento {{ documento.numero }} al adquiriente?')">{{ documento.notificado ? 'Renotificar' : 'Notificar' }}</button>
+                            {% endif %}
                             {# Nobelio no deja borrar lo que la DIAN ya validó,
                                asi que en un aceptado no se ofrece el boton. #}
                             {% if documento.estado_nombre != 'aceptado' %}
@@ -121,7 +139,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="12">
+                        <td colspan="13">
                             {% if total == 0 %}
                                 No hay documentos que mostrar.
                             {% else %}

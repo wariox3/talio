@@ -190,6 +190,59 @@ class DocumentoController extends AbstractController
         return $this->redirectToRoute('nobelio_documento_lista');
     }
 
+    /**
+     * Arma la notificacion al adquiriente y marca el documento como notificado.
+     *
+     * No cabe en accion() aunque tambien sea un POST sobre el documento: aquella
+     * construye su mensaje con el estado que devuelven las acciones del ciclo
+     * DIAN, y esta responde otra cosa —a quien va, que archivo y de que tamaño—.
+     *
+     * El endpoint es multipart y acepta un PDF y adjuntos, todos opcionales;
+     * aqui se llama sin ninguno, que es lo que hace viajar solo el
+     * AttachedDocument. Un POST con cuerpo JSON vacio le sirve igual.
+     */
+    #[Route('/nobelio/documento/notificar', name: 'nobelio_documento_notificar', methods: ['POST'])]
+    public function notificar(Request $request, Nobelio $nobelio): Response
+    {
+        $id = (string) $request->request->get('id', '');
+
+        if (!$this->isCsrfTokenValid('acciones-documento', (string) $request->request->get('_token'))) {
+            Mensajes::error('La petición no es válida.');
+        } elseif ($id === '') {
+            Mensajes::error('No se indicó qué documento notificar.');
+        } else {
+            // Nobelio solo notifica lo que la DIAN acepto y exige que el
+            // adquiriente tenga correo; si no, responde 400 explicando cual de
+            // las dos falta y ese es el mensaje que se muestra.
+            $respuesta = $nobelio->consumoPost("api/documentos/documento/{$id}/notificar/");
+            if ($respuesta['error']) {
+                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            } else {
+                // Con ?descargar=1 el endpoint devuelve el paquete en vez del
+                // resumen, asi que las claves podrian no venir; se leen con
+                // respaldo en vez de darlas por hechas.
+                $datos = $respuesta['datos'];
+                $destinatario = $datos['destinatario'] ?? '';
+                // El codigo de envio es con lo que se rastrea el documento en
+                // Nobelio; el nombre del archivo no identifica nada.
+                $codigoEnvio = $datos['codigo_envio'] ?? '';
+
+                $mensaje = $destinatario !== ''
+                    ? "Paquete armado para {$destinatario}"
+                    : 'Paquete armado';
+                $mensaje .= $codigoEnvio !== '' ? " (envío {$codigoEnvio})." : '.';
+                // El propio Nobelio avisa de que el correo todavia no sale, que
+                // es justo lo que no se puede dar por hecho al ver "notificado".
+                if (!empty($datos['detalle'])) {
+                    $mensaje .= " {$datos['detalle']}";
+                }
+                Mensajes::warning($mensaje);
+            }
+        }
+
+        return $this->redirectToRoute('nobelio_documento_lista');
+    }
+
     #[Route('/nobelio/documento/eliminar', name: 'nobelio_documento_eliminar', methods: ['POST'])]
     public function eliminar(Request $request, Nobelio $nobelio): Response
     {

@@ -21,7 +21,10 @@ class Nobelio
 
     public function consumoPost(string $url, array $datos = []): array
     {
-        return $this->peticion('POST', $url, ['json' => $datos]);
+        // Un array vacio de PHP se serializa como [], y los endpoints que leen
+        // el cuerpo esperan un objeto: DRF responde "Datos inválidos. Se
+        // esperaba un diccionario pero es un list". Con stdClass sale {}.
+        return $this->peticion('POST', $url, ['json' => $datos ?: new \stdClass()]);
     }
 
     public function consumoDelete(string $url): array

@@ -62,6 +62,11 @@
             <dt>Validación DIAN</dt>
             <dd>{{ documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) }}</dd>
 
+            {# Mientras Nobelio no tenga el envio por correo, esto marca que el
+               paquete se armo y se entrego a quien lo pidio, no que le haya
+               llegado al adquiriente. #}
+            <dt>Notificado</dt>
+            <dd>{{ ui.estado(documento.notificado, 'Sí', 'No') }}</dd>
             {# Solo lo llevan las notas credito/debito: es el documento que corrigen. #}
             <dt>Documento de referencia</dt>
             <dd>
@@ -69,11 +74,12 @@
                     <a href="{{ path('nobelio_documento_detalle', { 'id': documento.documento_referencia }) }}">{{ documento.documento_referencia }}</a>
                 {% endif %}
             </dd>
+
             <dt>Observaciones</dt>
             <dd>{{ documento.observaciones }}</dd>
-
             <dt>Creado</dt>
             <dd>{{ documento.creado_en ? documento.creado_en|date('Y-m-d H:i', false) }}</dd>
+
             <dt>Actualizado</dt>
             <dd>{{ documento.actualizado_en ? documento.actualizado_en|date('Y-m-d H:i', false) }}</dd>
         </dl>
