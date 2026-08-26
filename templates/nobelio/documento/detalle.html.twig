@@ -1,0 +1,225 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Documento {{ documento.numero }} · Talio{% endblock %}
+{% block ruta %}
+    Nobelio <span>/</span>
+    <a href="{{ path('nobelio_documento_lista') }}">Documentos</a> <span>/</span>
+    <b>{{ documento.numero }}</b>
+{% endblock %}
+{% block acciones %}
+    <span class="stamp">{{ documento.estado_nombre|capitalize }}</span>
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Documento') }}
+        <dl class="ficha">
+            <dt>Id</dt>
+            <dd>{{ documento.id }}</dd>
+            <dt>Número</dt>
+            <dd>{{ documento.numero }}</dd>
+
+            <dt>Prefijo</dt>
+            <dd>{{ documento.prefijo }}</dd>
+            <dt>Consecutivo</dt>
+            <dd>{{ documento.consecutivo }}</dd>
+
+            <dt>Tipo</dt>
+            <dd>{{ documento.documento_tipo_nombre }}</dd>
+            <dt>Emisor</dt>
+            <dd>
+                <a href="{{ path('nobelio_emisor_detalle', { 'id': documento.emisor }) }}">{{ documento.emisor }}</a>
+            </dd>
+
+            <dt>Estado</dt>
+            <dd>{{ documento.estado_nombre|capitalize }}</dd>
+            <dt>Descripción del estado</dt>
+            <dd>{{ documento.estado_descripcion }}</dd>
+
+            <dt>Emisión</dt>
+            <dd>{{ documento.fecha_emision }} {{ documento.hora_emision }}</dd>
+            <dt>Resolución</dt>
+            <dd>{{ documento.resolucion_numero }}</dd>
+
+            <dt>Ambiente</dt>
+            <dd>{{ documento.ambiente }}</dd>
+            <dt>Moneda</dt>
+            <dd>{{ documento.moneda }}</dd>
+
+            <dt>Forma de pago</dt>
+            <dd>{{ documento.forma_pago }}</dd>
+            <dt>Medio de pago</dt>
+            <dd>{{ documento.medio_pago }}</dd>
+
+            <dt>CUFE/CUDE</dt>
+            <dd>{{ documento.cufe_cude }}</dd>
+            <dt>Track id</dt>
+            <dd>{{ documento.track_id }}</dd>
+
+            <dt>Envío</dt>
+            <dd>{{ documento.envio }}</dd>
+            {# El false deja la hora en la zona que trae el API (-05:00); sin el,
+               Twig la pasaria a la zona por defecto de PHP, que aqui es UTC. #}
+            <dt>Validación DIAN</dt>
+            <dd>{{ documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) }}</dd>
+
+            {# Solo lo llevan las notas credito/debito: es el documento que corrigen. #}
+            <dt>Documento de referencia</dt>
+            <dd>
+                {% if documento.documento_referencia %}
+                    <a href="{{ path('nobelio_documento_detalle', { 'id': documento.documento_referencia }) }}">{{ documento.documento_referencia }}</a>
+                {% endif %}
+            </dd>
+            <dt>Observaciones</dt>
+            <dd>{{ documento.observaciones }}</dd>
+
+            <dt>Creado</dt>
+            <dd>{{ documento.creado_en ? documento.creado_en|date('Y-m-d H:i', false) }}</dd>
+            <dt>Actualizado</dt>
+            <dd>{{ documento.actualizado_en ? documento.actualizado_en|date('Y-m-d H:i', false) }}</dd>
+        </dl>
+
+        {{ ui.cabecera('Adquiriente') }}
+        {% if adquiriente %}
+            <dl class="ficha">
+                <dt>Razón social</dt>
+                <dd>{{ adquiriente.razon_social }}</dd>
+                <dt>Identificación</dt>
+                <dd>
+                    {{- adquiriente.numero_identificacion }}{% if adquiriente.digito_verificacion %}-{{ adquiriente.digito_verificacion }}{% endif -%}
+                </dd>
+
+                <dt>Tipo de identificación</dt>
+                <dd>{{ adquiriente.tipo_identificacion }}</dd>
+                <dt>Tipo de organización</dt>
+                <dd>{{ adquiriente.tipo_organizacion }}</dd>
+
+                <dt>Responsabilidades</dt>
+                <dd>
+                    {% for codigo in adquiriente.responsabilidades %}
+                        {{ codigo }}{% if not loop.last %}, {% endif %}
+                    {% else %}
+                        Sin responsabilidades declaradas.
+                    {% endfor %}
+                </dd>
+                <dt>País</dt>
+                <dd>{{ adquiriente.pais }}</dd>
+
+                <dt>Departamento</dt>
+                <dd>{{ adquiriente.departamento }}</dd>
+                <dt>Municipio</dt>
+                <dd>{{ adquiriente.municipio }}</dd>
+
+                <dt>Dirección</dt>
+                <dd>{{ adquiriente.direccion }}</dd>
+                <dt>Teléfono</dt>
+                <dd>{{ adquiriente.telefono }}</dd>
+
+                <dt>Correo</dt>
+                <dd>{{ adquiriente.correo }}</dd>
+            </dl>
+        {% else %}
+            <p class="hint">Este documento no tiene adquiriente.</p>
+        {% endif %}
+
+        {{ ui.cabecera('Totales') }}
+        <dl class="ficha">
+            <dt>Valor bruto</dt>
+            <dd>{{ documento.valor_bruto|number_format(2, ',', '.') }}</dd>
+            <dt>Descuentos</dt>
+            <dd>{{ documento.total_descuentos|number_format(2, ',', '.') }}</dd>
+
+            <dt>Cargos</dt>
+            <dd>{{ documento.total_cargos|number_format(2, ',', '.') }}</dd>
+            <dt>Impuestos</dt>
+            <dd>{{ documento.total_impuestos|number_format(2, ',', '.') }}</dd>
+
+            <dt>Total a pagar</dt>
+            <dd>{{ documento.total_a_pagar|number_format(2, ',', '.') }}</dd>
+        </dl>
+    </div>
+
+    <div class="block tabs">
+        <div class="tabs-head" role="tablist">
+            <button type="button" class="tab is-active" role="tab" aria-selected="true" data-panel="detalles">
+                Líneas <span class="stamp">{{ detalles|length }}</span>
+            </button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-panel="errores">
+                Errores <span class="stamp">{{ errores|length }}</span>
+            </button>
+        </div>
+
+        <div class="tab-panel" id="detalles" role="tabpanel">
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th class="num">Línea</th>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                        <th class="num">Cantidad</th>
+                        <th>Unidad</th>
+                        <th class="num">Valor unitario</th>
+                        <th class="num">Descuento</th>
+                        <th class="num">Valor total</th>
+                        <th>Impuestos</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for detalle in detalles %}
+                        <tr>
+                            <td class="num">{{ detalle.numero_linea }}</td>
+                            <td class="id">{{ detalle.codigo_producto }}</td>
+                            <td class="wrap">{{ detalle.descripcion }}</td>
+                            <td class="num">{{ detalle.cantidad|number_format(2, ',', '.') }}</td>
+                            <td>{{ detalle.unidad_medida }}</td>
+                            <td class="num">{{ detalle.valor_unitario|number_format(2, ',', '.') }}</td>
+                            <td class="num">{{ detalle.descuento|number_format(2, ',', '.') }}</td>
+                            <td class="num">{{ detalle.valor_total|number_format(2, ',', '.') }}</td>
+                            {# Los impuestos de la linea vienen anidados y son
+                               pocos (uno o dos): se listan en la celda en vez
+                               de abrir una tabla aparte. #}
+                            <td class="wrap">
+                                {% for impuesto in detalle.impuestos %}
+                                    {{ impuesto.tributo_codigo }}
+                                    {{ impuesto.tarifa }}%
+                                    {{ impuesto.valor|number_format(2, ',', '.') }}
+                                    {%- if not loop.last %}<br>{% endif %}
+                                {% endfor %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="9">Este documento no tiene líneas.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="errores" role="tabpanel" hidden>
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Regla</th>
+                        <th>Tipo</th>
+                        <th>Mensaje</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for error in errores %}
+                        <tr>
+                            <td class="id">{{ error.id }}</td>
+                            <td class="id">{{ error.regla }}</td>
+                            <td>{{ error.tipo_display|default(error.tipo) }}</td>
+                            <td class="wrap">{{ error.mensaje }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="4">Este documento no tiene errores.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

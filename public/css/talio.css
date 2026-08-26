@@ -483,6 +483,11 @@ table.kv tr:last-child th, table.kv tr:last-child td { border-bottom: 0; }
 .ficha > dt { color: var(--muted); white-space: nowrap; }
 .ficha > dd { color: var(--ink); }
 
+/* Varias secciones dentro del mismo bloque: se separan con el aire de la
+   cabecera, no con la linea de .block + .block. La cabecera solo lo necesita
+   cuando no abre el bloque, de ahi el hermano previo en el selector. */
+.block > * + .block-head { margin-top: 38px; }
+
 /* --------------------------------------------------------------- tabs -- */
 /* Pestanas: la cabecera son botones y cada panel un hijo directo de .tabs.
    El estado vive en la clase .is-active y en el atributo hidden; el JS solo

@@ -83,14 +83,41 @@ class DocumentoController extends AbstractController
     }
 
     /**
+     * Ficha del documento con todo lo que trae el API.
+     *
+     * El retrieve devuelve el serializer completo —adquiriente, lineas con sus
+     * impuestos y errores, todo anidado—, asi que basta una sola peticion. El
+     * id es un UUID, no un serial como el del emisor, y se concatena a la url
+     * del API: el requirement lo acota a esa forma.
+     */
+    #[Route('/nobelio/documento/detalle/{id}', name: 'nobelio_documento_detalle', requirements: ['id' => '[0-9a-fA-F-]{36}'])]
+    public function detalle(Nobelio $nobelio, string $id): Response
+    {
+        $respuesta = $nobelio->consumoGet("api/documentos/documento/{$id}/");
+        if ($respuesta['error']) {
+            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+
+            return $this->redirectToRoute('nobelio_documento_lista');
+        }
+
+        $documento = $respuesta['datos'];
+
+        return $this->render('nobelio/documento/detalle.html.twig', [
+            'documento' => $documento,
+            'adquiriente' => $documento['adquiriente'] ?? [],
+            'detalles' => $documento['detalles'] ?? [],
+            'errores' => $documento['errores'] ?? [],
+        ]);
+    }
+
+    /**
      * Ejecuta sobre el documento la accion que toca en su estado.
      *
      * La accion va en la ruta y no en el cuerpo para que las unicas admitidas
      * sean las del requirement: el id se concatena a la url del API y una
      * accion libre dejaria construir cualquier ruta.
      */
-    #[Route('/nobelio/documento/accion/{accion}', name: 'nobelio_documento_accion', methods: ['POST'],
-        requirements: ['accion' => 'emitir|enviar|actualizar-estado'])]
+    #[Route('/nobelio/documento/accion/{accion}', name: 'nobelio_documento_accion', methods: ['POST'], requirements: ['accion' => 'emitir|enviar|actualizar-estado'])]
     public function accion(Request $request, Nobelio $nobelio, string $accion): Response
     {
         $id = (string) $request->request->get('id', '');

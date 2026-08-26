@@ -197,7 +197,9 @@
                     <tbody>
                     {% for documento in documentos %}
                         <tr>
-                            <td class="id">{{ documento.numero }}</td>
+                            <td class="id">
+                                <a href="{{ path('nobelio_documento_detalle', { 'id': documento.id }) }}">{{ documento.numero }}</a>
+                            </td>
                             <td>{{ documento.documento_tipo_nombre }}</td>
                             <td class="fecha">{{ documento.fecha_emision }}</td>
                             <td>{{ documento.adquiriente.razon_social }}</td>
