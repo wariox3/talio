@@ -1,0 +1,152 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Nómina · Talio{% endblock %}
+{% block ruta %}Nobelio <span>/</span> <b>Nómina</b>{% endblock %}
+{% block acciones %}
+    <span class="stamp">{{ total }} nómina{{ total == 1 ? '' : 's' }}</span>
+{% endblock %}
+{% block content %}
+    {# La acción que toca en cada estado. Sale de las guardas de Nobelio: una
+       firmada o enviada no se puede volver a emitir, solo se envía lo que ya
+       tiene XML, y una aceptada es terminal —se corrige con una nota de ajuste,
+       no reintentando—. La rechazada admite las dos: se corrige y se vuelve a
+       emitir, o se reintenta el envío tal cual. #}
+    {% set accionesPorEstado = {
+        'borrador':  [{ 'accion': 'emitir', 'titulo': 'Emitir', 'pregunta': 'Emitir' }],
+        'firmado':   [{ 'accion': 'enviar', 'titulo': 'Enviar', 'pregunta': 'Enviar a la DIAN' }],
+        'enviado':   [{ 'accion': 'enviar', 'titulo': 'Reenviar', 'pregunta': 'Volver a enviar a la DIAN' }],
+        'rechazado': [
+            { 'accion': 'emitir', 'titulo': 'Emitir', 'pregunta': 'Volver a emitir' },
+            { 'accion': 'enviar', 'titulo': 'Enviar', 'pregunta': 'Enviar a la DIAN' }
+        ],
+    } %}
+    {% set tipos = { '102': 'Nómina', '103': 'Nota de ajuste' } %}
+    {% set tiposNota = { '1': 'Reemplaza', '2': 'Elimina' } %}
+    {{ form_start(form) }}
+    <input type="hidden" name="pagina" value="{{ pagina }}">
+    <div class="block">
+        <div class="filters">
+            {{ ui.campo('Estado', form.estado) }}
+            {{ ui.campo('Tipo', form.tipo) }}
+            {# El SearchFilter de Nobelio mira el número, el CUNE y el documento
+               del empleado. #}
+            {{ ui.campo('Número, CUNE o documento', form.search) }}
+            <div class="f-right">
+                {{ form_widget(form.btnFiltrar) }}
+                {# Siempre renderizados: si se dejan sin renderizar, form_end()
+                   llama a form_rest() y los vuelca sueltos al final del form. #}
+                {{ form_widget(form.btnAnterior, { 'attr': hayAnterior
+                    ? {'class': 'ghost'}
+                    : {'class': 'ghost', 'disabled': 'disabled'} }) }}
+                {{ form_widget(form.btnSiguiente, { 'attr': haySiguiente
+                    ? {'class': 'ghost'}
+                    : {'class': 'ghost', 'disabled': 'disabled'} }) }}
+                <span class="f-count">Página {{ pagina }}</span>
+            </div>
+        </div>
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Número</th>
+                    <th>Tipo</th>
+                    <th class="num">Emisor</th>
+                    <th>Empleado</th>
+                    <th>Liquidación</th>
+                    <th>Generación</th>
+                    <th>Pago</th>
+                    <th class="num">Total</th>
+                    <th>Estado</th>
+                    <th>CUNE</th>
+                    <th>Validación</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for nomina in nominas %}
+                    <tr>
+                        <td class="id">{{ nomina.numero }}</td>
+                        <td>
+                            {{- tipos[nomina.tipo_xml]|default(nomina.tipo_xml) -}}
+                            {# La nota dice qué le hace a la nómina que ajusta:
+                               o la reemplaza entera o la elimina. #}
+                            {%- if nomina.tipo_nota %} · {{ tiposNota[nomina.tipo_nota]|default(nomina.tipo_nota) }}{% endif -%}
+                        </td>
+                        <td class="num">
+                            <a href="{{ path('nobelio_emisor_detalle', { 'id': nomina.emisor }) }}">{{ nomina.emisor }}</a>
+                        </td>
+                        <td>{{ nomina.empleado_nombre }}</td>
+                        <td class="fecha">{{ nomina.fecha_liquidacion_inicio }} → {{ nomina.fecha_liquidacion_fin }}</td>
+                        <td class="fecha">{{ nomina.fecha_generacion }}</td>
+                        <td class="fecha">{{ nomina.fecha_pago }}</td>
+                        <td class="num">{{ nomina.total_comprobante|number_format(0, ',', '.') }}</td>
+                        <td>{{ nomina.estado_nombre|capitalize }}</td>
+                        {# El CUNE son 96 caracteres de SHA-384: se muestra el
+                           principio, que es con lo que se reconoce, y el
+                           completo queda en el title para poder copiarlo. #}
+                        <td class="id" title="{{ nomina.cune }}">
+                            {{- nomina.cune ? nomina.cune|slice(0, 12) ~ '…' -}}
+                        </td>
+                        {# El false deja la hora en la zona que trae el API
+                           (-05:00); sin el, Twig la pasaria a la zona por
+                           defecto de PHP, que aqui es UTC. #}
+                        <td class="fecha">
+                            {{- nomina.fecha_validacion ? nomina.fecha_validacion|date('Y-m-d H:i', false) -}}
+                        </td>
+                        {# Los botones viven dentro del form de filtros, asi que
+                           apuntan con form= al de acciones, que va fuera: los
+                           formularios no se pueden anidar. Cada uno lleva el id
+                           en su value y elige su ruta con formaction. #}
+                        <td class="acciones">
+                            {% for accion in accionesPorEstado[nomina.estado_nombre]|default([]) %}
+                                <button type="submit" class="link" form="acciones-nomina"
+                                        formaction="{{ path('nobelio_nomina_accion', { 'accion': accion.accion }) }}"
+                                        name="id" value="{{ nomina.id }}"
+                                        onclick="return confirm('¿{{ accion.pregunta }} la nómina {{ nomina.numero }}?')">{{ accion.titulo }}</button>
+                            {% endfor %}
+                            {# Consultar es un GetStatus por el CUNE: dice qué
+                               piensa la DIAN, pero no cambia el estado de la
+                               nómina —eso solo lo hace el envío—. Sin CUNE no
+                               hay por qué preguntar. #}
+                            {% if nomina.cune %}
+                                <button type="submit" class="link" form="acciones-nomina"
+                                        formaction="{{ path('nobelio_nomina_consultar') }}"
+                                        name="id" value="{{ nomina.id }}">Consultar</button>
+                            {% endif %}
+                            {# El XML se guarda al firmar, asi que un borrador
+                               todavia no tiene que descargar. Es una descarga,
+                               no una accion: va como enlace GET fuera del form. #}
+                            {% if nomina.estado_nombre != 'borrador' %}
+                                <a href="{{ path('nobelio_nomina_descargar', { 'id': nomina.id }) }}">XML</a>
+                            {% endif %}
+                            {# Nobelio no deja borrar lo que la DIAN ya aceptó,
+                               asi que en una aceptada no se ofrece el boton. #}
+                            {% if nomina.estado_nombre != 'aceptado' %}
+                                <button type="submit" class="link" form="acciones-nomina"
+                                        name="id" value="{{ nomina.id }}"
+                                        onclick="return confirm('¿Eliminar la nómina {{ nomina.numero }}?')">Eliminar</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="12">
+                            {% if total == 0 %}
+                                No hay nóminas que mostrar.
+                            {% else %}
+                                Esta página no tiene resultados.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{ form_end(form) }}
+    {# Un solo form para todas las acciones de la tabla: el borrado es su
+       action por defecto y las demas lo cambian con formaction. #}
+    <form id="acciones-nomina" method="post" action="{{ path('nobelio_nomina_eliminar') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('acciones-nomina') }}">
+    </form>
+{% endblock %}
