@@ -1,0 +1,39 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Errores · Talio{% endblock %}
+{% block ruta %}Errores de la nómina <b>{{ nomina.numero|default('') }}</b>{% endblock %}
+{% block acciones %}
+    <span class="stamp">{{ errores|length }} error{{ errores|length == 1 ? '' : 'es' }}</span>
+{% endblock %}
+{% block content %}
+    {# El error de nómina no trae `tipo_display` como el del documento, asi que
+       las etiquetas salen de aqui. Las notificaciones no se guardan —Nobelio
+       las descarta al registrar la respuesta—, pero se contemplan por si eso
+       cambia. #}
+    {% set tipos = { 'rechazo': 'Rechazo', 'notificacion': 'Notificación', 'otro': 'Otro' } %}
+    <div class="block">
+        {{ ui.cabecera('Errores') }}
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Regla</th>
+                    <th>Tipo</th>
+                    <th>Mensaje</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for error in errores %}
+                    <tr>
+                        <td class="id">{{ error.regla }}</td>
+                        <td>{{ tipos[error.tipo]|default(error.tipo) }}</td>
+                        <td class="wrap">{{ error.mensaje }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="3">Esta nómina no tiene errores.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

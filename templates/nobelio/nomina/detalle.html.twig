@@ -1,0 +1,285 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Nómina {{ nomina.numero }} · Talio{% endblock %}
+{% block ruta %}
+    Nobelio <span>/</span>
+    <a href="{{ path('nobelio_nomina_lista') }}">Nómina</a> <span>/</span>
+    <b>{{ nomina.numero }}</b>
+{% endblock %}
+{% block acciones %}
+    <span class="stamp">{{ nomina.estado_nombre|capitalize }}</span>
+{% endblock %}
+{% block content %}
+    {% set tipos = { '102': 'Nómina', '103': 'Nota de ajuste' } %}
+    {% set tiposNota = { '1': 'Reemplaza el documento anterior', '2': 'Elimina el documento anterior' } %}
+    {% set tiposCuenta = { 'ahorros': 'Ahorros', 'corriente': 'Corriente' } %}
+    {% set tiposIncapacidad = { '1': 'Común', '2': 'Profesional', '3': 'Laboral' } %}
+    {% set grupos = { 'devengado': 'Devengado', 'deduccion': 'Deducción' } %}
+    <div class="block">
+        {{ ui.cabecera('Nómina') }}
+        <dl class="ficha">
+            <dt>Id</dt>
+            <dd>{{ nomina.id }}</dd>
+            <dt>Número</dt>
+            <dd>{{ nomina.numero }}</dd>
+
+            <dt>Prefijo</dt>
+            <dd>{{ nomina.prefijo }}</dd>
+            <dt>Consecutivo</dt>
+            <dd>{{ nomina.consecutivo }}</dd>
+
+            <dt>Tipo</dt>
+            <dd>{{ tipos[nomina.tipo_xml]|default(nomina.tipo_xml) }}</dd>
+            <dt>Emisor</dt>
+            <dd>
+                <a href="{{ path('nobelio_emisor_detalle', { 'id': nomina.emisor }) }}">{{ nomina.emisor }}</a>
+            </dd>
+
+            <dt>Estado</dt>
+            <dd>{{ nomina.estado_nombre|capitalize }}</dd>
+            <dt>Periodo de nómina</dt>
+            <dd>{{ nomina.periodo_nomina }}</dd>
+
+            <dt>Liquidación</dt>
+            <dd>{{ nomina.fecha_liquidacion_inicio }} → {{ nomina.fecha_liquidacion_fin }}</dd>
+            {# Dias laborados en el periodo, no la duracion del rango: las
+               ausencias no remuneradas no cuentan (numeral 8.3.1). #}
+            <dt>Tiempo laborado</dt>
+            <dd>{{ nomina.tiempo_laborado }} día{{ nomina.tiempo_laborado == 1 ? '' : 's' }}</dd>
+
+            {# No es la fecha de firmar: la nomina no tiene la regla FAD09, asi
+               que el par fecha/hora es el que el emisor liquido. #}
+            <dt>Generación</dt>
+            <dd>{{ nomina.fecha_generacion }} {{ nomina.hora_generacion }}</dd>
+            <dt>Fecha de pago</dt>
+            <dd>{{ nomina.fecha_pago }}</dd>
+
+            <dt>Ambiente</dt>
+            <dd>{{ nomina.ambiente }}</dd>
+            <dt>Moneda</dt>
+            <dd>{{ nomina.moneda }}</dd>
+
+            {# Solo viene cuando la moneda no es COP. #}
+            <dt>TRM</dt>
+            <dd>{{ nomina.trm is empty ? '' : nomina.trm|number_format(2, ',', '.') }}</dd>
+            <dt>CUNE</dt>
+            <dd class="wrap">{{ nomina.cune }}</dd>
+
+            {# El false deja la hora en la zona que trae el API (-05:00); sin el,
+               Twig la pasaria a la zona por defecto de PHP, que aqui es UTC. #}
+            <dt>Validación DIAN</dt>
+            <dd>{{ nomina.fecha_validacion ? nomina.fecha_validacion|date('Y-m-d H:i', false) }}</dd>
+            {# Marca que el documento recoge un cambio contractual y remite al
+               CUNE del documento donde estaba el dato anterior. #}
+            <dt>Novedad contractual</dt>
+            <dd>{{ ui.estado(nomina.novedad, 'Sí', 'No') }}</dd>
+
+            <dt>CUNE de la novedad</dt>
+            <dd class="wrap">{{ nomina.cune_novedad }}</dd>
+            {# Solo los lleva la nota de ajuste: a que documento ajusta y que le
+               hace. La DIAN no admite correccion parcial —o lo reemplaza entero
+               o lo elimina—. #}
+            <dt>Nómina que ajusta</dt>
+            <dd>
+                {% if nomina.nomina_predecesora %}
+                    <a href="{{ path('nobelio_nomina_detalle', { 'id': nomina.nomina_predecesora }) }}">{{ nomina.nomina_predecesora }}</a>
+                {% endif %}
+            </dd>
+
+            <dt>Tipo de nota</dt>
+            <dd>{{ tiposNota[nomina.tipo_nota]|default(nomina.tipo_nota) }}</dd>
+            <dt>Notas</dt>
+            <dd class="wrap">{{ nomina.notas }}</dd>
+
+            <dt>Creado</dt>
+            <dd>{{ nomina.creado_en ? nomina.creado_en|date('Y-m-d H:i', false) }}</dd>
+            <dt>Actualizado</dt>
+            <dd>{{ nomina.actualizado_en ? nomina.actualizado_en|date('Y-m-d H:i', false) }}</dd>
+        </dl>
+
+        {# Quien es el trabajador. Sale del maestro y no de la nomina: la
+           identidad no se congela, porque ahi un cambio es una correccion y
+           tiene que valer para todos sus documentos. #}
+        {{ ui.cabecera('Empleado') }}
+        {% if empleado %}
+            <dl class="ficha">
+                <dt>Id</dt>
+                <dd>{{ empleado.id }}</dd>
+                <dt>Nombre</dt>
+                <dd>{{ empleado.nombre_completo }}</dd>
+
+                <dt>Identificación</dt>
+                <dd>{{ empleado.tipo_identificacion_codigo }} {{ empleado.numero_documento }}</dd>
+                <dt>Fecha de ingreso</dt>
+                <dd>{{ empleado.fecha_ingreso }}</dd>
+
+                {# Lo calcula Nobelio desde el retiro que reporten sus nominas:
+                   un empleado inactivo ya fue liquidado. #}
+                <dt>Vinculado</dt>
+                <dd>{{ ui.estado(empleado.activo, 'Sí', 'No') }}</dd>
+                <dt>Sueldo vigente</dt>
+                <dd>{{ empleado.sueldo|number_format(2, ',', '.') }}</dd>
+            </dl>
+        {% else %}
+            {# El nombre lo trae la propia nomina, asi que aunque el maestro no
+               responda se sabe de quien es el comprobante. #}
+            <p class="hint">No se pudo traer el empleado {{ nomina.empleado }} ({{ nomina.empleado_nombre }}).</p>
+        {% endif %}
+
+        {# Lo que decia el maestro cuando se creo la nomina. Se guarda copiado a
+           proposito: el sueldo de agosto es un hecho de agosto, y con un solo
+           valor mutable en el empleado se emitiria el de hoy. Por eso puede no
+           coincidir con el bloque de arriba. #}
+        {{ ui.cabecera('Condiciones con las que se emitió') }}
+        <dl class="ficha">
+            {# Va en NumeroSecuenciaXML, que es lo que identifica el documento. #}
+            <dt>Código del trabajador</dt>
+            <dd>{{ nomina.codigo_trabajador }}</dd>
+            <dt>Sueldo</dt>
+            <dd>{{ nomina.sueldo|number_format(2, ',', '.') }}</dd>
+
+            <dt>Tipo de trabajador</dt>
+            <dd>{{ nomina.tipo_trabajador }}</dd>
+            <dt>Subtipo</dt>
+            <dd>{{ nomina.subtipo_trabajador }}</dd>
+
+            <dt>Tipo de contrato</dt>
+            <dd>{{ nomina.tipo_contrato }}</dd>
+            <dt>Salario integral</dt>
+            <dd>{{ ui.estado(nomina.salario_integral, 'Sí', 'No') }}</dd>
+
+            <dt>Alto riesgo de pensión</dt>
+            <dd>{{ ui.estado(nomina.alto_riesgo_pension, 'Sí', 'No') }}</dd>
+            {# Nula mientras siga vinculado; en la liquidacion es un dato de este
+               documento y no del maestro. #}
+            <dt>Fecha de retiro</dt>
+            <dd>{{ nomina.fecha_retiro }}</dd>
+
+            <dt>Lugar de trabajo</dt>
+            <dd class="wrap">{{ nomina.lugar_trabajo_direccion }}</dd>
+            <dt>País / departamento / municipio</dt>
+            <dd>{{ nomina.lugar_trabajo_pais }} / {{ nomina.lugar_trabajo_departamento }} / {{ nomina.lugar_trabajo_municipio }}</dd>
+
+            <dt>Forma de pago</dt>
+            <dd>{{ nomina.forma_pago }}</dd>
+            <dt>Medio de pago</dt>
+            <dd>{{ nomina.medio_pago }}</dd>
+
+            <dt>Banco</dt>
+            <dd>{{ nomina.banco }}</dd>
+            <dt>Cuenta</dt>
+            <dd>
+                {{- tiposCuenta[nomina.tipo_cuenta]|default(nomina.tipo_cuenta) }} {{ nomina.numero_cuenta -}}
+            </dd>
+        </dl>
+
+        {# Los totales no se calculan aqui ni alla: llegan liquidados por el ERP
+           y Nobelio los cuadra contra los conceptos al crear la nomina. Entran
+           en el CUNE, asi que son los que se firmaron. #}
+        {{ ui.cabecera('Totales') }}
+        <dl class="ficha">
+            <dt>Devengados</dt>
+            <dd>{{ nomina.total_devengados|number_format(2, ',', '.') }}</dd>
+            <dt>Deducciones</dt>
+            <dd>{{ nomina.total_deducciones|number_format(2, ',', '.') }}</dd>
+
+            <dt>Redondeo</dt>
+            <dd>{{ nomina.redondeo|number_format(2, ',', '.') }}</dd>
+            <dt>Total del comprobante</dt>
+            <dd>{{ nomina.total_comprobante|number_format(2, ',', '.') }}</dd>
+        </dl>
+    </div>
+
+    <div class="block tabs">
+        <div class="tabs-head" role="tablist">
+            <button type="button" class="tab is-active" role="tab" aria-selected="true" data-panel="conceptos">
+                Conceptos <span class="stamp">{{ conceptos|length }}</span>
+            </button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-panel="errores">
+                Errores <span class="stamp">{{ errores|length }}</span>
+            </button>
+        </div>
+
+        <div class="tab-panel" id="conceptos" role="tabpanel">
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Grupo</th>
+                        <th>Concepto</th>
+                        <th class="num">Cantidad</th>
+                        <th class="num">Porcentaje</th>
+                        <th class="num">Valor</th>
+                        <th class="num">No salarial</th>
+                        <th>Desde</th>
+                        <th>Hasta</th>
+                        <th>Descripción</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for concepto in conceptos %}
+                        <tr>
+                            <td>{{ grupos[concepto.grupo]|default(concepto.grupo) }}</td>
+                            <td>
+                                {{- concepto.concepto_nombre|default(concepto.concepto) -}}
+                                {%- if concepto.tipo_incapacidad %} · {{ tiposIncapacidad[concepto.tipo_incapacidad]|default(concepto.tipo_incapacidad) }}{% endif -%}
+                            </td>
+                            {# Dias, horas o veces segun el concepto; casi todo
+                               es opcional porque los atributos son la union de
+                               los que pide cada uno. #}
+                            <td class="num">{{ concepto.cantidad is null ? '' : concepto.cantidad|number_format(2, ',', '.') }}</td>
+                            <td class="num">{{ concepto.porcentaje is null ? '' : concepto.porcentaje|number_format(2, ',', '.') }}</td>
+                            <td class="num">{{ concepto.valor|number_format(2, ',', '.') }}</td>
+                            {# Varios conceptos se pagan partidos en una parte
+                               salarial y otra que no; las dos cuentan en el
+                               total que compara la DIAN. #}
+                            <td class="num">{{ concepto.valor_no_salarial is null ? '' : concepto.valor_no_salarial|number_format(2, ',', '.') }}</td>
+                            {# Las incapacidades y licencias van por fechas; las
+                               horas extra, con fecha y hora completas. Cada
+                               concepto usa una de las dos parejas. #}
+                            <td class="fecha">
+                                {{- concepto.fecha_inicio ?: (concepto.hora_inicio ? concepto.hora_inicio|date('Y-m-d H:i', false)) -}}
+                            </td>
+                            <td class="fecha">
+                                {{- concepto.fecha_fin ?: (concepto.hora_fin ? concepto.hora_fin|date('Y-m-d H:i', false)) -}}
+                            </td>
+                            <td class="wrap">{{ concepto.descripcion }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="9">Esta nómina no tiene conceptos.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {# El error de nómina no trae `tipo_display` como el del documento, asi
+           que las etiquetas del tipo salen de aqui, igual que en la ventana de
+           errores del listado. #}
+        {% set tiposError = { 'rechazo': 'Rechazo', 'notificacion': 'Notificación', 'otro': 'Otro' } %}
+        <div class="tab-panel" id="errores" role="tabpanel" hidden>
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Regla</th>
+                        <th>Tipo</th>
+                        <th>Mensaje</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for error in errores %}
+                        <tr>
+                            <td class="id">{{ error.regla }}</td>
+                            <td>{{ tiposError[error.tipo]|default(error.tipo) }}</td>
+                            <td class="wrap">{{ error.mensaje }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="3">Esta nómina no tiene errores.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

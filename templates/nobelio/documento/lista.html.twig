@@ -73,10 +73,13 @@
                         <td class="num">{{ documento.total_a_pagar|number_format(0, ',', '.') }}</td>
                         <td>{{ documento.estado_nombre|capitalize }}</td>
                         <td>{{ documento.envio }}</td>
+                        {# El listado solo trae el conteo —las filas de error las
+                           explica el detalle—, asi que el numero es el enlace a
+                           la ventana que las va a buscar. #}
                         <td class="num">
-                            {%- set errores = documento.errores|default([]) -%}
-                            {% if errores %}
-                                <a href="javascript:abrirVentana('{{ path('nobelio_documento_errores', { 'id': documento.id }) }}', 'Errores', 500, 900)">{{ errores|length }}</a>
+                            {%- set totalErrores = documento.total_errores|default(0) -%}
+                            {% if totalErrores %}
+                                <a href="javascript:abrirVentana('{{ path('nobelio_documento_errores', { 'id': documento.id }) }}', 'Errores', 500, 900)">{{ totalErrores }}</a>
                             {% else %}
                                 0
                             {% endif %}

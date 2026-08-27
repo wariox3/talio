@@ -111,6 +111,50 @@ class NominaController extends AbstractController
     }
 
     /**
+     * Ficha de la nomina con todo lo que trae el API.
+     *
+     * El retrieve devuelve el serializer completo —conceptos y errores
+     * anidados—, pero del empleado solo el id y el nombre, asi que la identidad
+     * del trabajador se pide aparte a su endpoint. No es un dato repetido: la
+     * nomina congela las condiciones con las que se emitio (sueldo, contrato,
+     * lugar de trabajo) y el maestro guarda quien es y lo que vale hoy; la
+     * ficha los enseña en dos bloques por eso mismo. El id es un UUID y se
+     * concatena a la url del API: el requirement lo acota a esa forma.
+     */
+    #[Route('/nobelio/nomina/detalle/{id}', name: 'nobelio_nomina_detalle', requirements: ['id' => '[0-9a-fA-F-]{36}'])]
+    public function detalle(Nobelio $nobelio, string $id): Response
+    {
+        $respuesta = $nobelio->consumoGet("api/nomina/nomina/{$id}/");
+        if ($respuesta['error']) {
+            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+
+            return $this->redirectToRoute('nobelio_nomina_lista');
+        }
+
+        $nomina = $respuesta['datos'];
+
+        // El empleado no viaja anidado, asi que va en su propia peticion. Si
+        // falla, la ficha se pinta igual: lo suyo es un bloque de mas, no la
+        // nomina.
+        $empleado = [];
+        if (!empty($nomina['empleado'])) {
+            $respuestaEmpleado = $nobelio->consumoGet("api/nomina/empleado/{$nomina['empleado']}/");
+            if ($respuestaEmpleado['error']) {
+                Mensajes::error("Nobelio: {$respuestaEmpleado['mensaje']}");
+            } else {
+                $empleado = $respuestaEmpleado['datos'];
+            }
+        }
+
+        return $this->render('nobelio/nomina/detalle.html.twig', [
+            'nomina' => $nomina,
+            'empleado' => $empleado,
+            'conceptos' => $nomina['conceptos'] ?? [],
+            'errores' => $nomina['errores'] ?? [],
+        ]);
+    }
+
+    /**
      * Ejecuta sobre la nomina la accion que toca en su estado.
      *
      * Las dos que cambian el documento —firmar y enviar— devuelven el estado en
@@ -270,12 +314,41 @@ class NominaController extends AbstractController
     }
 
     /**
+     * Los errores con los que la DIAN rechazo la nomina.
+     *
+     * El listado solo trae `total_errores`: las filas hay que ir a buscarlas al
+     * retrieve, que es el unico que las trae anidadas. Se abre en ventana
+     * emergente desde el listado, asi que un fallo no redirige a ningun sitio:
+     * se muestra el mensaje en la propia ventana y la tabla queda vacia.
+     */
+    #[Route('/nobelio/nomina/errores/{id}', name: 'nobelio_nomina_errores', requirements: ['id' => '[0-9a-fA-F-]{36}'])]
+    public function errores(Nobelio $nobelio, string $id): Response
+    {
+        $nomina = [];
+        $errores = [];
+
+        $respuesta = $nobelio->consumoGet("api/nomina/nomina/{$id}/");
+        if ($respuesta['error']) {
+            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+        } else {
+            $nomina = $respuesta['datos'];
+            $errores = $nomina['errores'] ?? [];
+        }
+
+        return $this->render('nobelio/nomina/errores.html.twig', [
+            'nomina' => $nomina,
+            'errores' => $errores,
+        ]);
+    }
+
+    /**
      * Los errores que devuelva la DIAN, listos para pegar al mensaje.
      *
      * Llegan como una lista de textos ya redactados por la DIAN —la regla y su
      * explicacion—, asi que se muestran tal cual: son lo unico que dice por que
-     * rechazo la nomina, y el listado no los trae (el serializer de lista los
-     * omite).
+     * rechazo la nomina. No son los mismos que los de errores(): aquellos son
+     * las filas guardadas del ultimo envio y estos, lo que acaba de contestar
+     * la DIAN en esta llamada.
      */
     private function resumenDeErrores(array $datos): string
     {

@@ -58,6 +58,7 @@
                     <th class="num">Total</th>
                     <th>Estado</th>
                     <th>CUNE</th>
+                    <th class="num">Errores</th>
                     <th>Validación</th>
                     <th>Acciones</th>
                 </tr>
@@ -65,7 +66,9 @@
                 <tbody>
                 {% for nomina in nominas %}
                     <tr>
-                        <td class="id">{{ nomina.numero }}</td>
+                        <td class="id">
+                            <a href="{{ path('nobelio_nomina_detalle', { 'id': nomina.id }) }}">{{ nomina.numero }}</a>
+                        </td>
                         <td>
                             {{- tipos[nomina.tipo_xml]|default(nomina.tipo_xml) -}}
                             {# La nota dice qué le hace a la nómina que ajusta:
@@ -86,6 +89,17 @@
                            completo queda en el title para poder copiarlo. #}
                         <td class="id" title="{{ nomina.cune }}">
                             {{- nomina.cune ? nomina.cune|slice(0, 12) ~ '…' -}}
+                        </td>
+                        {# El listado solo trae el conteo —las filas de error las
+                           explica el detalle—, asi que el numero es el enlace a
+                           la ventana que las va a buscar. #}
+                        <td class="num">
+                            {%- set totalErrores = nomina.total_errores|default(0) -%}
+                            {% if totalErrores %}
+                                <a href="javascript:abrirVentana('{{ path('nobelio_nomina_errores', { 'id': nomina.id }) }}', 'Errores', 500, 900)">{{ totalErrores }}</a>
+                            {% else %}
+                                0
+                            {% endif %}
                         </td>
                         {# El false deja la hora en la zona que trae el API
                            (-05:00); sin el, Twig la pasaria a la zona por
@@ -130,7 +144,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="12">
+                        <td colspan="13">
                             {% if total == 0 %}
                                 No hay nóminas que mostrar.
                             {% else %}

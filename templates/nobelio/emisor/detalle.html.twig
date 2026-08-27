@@ -56,10 +56,24 @@
             <dt>Correo</dt>
             <dd>{{ emisor.correo }}</dd>
 
+            {# La ficha son dos parejas por fila (.ficha es una grilla de cuatro
+               columnas), asi que los pares van de dos en dos: uno suelto deja la
+               fila a medias. El correo de copia entra aqui para emparejar la
+               habilitacion de nomina y de paso se ve, que hasta ahora no
+               salia. #}
+            <dt>Correo de copia</dt>
+            <dd>{{ emisor.correo_copia }}</dd>
             <dt>Estado</dt>
             <dd>{{ ui.estado(emisor.activo, 'Activo', 'Inactivo') }}</dd>
+
+            {# La nomina se habilita aparte y sin Set de Pruebas: el tramite es
+               en el portal de la DIAN, asi que un emisor que ya factura puede
+               seguir sin poder emitirla. Sin la bandera, la DIAN rechaza con la
+               regla 92 ("El Emisor del Documento no se encuentra Habilitado"). #}
             <dt>Facturación</dt>
             <dd>{{ ui.estado(emisor.habilitado_facturacion, 'Habilitado', 'Sin habilitar') }}</dd>
+            <dt>Nómina</dt>
+            <dd>{{ ui.estado(emisor.habilitado_nomina, 'Habilitado', 'Sin habilitar') }}</dd>
         </dl>
     </div>
     <div class="block tabs">

@@ -37,6 +37,7 @@
                     <th class="num">Cuenta</th>
                     <th>Estado</th>
                     <th>Facturación</th>
+                    <th>Nómina</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -55,10 +56,14 @@
                         <td class="num">{{ emisor.cuenta }}</td>
                         <td>{{ ui.estado(emisor.activo, 'Activo', 'Inactivo') }}</td>
                         <td>{{ ui.estado(emisor.habilitado_facturacion, 'Habilitado', 'Sin habilitar') }}</td>
+                        {# Se habilita aparte de la facturacion: el tramite es en
+                           el portal de la DIAN y no hay Set de Pruebas, asi que
+                           un emisor puede facturar y no poder emitir nomina. #}
+                        <td>{{ ui.estado(emisor.habilitado_nomina, 'Habilitado', 'Sin habilitar') }}</td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="9">
+                        <td colspan="10">
                             {% if total == 0 %}
                                 No hay emisores que mostrar.
                             {% else %}
