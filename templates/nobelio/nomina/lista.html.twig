@@ -22,6 +22,10 @@
     } %}
     {% set tipos = { '102': 'Nómina', '103': 'Nota de ajuste' } %}
     {% set tiposNota = { '1': 'Reemplaza', '2': 'Elimina' } %}
+    {# Con qué operación salió a la DIAN. Hoy solo hay una —la nómina no tiene
+       Set de Pruebas, así que no hay dos caminos entre los que elegir como en la
+       factura—, y viene vacía mientras no se haya enviado. #}
+    {% set envios = { 'nomina_sync': 'Síncrono' } %}
     {{ form_start(form) }}
     <input type="hidden" name="pagina" value="{{ pagina }}">
     <div class="block">
@@ -57,6 +61,7 @@
                     <th>Pago</th>
                     <th class="num">Total</th>
                     <th>Estado</th>
+                    <th>Envío</th>
                     <th>CUNE</th>
                     <th class="num">Errores</th>
                     <th>Validación</th>
@@ -84,6 +89,7 @@
                         <td class="fecha">{{ nomina.fecha_pago }}</td>
                         <td class="num">{{ nomina.total_comprobante|number_format(0, ',', '.') }}</td>
                         <td>{{ nomina.estado_nombre|capitalize }}</td>
+                        <td>{{ envios[nomina.envio]|default(nomina.envio) }}</td>
                         {# El CUNE son 96 caracteres de SHA-384: se muestra el
                            principio, que es con lo que se reconoce, y el
                            completo queda en el title para poder copiarlo. #}
@@ -144,7 +150,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="13">
+                        <td colspan="14">
                             {% if total == 0 %}
                                 No hay nóminas que mostrar.
                             {% else %}

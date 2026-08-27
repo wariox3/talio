@@ -12,6 +12,7 @@
 {% block content %}
     {% set tipos = { '102': 'Nómina', '103': 'Nota de ajuste' } %}
     {% set tiposNota = { '1': 'Reemplaza el documento anterior', '2': 'Elimina el documento anterior' } %}
+    {% set envios = { 'nomina_sync': 'Síncrono (SendNominaSync)' } %}
     {% set tiposCuenta = { 'ahorros': 'Ahorros', 'corriente': 'Corriente' } %}
     {% set tiposIncapacidad = { '1': 'Común', '2': 'Profesional', '3': 'Laboral' } %}
     {% set grupos = { 'devengado': 'Devengado', 'deduccion': 'Deducción' } %}
@@ -48,22 +49,30 @@
             <dd>{{ nomina.tiempo_laborado }} día{{ nomina.tiempo_laborado == 1 ? '' : 's' }}</dd>
 
             {# No es la fecha de firmar: la nomina no tiene la regla FAD09, asi
-               que el par fecha/hora es el que el emisor liquido. #}
-            <dt>Generación</dt>
-            <dd>{{ nomina.fecha_generacion }} {{ nomina.hora_generacion }}</dd>
+               que el par es el que el emisor liquido. Van en dos filas porque en
+               el XML son dos atributos, FechaGen y HoraGen. #}
+            <dt>Fecha de generación</dt>
+            <dd>{{ nomina.fecha_generacion }}</dd>
+            <dt>Hora de generación</dt>
+            <dd>{{ nomina.hora_generacion }}</dd>
+
             <dt>Fecha de pago</dt>
             <dd>{{ nomina.fecha_pago }}</dd>
-
             <dt>Ambiente</dt>
             <dd>{{ nomina.ambiente }}</dd>
+
             <dt>Moneda</dt>
             <dd>{{ nomina.moneda }}</dd>
-
             {# Solo viene cuando la moneda no es COP. #}
             <dt>TRM</dt>
             <dd>{{ nomina.trm is empty ? '' : nomina.trm|number_format(2, ',', '.') }}</dd>
+
             <dt>CUNE</dt>
             <dd class="wrap">{{ nomina.cune }}</dd>
+            {# Con que operacion salio a la DIAN. Hoy solo hay una —la nomina no
+               tiene Set de Pruebas—, y viene vacia mientras no se haya enviado. #}
+            <dt>Envío</dt>
+            <dd>{{ envios[nomina.envio]|default(nomina.envio) }}</dd>
 
             {# El false deja la hora en la zona que trae el API (-05:00); sin el,
                Twig la pasaria a la zona por defecto de PHP, que aqui es UTC. #}

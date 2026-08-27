@@ -37,13 +37,15 @@
 
             <dt>Emisión</dt>
             <dd>{{ documento.fecha_emision }} {{ documento.hora_emision }}</dd>
+            {# El DueDate del XML: la DIAN lo exige cuando la forma de pago es a
+               credito, y en contado no viene. #}
+            <dt>Vencimiento</dt>
+            <dd>{{ documento.fecha_vencimiento }}</dd>
+
             <dt>Resolución</dt>
             <dd>{{ documento.resolucion_numero }}</dd>
-
             <dt>Ambiente</dt>
             <dd>{{ documento.ambiente }}</dd>
-            <dt>Moneda</dt>
-            <dd>{{ documento.moneda }}</dd>
 
             <dt>Forma de pago</dt>
             <dd>{{ documento.forma_pago }}</dd>
@@ -75,11 +77,16 @@
                 {% endif %}
             </dd>
 
+            {# Va con el de arriba: el ResponseCode que dice por que se corrige
+               el documento referenciado. Solo lo llevan las notas, y sus codigos
+               validos dependen de si es credito, debito o ajuste. #}
+            <dt>Concepto de corrección</dt>
+            <dd>{{ documento.concepto_correccion }}</dd>
             <dt>Observaciones</dt>
             <dd>{{ documento.observaciones }}</dd>
+
             <dt>Creado</dt>
             <dd>{{ documento.creado_en ? documento.creado_en|date('Y-m-d H:i', false) }}</dd>
-
             <dt>Actualizado</dt>
             <dd>{{ documento.actualizado_en ? documento.actualizado_en|date('Y-m-d H:i', false) }}</dd>
         </dl>
@@ -117,9 +124,11 @@
 
                 <dt>Dirección</dt>
                 <dd>{{ adquiriente.direccion }}</dd>
+                <dt>Código postal</dt>
+                <dd>{{ adquiriente.codigo_postal }}</dd>
+
                 <dt>Teléfono</dt>
                 <dd>{{ adquiriente.telefono }}</dd>
-
                 <dt>Correo</dt>
                 <dd>{{ adquiriente.correo }}</dd>
             </dl>
@@ -129,16 +138,28 @@
 
         {{ ui.cabecera('Totales') }}
         <dl class="ficha">
+            {# La moneda va aqui y no arriba: es la que da sentido a estas
+               cifras. #}
+            <dt>Moneda</dt>
+            <dd>{{ documento.moneda }}</dd>
             <dt>Valor bruto</dt>
             <dd>{{ documento.valor_bruto|number_format(2, ',', '.') }}</dd>
-            <dt>Descuentos</dt>
-            <dd>{{ documento.total_descuentos|number_format(2, ',', '.') }}</dd>
 
+            {# El motivo es el AllowanceChargeReason del descuento o del cargo
+               global: va pegado a su cifra, que es lo unico que explica. #}
+            <dt>Descuentos</dt>
+            <dd>
+                {{- documento.total_descuentos|number_format(2, ',', '.') }}
+                {%- if documento.descuentos_motivo %} · {{ documento.descuentos_motivo }}{% endif -%}
+            </dd>
             <dt>Cargos</dt>
-            <dd>{{ documento.total_cargos|number_format(2, ',', '.') }}</dd>
+            <dd>
+                {{- documento.total_cargos|number_format(2, ',', '.') }}
+                {%- if documento.cargos_motivo %} · {{ documento.cargos_motivo }}{% endif -%}
+            </dd>
+
             <dt>Impuestos</dt>
             <dd>{{ documento.total_impuestos|number_format(2, ',', '.') }}</dd>
-
             <dt>Total a pagar</dt>
             <dd>{{ documento.total_a_pagar|number_format(2, ',', '.') }}</dd>
         </dl>
