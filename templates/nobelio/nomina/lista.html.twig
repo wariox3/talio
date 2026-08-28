@@ -58,7 +58,6 @@
                     <th>Tipo</th>
                     <th class="num">Emisor</th>
                     <th>Empleado</th>
-                    <th>Liquidación</th>
                     <th>Generación</th>
                     <th>Pago</th>
                     <th class="num">Total</th>
@@ -88,7 +87,6 @@
                             <a href="{{ path('nobelio_emisor_detalle', { 'id': nomina.emisor }) }}">{{ nomina.emisor }}</a>
                         </td>
                         <td>{{ nomina.empleado_nombre }}</td>
-                        <td class="fecha">{{ nomina.fecha_liquidacion_inicio }} → {{ nomina.fecha_liquidacion_fin }}</td>
                         <td class="fecha">{{ nomina.fecha_generacion }}</td>
                         <td class="fecha">{{ nomina.fecha_pago }}</td>
                         <td class="num">{{ nomina.total_comprobante|number_format(0, ',', '.') }}</td>
@@ -154,7 +152,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="16">
+                        <td colspan="15">
                             {% if total == 0 %}
                                 No hay nóminas que mostrar.
                             {% else %}
