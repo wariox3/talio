@@ -43,6 +43,7 @@
                 <thead>
                 <tr>
                     <th>Id</th>
+                    <th>Ambiente</th>
                     <th>Número</th>
                     <th>Tipo</th>
                     <th class="num">Emisor</th>
@@ -63,6 +64,7 @@
                         <td class="id">
                             <a href="{{ path('nobelio_documento_detalle', { 'id': documento.id }) }}">{{ documento.id }}</a>
                         </td>
+                        <td>{{ ui.ambiente(documento.ambiente) }}</td>
                         <td class="id">{{ documento.numero }}</td>
                         <td>{{ documento.documento_tipo_nombre }}</td>
                         <td class="num">
@@ -142,7 +144,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="13">
+                        <td colspan="14">
                             {% if total == 0 %}
                                 No hay documentos que mostrar.
                             {% else %}

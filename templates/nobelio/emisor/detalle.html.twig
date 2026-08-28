@@ -124,12 +124,16 @@
         </div>
 
         <div class="tab-panel" id="software" role="tabpanel" hidden>
+            {# El tipo llega como codigo ('nomina', 'facturacion'); si Nobelio
+               empieza a mandar `tipo_display` se usa esa etiqueta. #}
+            {% set tiposSoftware = { 'nomina': 'Nómina', 'facturacion': 'Facturación' } %}
             <div class="table-scroll">
                 <table class="data">
                     <thead>
                     <tr>
                         <th>Id</th>
                         <th>Identificador</th>
+                        <th>Tipo</th>
                         <th>Test set id</th>
                         <th>Set de pruebas</th>
                         <th>Estado</th>
@@ -140,12 +144,13 @@
                         <tr>
                             <td class="id">{{ programa.id }}</td>
                             <td class="id">{{ programa.identificador }}</td>
+                            <td>{{ programa.tipo_display|default(tiposSoftware[programa.tipo]|default(programa.tipo|default(''))) }}</td>
                             <td class="id">{{ programa.test_set_id }}</td>
                             <td>{{ ui.estado(programa.set_pruebas_aceptado, 'Aceptado', 'Sin aceptar') }}</td>
                             <td>{{ ui.estado(programa.activo, 'Activo', 'Inactivo') }}</td>
                         </tr>
                     {% else %}
-                        <tr><td colspan="5">Este emisor no tiene software registrado.</td></tr>
+                        <tr><td colspan="6">Este emisor no tiene software registrado.</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>

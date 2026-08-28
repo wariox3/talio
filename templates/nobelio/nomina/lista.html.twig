@@ -52,6 +52,8 @@
             <table class="data">
                 <thead>
                 <tr>
+                    <th>Id</th>
+                    <th>Ambiente</th>
                     <th>Número</th>
                     <th>Tipo</th>
                     <th class="num">Emisor</th>
@@ -72,8 +74,10 @@
                 {% for nomina in nominas %}
                     <tr>
                         <td class="id">
-                            <a href="{{ path('nobelio_nomina_detalle', { 'id': nomina.id }) }}">{{ nomina.numero }}</a>
+                            <a href="{{ path('nobelio_nomina_detalle', { 'id': nomina.id }) }}">{{ nomina.id }}</a>
                         </td>
+                        <td>{{ ui.ambiente(nomina.ambiente) }}</td>
+                        <td class="id">{{ nomina.numero }}</td>
                         <td>
                             {{- tipos[nomina.tipo_xml]|default(nomina.tipo_xml) -}}
                             {# La nota dice qué le hace a la nómina que ajusta:
@@ -150,7 +154,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="14">
+                        <td colspan="16">
                             {% if total == 0 %}
                                 No hay nóminas que mostrar.
                             {% else %}

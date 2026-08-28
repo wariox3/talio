@@ -36,3 +36,11 @@
         <span class="tag crit"><span class="dot"></span>{{ malTexto|default('No') }}</span>
     {% endif %}
 {% endmacro %}
+
+{# Ambiente DIAN del documento o de la nomina: 1 produccion, 2 habilitacion
+   (el Ambiente de `nucleo` en Nobelio, compartido por factura y nomina). Llega
+   como numero, y vacio mientras no se haya heredado del emisor. #}
+{% macro ambiente(codigo) %}
+    {%- set etiquetas = { 1: 'Producción', 2: 'Habilitación' } -%}
+    {{- etiquetas[codigo]|default(codigo) -}}
+{% endmacro %}
