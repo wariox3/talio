@@ -133,6 +133,7 @@
                     <tr>
                         <th>Id</th>
                         <th>Identificador</th>
+                        <th>PIN</th>
                         <th>Tipo</th>
                         <th>Test set id</th>
                         <th>Set de pruebas</th>
@@ -144,13 +145,18 @@
                         <tr>
                             <td class="id">{{ programa.id }}</td>
                             <td class="id">{{ programa.identificador }}</td>
+                            {# El PIN dejo de ser `write_only` en Nobelio el
+                               2026-08-28; el default cubre a un Nobelio viejo
+                               que todavia no lo devuelva —sin el, strict_variables
+                               tumba la pagina—. #}
+                            <td class="id">{{ programa.pin|default('') }}</td>
                             <td>{{ programa.tipo_display|default(tiposSoftware[programa.tipo]|default(programa.tipo|default(''))) }}</td>
                             <td class="id">{{ programa.test_set_id }}</td>
                             <td>{{ ui.estado(programa.set_pruebas_aceptado, 'Aceptado', 'Sin aceptar') }}</td>
                             <td>{{ ui.estado(programa.activo, 'Activo', 'Inactivo') }}</td>
                         </tr>
                     {% else %}
-                        <tr><td colspan="6">Este emisor no tiene software registrado.</td></tr>
+                        <tr><td colspan="7">Este emisor no tiene software registrado.</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>
