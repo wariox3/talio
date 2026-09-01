@@ -50,6 +50,17 @@ class DocumentoController extends AbstractController
             } elseif ($form->get('btnSiguiente')->isClicked()) {
                 $pagina++;
             }
+        } else {
+            // Las acciones son POST y acaban en redirect, asi que la lista se
+            // vuelve a pedir por GET: el filtro y la pagina llegan en la query
+            // (los pone redirigirALista()) y hay que devolverselos al form, o
+            // cada accion tiraria al usuario a la primera pagina sin filtrar.
+            $estado = (string) $request->query->get('estado', '');
+            if (!in_array($estado, self::ESTADOS, true)) {
+                $estado = '';
+            }
+            $pagina = max(1, (int) $request->query->get('pagina', 1));
+            $form->get('estado')->setData($estado);
         }
 
         // Lo mas reciente primero. La hora desempata dentro del mismo dia, que
@@ -80,11 +91,39 @@ class DocumentoController extends AbstractController
         return $this->render('nobelio/documento/lista.html.twig', [
             'form' => $form->createView(),
             'documentos' => $documentos,
+            'estado' => $estado,
             'total' => $total,
             'pagina' => $pagina,
             'hayAnterior' => $hayAnterior,
             'haySiguiente' => $haySiguiente,
         ]);
+    }
+
+    /**
+     * Devuelve a la lista conservando el filtro y la pagina en que se estaba.
+     *
+     * Los dos viajan en el POST de la accion —el form de acciones los lleva en
+     * hidden— y se reponen en la query del redirect, que es lo unico que
+     * sobrevive a un GET nuevo. Sin esto, emitir o eliminar desde la pagina 4
+     * de los rechazados devolvia a la primera pagina de todos.
+     */
+    private function redirigirALista(Request $request): Response
+    {
+        $parametros = [];
+
+        $estado = (string) $request->request->get('estado', '');
+        // El estado se reenvia al API tal cual, asi que solo pasa si es uno de
+        // los del filtro; cualquier otra cosa se ignora.
+        if ($estado !== '' && in_array($estado, self::ESTADOS, true)) {
+            $parametros['estado'] = $estado;
+        }
+
+        $pagina = max(1, (int) $request->request->get('pagina', 1));
+        if ($pagina > 1) {
+            $parametros['pagina'] = $pagina;
+        }
+
+        return $this->redirectToRoute('nobelio_documento_lista', $parametros);
     }
 
     /**
@@ -187,7 +226,7 @@ class DocumentoController extends AbstractController
             }
         }
 
-        return $this->redirectToRoute('nobelio_documento_lista');
+        return $this->redirigirALista($request);
     }
 
     /**
@@ -240,7 +279,7 @@ class DocumentoController extends AbstractController
             }
         }
 
-        return $this->redirectToRoute('nobelio_documento_lista');
+        return $this->redirigirALista($request);
     }
 
     #[Route('/nobelio/documento/eliminar', name: 'nobelio_documento_eliminar', methods: ['POST'])]
@@ -264,7 +303,7 @@ class DocumentoController extends AbstractController
             }
         }
 
-        return $this->redirectToRoute('nobelio_documento_lista');
+        return $this->redirigirALista($request);
     }
 
     #[Route('/nobelio/documento/errores/{id}', name: 'nobelio_documento_errores')]

@@ -51,18 +51,22 @@
             <dt>Dirección</dt>
             <dd>{{ emisor.direccion }}</dd>
 
+            {# El codigo postal va pegado a la direccion, igual que en la ficha
+               del adquiriente: los dos son la misma direccion fiscal. #}
+            <dt>Código postal</dt>
+            <dd>{{ emisor.codigo_postal }}</dd>
             <dt>Teléfono</dt>
             <dd>{{ emisor.telefono }}</dd>
-            <dt>Correo</dt>
-            <dd>{{ emisor.correo }}</dd>
 
             {# La ficha son dos parejas por fila (.ficha es una grilla de cuatro
                columnas), asi que los pares van de dos en dos: uno suelto deja la
-               fila a medias. El correo de copia entra aqui para emparejar la
-               habilitacion de nomina y de paso se ve, que hasta ahora no
-               salia. #}
+               fila a medias. El correo de copia entra aqui —hasta ahora no
+               salia— y con el vuelven a cuadrar todas las filas. #}
+            <dt>Correo</dt>
+            <dd>{{ emisor.correo }}</dd>
             <dt>Correo de copia</dt>
             <dd>{{ emisor.correo_copia }}</dd>
+
             <dt>Estado</dt>
             <dd>{{ ui.estado(emisor.activo, 'Activo', 'Inactivo') }}</dd>
 
@@ -72,8 +76,13 @@
                regla 92 ("El Emisor del Documento no se encuentra Habilitado"). #}
             <dt>Facturación</dt>
             <dd>{{ ui.estado(emisor.habilitado_facturacion, 'Habilitado', 'Sin habilitar') }}</dd>
+
             <dt>Nómina</dt>
             <dd>{{ ui.estado(emisor.habilitado_nomina, 'Habilitado', 'Sin habilitar') }}</dd>
+            {# El documento equivalente se habilita por su cuenta, igual que la
+               nomina. #}
+            <dt>Documento equivalente</dt>
+            <dd>{{ ui.estado(emisor.habilitado_documento_equivalente, 'Habilitado', 'Sin habilitar') }}</dd>
         </dl>
     </div>
     <div class="block tabs">
@@ -86,9 +95,6 @@
             </button>
             <button type="button" class="tab" role="tab" aria-selected="false" data-panel="resoluciones">
                 Resoluciones <span class="stamp">{{ resoluciones|length }}</span>
-            </button>
-            <button type="button" class="tab" role="tab" aria-selected="false" data-panel="documentos">
-                Documentos <span class="stamp">{{ documentos|length }}</span>
             </button>
         </div>
 
@@ -198,55 +204,6 @@
                         </tr>
                     {% else %}
                         <tr><td colspan="11">Este emisor no tiene resoluciones registradas.</td></tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="tab-panel" id="documentos" role="tabpanel" hidden>
-            <div class="table-scroll">
-                <table class="data">
-                    <thead>
-                    <tr>
-                        <th>Número</th>
-                        <th>Tipo</th>
-                        <th>Emisión</th>
-                        <th>Adquiriente</th>
-                        <th class="num">Total</th>
-                        <th>Estado</th>
-                        <th class="num">Errores</th>
-                        <th>Validación</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {% for documento in documentos %}
-                        <tr>
-                            <td class="id">
-                                <a href="{{ path('nobelio_documento_detalle', { 'id': documento.id }) }}">{{ documento.numero }}</a>
-                            </td>
-                            <td>{{ documento.documento_tipo_nombre }}</td>
-                            <td class="fecha">{{ documento.fecha_emision }}</td>
-                            <td>{{ documento.adquiriente.razon_social }}</td>
-                            <td class="num">{{ documento.total_a_pagar|number_format(0, ',', '.') }}</td>
-                            <td>{{ documento.estado_nombre|capitalize }}</td>
-                            <td class="num">
-                                {%- set errores = documento.errores|default([]) -%}
-                                {% if errores %}
-                                    <a href="javascript:abrirVentana('{{ path('nobelio_documento_errores', { 'id': documento.id }) }}', 'Errores', 500, 900)">{{ errores|length }}</a>
-                                {% else %}
-                                    0
-                                {% endif %}
-                            </td>
-                            {# El false deja la hora en la zona que trae el API
-                               (-05:00); sin el, Twig la pasaria a la zona por
-                               defecto de PHP, que aqui es UTC. #}
-                            <td class="fecha">
-                                {{- documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) -}}
-                            </td>
-                        </tr>
-                    {% else %}
-                        <tr><td colspan="8">Este emisor no tiene documentos.</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>

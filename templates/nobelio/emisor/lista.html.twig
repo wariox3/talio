@@ -38,6 +38,7 @@
                     <th>Estado</th>
                     <th>Facturación</th>
                     <th>Nómina</th>
+                    <th>Documento equivalente</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -60,10 +61,13 @@
                            el portal de la DIAN y no hay Set de Pruebas, asi que
                            un emisor puede facturar y no poder emitir nomina. #}
                         <td>{{ ui.estado(emisor.habilitado_nomina, 'Habilitado', 'Sin habilitar') }}</td>
+                        {# Igual que la nomina, va por su propio tramite: hay
+                           emisores que facturan y no tienen el equivalente. #}
+                        <td>{{ ui.estado(emisor.habilitado_documento_equivalente, 'Habilitado', 'Sin habilitar') }}</td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="10">
+                        <td colspan="11">
                             {% if total == 0 %}
                                 No hay emisores que mostrar.
                             {% else %}

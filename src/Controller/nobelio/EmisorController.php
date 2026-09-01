@@ -106,20 +106,11 @@ class EmisorController extends AbstractController
             $resoluciones = $listaResoluciones['datos']['results'] ?? [];
         }
 
-        $documentos = [];
-        $listaDocumentos = $nobelio->consumoGet('api/documentos/documento/', ['emisor' => $id]);
-        if ($listaDocumentos['error']) {
-            Mensajes::error("Nobelio: {$listaDocumentos['mensaje']}");
-        } else {
-            $documentos = $listaDocumentos['datos']['results'] ?? [];
-        }
-
         return $this->render('nobelio/emisor/detalle.html.twig', [
             'emisor' => $emisor,
             'certificados' => $certificados,
             'software' => $software,
             'resoluciones' => $resoluciones,
-            'documentos' => $documentos,
         ]);
     }
 }
