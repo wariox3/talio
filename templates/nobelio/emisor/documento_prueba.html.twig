@@ -1,0 +1,37 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Documento de prueba · Talio{% endblock %}
+{% block ruta %}
+    Documento de prueba ·
+    <b>{{ resolucion.prefijo|default('') }}{{ resolucion.numero_resolucion|default('') }}</b>
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Resolución') }}
+        <dl class="ficha">
+            <dt>Id</dt>
+            <dd>{{ resolucion.id|default('') }}</dd>
+            <dt>Prefijo</dt>
+            <dd>{{ resolucion.prefijo|default('') }}</dd>
+
+            <dt>Rango</dt>
+            <dd>{{ resolucion.rango_desde|default('') }} – {{ resolucion.rango_hasta|default('') }}</dd>
+            <dt>Vigencia</dt>
+            <dd>{{ resolucion.vigente_desde|default('') }} – {{ resolucion.vigente_hasta|default('') }}</dd>
+        </dl>
+    </div>
+
+    <div class="block">
+        {{ ui.cabecera('Crear') }}
+        {# El consecutivo es opcional: en blanco, Nobelio toma el siguiente
+           libre de la resolucion. El tipo de documento no se pide —lo decide
+           el tipo_factura de la resolucion— y el documento queda en borrador:
+           ni se firma ni se envia desde aqui. #}
+        {{ form_start(form) }}
+        <div class="filters">
+            {{ ui.campo('Consecutivo (opcional)', form.consecutivo) }}
+            {{ form_widget(form.btnCrear) }}
+        </div>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

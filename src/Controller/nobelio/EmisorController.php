@@ -4,6 +4,7 @@ namespace App\Controller\nobelio;
 use App\Utilidades\Mensajes;
 use App\Utilidades\Nobelio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\HttpFoundation\Request;
@@ -111,6 +112,67 @@ class EmisorController extends AbstractController
             'certificados' => $certificados,
             'software' => $software,
             'resoluciones' => $resoluciones,
+        ]);
+    }
+
+    /**
+     * Ventana para sembrar un documento de prueba sobre una resolucion.
+     *
+     * Se abre con abrirVentana() desde la linea de la resolucion, asi que un
+     * fallo no redirige a ningun sitio: el mensaje sale en la propia ventana.
+     *
+     * El consecutivo es opcional —sin el, Nobelio toma el siguiente libre de
+     * la resolucion—, y por eso el campo no es `required` y el cuerpo va vacio
+     * cuando no se digita. El tipo de documento no se pide: lo decide el
+     * `tipo_factura` de la resolucion.
+     */
+    #[Route('/nobelio/resolucion/documento-prueba/{id}', name: 'nobelio_resolucion_documento_prueba', requirements: ['id' => '\\d+'])]
+    public function documentoPrueba(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $form = $this->createFormBuilder()
+            ->add('consecutivo', IntegerType::class, ['required' => false, 'attr' => ['min' => 1]])
+            ->add('btnCrear', SubmitType::class, ['label' => 'Crear'])
+            ->getForm();
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $consecutivo = $form->get('consecutivo')->getData();
+            $datos = $consecutivo !== null ? ['consecutivo' => $consecutivo] : [];
+
+            // Nobelio comprueba el rango y los consecutivos ya usados, y
+            // responde 400 explicando por que no se puede ("El consecutivo N
+            // esta fuera del rango", etc.); ese es el mensaje que se muestra.
+            $respuesta = $nobelio->consumoPost("api/emisores/resolucion/{$id}/crear-documento-prueba/", $datos);
+            if ($respuesta['error']) {
+                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $creado = $respuesta['datos'];
+                Mensajes::success(sprintf(
+                    "Documento %s creado en estado '%s'. Queda en borrador: se emite desde Documentos.",
+                    $creado['numero'] ?? '',
+                    $creado['estado'] ?? '',
+                ));
+            }
+
+            // Redirect despues del POST: la ventana se queda abierta para
+            // sembrar el siguiente, y un F5 no vuelve a crear el documento.
+            return $this->redirectToRoute('nobelio_resolucion_documento_prueba', ['id' => $id]);
+        }
+
+        // Solo para encabezar la ventana: sin esto no se ve sobre que
+        // resolucion se esta creando, que es lo unico que distingue a una de
+        // otra cuando hay varias en el emisor.
+        $resolucion = [];
+        $respuestaResolucion = $nobelio->consumoGet("api/emisores/resolucion/{$id}/");
+        if ($respuestaResolucion['error']) {
+            Mensajes::error("Nobelio: {$respuestaResolucion['mensaje']}");
+        } else {
+            $resolucion = $respuestaResolucion['datos'];
+        }
+
+        return $this->render('nobelio/emisor/documento_prueba.html.twig', [
+            'form' => $form->createView(),
+            'resolucion' => $resolucion,
         ]);
     }
 }

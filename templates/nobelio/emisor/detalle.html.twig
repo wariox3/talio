@@ -6,9 +6,6 @@
     <a href="{{ path('nobelio_emisor_lista') }}">Emisores</a> <span>/</span>
     <b>{{ emisor.razon_social }}</b>
 {% endblock %}
-{% block acciones %}
-    {{ ui.estado(emisor.activo, 'Activo', 'Inactivo') }}
-{% endblock %}
 {% block content %}
     <div class="block">
         {{ ui.cabecera('Emisor') }}
@@ -63,9 +60,6 @@
             <dt>Correo de copia</dt>
             <dd>{{ emisor.correo_copia }}</dd>
 
-            <dt>Estado</dt>
-            <dd>{{ ui.estado(emisor.activo, 'Activo', 'Inactivo') }}</dd>
-
             {# La nomina se habilita aparte y sin Set de Pruebas: el tramite es
                en el portal de la DIAN, asi que un emisor que ya factura puede
                seguir sin poder emitirla. Sin la bandera, la DIAN rechaza con la
@@ -104,7 +98,6 @@
                         <th>Archivo</th>
                         <th>Vigente desde</th>
                         <th>Vigente hasta</th>
-                        <th>Estado</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -115,10 +108,9 @@
                             <td>{{ certificado.nombre_archivo }}</td>
                             <td class="fecha">{{ certificado.vigente_desde }}</td>
                             <td class="fecha">{{ certificado.vigente_hasta }}</td>
-                            <td>{{ ui.estado(certificado.activo, 'Activo', 'Inactivo') }}</td>
                         </tr>
                     {% else %}
-                        <tr><td colspan="6">Este emisor no tiene certificado cargado.</td></tr>
+                        <tr><td colspan="5">Este emisor no tiene certificado cargado.</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>
@@ -139,7 +131,6 @@
                         <th>Tipo</th>
                         <th>Test set id</th>
                         <th>Set de pruebas</th>
-                        <th>Estado</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -155,10 +146,9 @@
                             <td>{{ programa.tipo_display|default(tiposSoftware[programa.tipo]|default(programa.tipo|default(''))) }}</td>
                             <td class="id">{{ programa.test_set_id }}</td>
                             <td>{{ ui.estado(programa.set_pruebas_aceptado, 'Aceptado', 'Sin aceptar') }}</td>
-                            <td>{{ ui.estado(programa.activo, 'Activo', 'Inactivo') }}</td>
                         </tr>
                     {% else %}
-                        <tr><td colspan="7">Este emisor no tiene software registrado.</td></tr>
+                        <tr><td colspan="6">Este emisor no tiene software registrado.</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>
@@ -179,8 +169,8 @@
                         <th class="num">Rango hasta</th>
                         <th>Vigente desde</th>
                         <th>Vigente hasta</th>
-                        <th class="num">Consec. actual</th>
                         <th>Estado</th>
+                        <th>Acciones</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -195,8 +185,14 @@
                             <td class="num">{{ resolucion.rango_hasta }}</td>
                             <td class="fecha">{{ resolucion.vigente_desde }}</td>
                             <td class="fecha">{{ resolucion.vigente_hasta }}</td>
-                            <td class="num">{{ resolucion.consecutivo_actual }}</td>
                             <td>{{ ui.estado(resolucion.activa, 'Activa', 'Inactiva') }}</td>
+                            {# Siembra un documento de prueba sobre esta
+                               resolucion. Va en ventana y no como boton
+                               directo porque el consecutivo se digita: en
+                               blanco lo elige Nobelio. #}
+                            <td class="acciones">
+                                <a href="javascript:abrirVentana('{{ path('nobelio_resolucion_documento_prueba', { 'id': resolucion.id }) }}', 'DocumentoPrueba', 430, 640)">Crear</a>
+                            </td>
                         </tr>
                     {% else %}
                         <tr><td colspan="11">Este emisor no tiene resoluciones registradas.</td></tr>
