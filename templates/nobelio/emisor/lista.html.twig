@@ -34,7 +34,6 @@
                     <th>Municipio</th>
                     <th>Correo</th>
                     <th>Teléfono</th>
-                    <th class="num">Cuenta</th>
                     <th>Estado</th>
                     <th>Facturación</th>
                     <th>Nómina</th>
@@ -54,7 +53,6 @@
                         <td>{{ emisor.municipio_nombre }}</td>
                         <td>{{ emisor.correo }}</td>
                         <td>{{ emisor.telefono }}</td>
-                        <td class="num">{{ emisor.cuenta }}</td>
                         <td>{{ ui.estado(emisor.activo, 'Activo', 'Inactivo') }}</td>
                         <td>{{ ui.estado(emisor.habilitado_facturacion, 'Habilitado', 'Sin habilitar') }}</td>
                         {# Se habilita aparte de la facturacion: el tramite es en
@@ -67,7 +65,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="11">
+                        <td colspan="10">
                             {% if total == 0 %}
                                 No hay emisores que mostrar.
                             {% else %}

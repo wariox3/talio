@@ -3,17 +3,10 @@
 namespace App\Utilidades;
 
 use Symfony\Component\HttpClient\HttpClient;
-use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 class Nobelio
 {
-    private const CLAVE_TOKEN = 'nobelio_token';
-
-    public function __construct(private RequestStack $requestStack)
-    {
-    }
-
     public function consumoGet(string $url, array $parametros = []): array
     {
         return $this->peticion('GET', $url, ['query' => $parametros]);
@@ -46,67 +39,22 @@ class Nobelio
         return $this->peticion('GET', $url, ['query' => $parametros], true);
     }
 
-    public function autenticar(): array
-    {
-        $usuario = $_ENV['NOBELIO_USUARIO'] ?? '';
-        $clave = $_ENV['NOBELIO_CLAVE'] ?? '';
-
-        if ($usuario === '' || $clave === '') {
-            return [
-                'error' => true,
-                'mensaje' => 'Faltan NOBELIO_USUARIO o NOBELIO_CLAVE en el .env',
-            ];
-        }
-
-        try {
-            $client = HttpClient::create();
-            $response = $client->request('POST', $this->rutaCompleta('api/seguridad/token/'), [
-                // El USERNAME_FIELD del Usuario de Nobelio es "email", no "username".
-                'json' => ['email' => $usuario, 'password' => $clave],
-            ]);
-
-            $status = $response->getStatusCode();
-            $cuerpo = $this->decodificar($response);
-
-            if ($status === 200 && isset($cuerpo['access'])) {
-                $this->requestStack->getSession()->set(self::CLAVE_TOKEN, $cuerpo['access']);
-
-                return ['error' => false, 'token' => $cuerpo['access']];
-            }
-
-            return [
-                'error' => true,
-                'mensaje' => $status === 401
-                    ? 'Credenciales de Nobelio rechazadas'
-                    : $this->mensajeDeError($cuerpo, $status),
-            ];
-        } catch (TransportExceptionInterface $e) {
-            return ['error' => true, 'mensaje' => $e->getMessage()];
-        }
-    }
-
+    /**
+     * Nobelio autentica con API Key, no con JWT: la llave va tal cual en cada
+     * peticion, no caduca y no hay nada que guardar en sesion ni que renovar.
+     */
     private function peticion(string $metodo, string $url, array $opciones, bool $archivo = false): array
     {
-        $respuesta = $this->enviar($metodo, $url, $opciones, $archivo);
+        $llave = $_ENV['NOBELIO_TOKEN'] ?? '';
 
-        if ($respuesta['error'] && ($respuesta['estado'] ?? 0) === 401) {
-            $autenticacion = $this->autenticar();
-            if ($autenticacion['error']) {
-                return $autenticacion;
-            }
-            $respuesta = $this->enviar($metodo, $url, $opciones, $archivo);
+        if ($llave === '') {
+            return ['error' => true, 'mensaje' => 'Falta NOBELIO_TOKEN en el .env'];
         }
 
-        unset($respuesta['estado']);
-
-        return $respuesta;
-    }
-
-    private function enviar(string $metodo, string $url, array $opciones, bool $archivo = false): array
-    {
         try {
             $client = HttpClient::create();
-            $opciones['headers'] = ['Authorization' => 'Bearer ' . $this->token()];
+            // El esquema "Api-Key" es el que espera djangorestframework-api-key.
+            $opciones['headers'] = ['Authorization' => 'Api-Key ' . $llave];
 
             $response = $client->request($metodo, $this->rutaCompleta($url), $opciones);
             $status = $response->getStatusCode();
@@ -128,17 +76,13 @@ class Nobelio
 
             return [
                 'error' => true,
-                'estado' => $status,
-                'mensaje' => $this->mensajeDeError($this->decodificar($response), $status),
+                'mensaje' => $status === 401
+                    ? 'Nobelio rechazó la API Key de NOBELIO_TOKEN'
+                    : $this->mensajeDeError($this->decodificar($response), $status),
             ];
         } catch (TransportExceptionInterface $e) {
-            return ['error' => true, 'estado' => 0, 'mensaje' => $e->getMessage()];
+            return ['error' => true, 'mensaje' => $e->getMessage()];
         }
-    }
-
-    private function token(): string
-    {
-        return (string) $this->requestStack->getSession()->get(self::CLAVE_TOKEN, '');
     }
 
     private function rutaCompleta(string $url): string

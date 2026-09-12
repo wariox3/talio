@@ -49,8 +49,7 @@ completo.
 | `BASE_CARBONO` | `Utilidades/Carbono.php` | URL base de la API de Carbono. |
 | `BASE_TANTALO` | `Utilidades/Tantalo.php`, `Carbono.php` | URL base de la API de Tántalo. |
 | `BASE_NOBELIO` | `Utilidades/Nobelio.php` | URL base de la API de Nobelio (facturación electrónica DIAN). |
-| `NOBELIO_USUARIO` | `Utilidades/Nobelio.php` | Correo del usuario **de staff** de Nobelio. Ver nota abajo. |
-| `NOBELIO_CLAVE` | `Utilidades/Nobelio.php` | Su contraseña. Se usa para pedir un JWT, no viaja en cada petición. |
+| `NOBELIO_TOKEN` | `Utilidades/Nobelio.php` | API Key de Nobelio, `<prefijo>.<secreto>`. Ver nota abajo. |
 | `KIAI_TOKEN` | `Utilidades/Softgic.php` | Va como `CURLOPT_USERPWD`, formato `usuario:clave`. |
 | `DO_REGION` | `Utilidades/SpaceDO.php` | Región de Spaces. Arma el endpoint `https://{DO_REGION}.digitaloceanspaces.com`. |
 | `DO_CLAVE_ACCESO` | `Utilidades/SpaceDO.php` | Access key de Spaces. |
@@ -58,26 +57,21 @@ completo.
 | `DO_BUCKET` | `Utilidades/SpaceDO.php` | Nombre del bucket. |
 
 **Sobre las credenciales de Nobelio.** Nobelio (Django + DRF) tiene dos
-mecanismos de autenticación y **solo uno alcanza todos los datos**:
+mecanismos de autenticación, y Talio usa el primero:
 
 | Mecanismo | Cabecera | Alcance |
 |---|---|---|
-| API Key | `Authorization: Api-Key <prefijo>.<secreto>` | Los emisores de **una sola cuenta** |
-| JWT de usuario normal | `Authorization: Bearer <access>` | Los emisores **asignados** a esa persona |
-| JWT de usuario **staff** | `Authorization: Bearer <access>` | **Todo, sin restricción** |
+| API Key | `Authorization: Api-Key <prefijo>.<secreto>` | Los emisores y documentos de **una sola cuenta** |
+| JWT de usuario | `Authorization: Bearer <access>` | Según el usuario: los emisores asignados, o todo si es staff |
 
-Talio usa el tercero. `apps/seguridad/alcance.py` devuelve `None` (sin filtro)
-cuando `is_staff` o `is_superuser`, y los endpoints `/api/seguridad/usuario/` y
-`/api/seguridad/llave-api/` son exclusivos de staff.
+La API Key va tal cual en cada petición (`Nobelio::peticion()`), **no caduca** y
+no se guarda nada en sesión: no hay login ni renovación que manejar. Se genera
+en Nobelio y solo se ve completa al crearla.
 
-Una API Key **no puede** sustituirlo: `PrincipalLlaveApi` declara
-`is_staff = False` fijo en el código, así que jamás pasa el filtro de staff por
-mucho que se le den permisos en base de datos.
-
-`Nobelio::autenticar()` cambia usuario y contraseña por un access token
-(`POST /api/seguridad/token/`, campo `email` porque ese es el `USERNAME_FIELD`),
-lo guarda en sesión y lo renueva solo cuando la API responde 401. El token dura
-12 h por defecto.
+Lo que **no** alcanza una API Key es `/api/seguridad/` (usuarios, llaves): esos
+endpoints siguen siendo exclusivos de staff y responden 403. Talio no los
+consume; si algún día los necesita, tocaría volver a un JWT de staff para esa
+parte.
 
 #### Endpoints de Nobelio
 
@@ -115,7 +109,7 @@ Cada recurso registrado en un router de DRF expone el juego REST completo:
 | `api/documentos/documento/{id}/notificar/` | `POST` multipart · arma el paquete para el adquiriente. Devuelve JSON, salvo con `?descargar=1`. El envío por correo **aún no existe** en Nobelio (`enviado: false`). |
 
 **Alcance de `Nobelio`.** La clase expone `consumoGet()`, `consumoPost()`,
-`consumoDelete()`, `consumoArchivo()` y `autenticar()`. `PUT`/`PATCH` se añaden
+`consumoDelete()` y `consumoArchivo()`. `PUT`/`PATCH` se añaden
 cuando hagan falta: `peticion()` ya acepta cualquier método, así que un verbo
 nuevo es una línea.
 
@@ -158,10 +152,6 @@ cron: `/etc/cron.d/php` → `/usr/lib/php/sessionclean`. Ese script lee el
 fija en tiempo de ejecución y nunca tocaría `var/sesiones/`. Por eso, junto con
 el `save_path` propio hay que reactivar el recolector de PHP: van juntos, y
 quitar uno sin el otro deja los archivos acumulándose sin caducar.
-
-El token de Nobelio vive dentro de esta sesión (`Nobelio::CLAVE_TOKEN`) y dura
-12 h, pero eso es transparente: `Nobelio::peticion()` reautentica solo ante un
-401. Lo que devuelve al login es la caducidad de la sesión, no la del token.
 
 ## Pendientes conocidos
 
