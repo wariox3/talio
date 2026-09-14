@@ -175,4 +175,62 @@ class EmisorController extends AbstractController
             'resolucion' => $resolucion,
         ]);
     }
+
+    /**
+     * Ventana para sembrar una nomina de prueba sobre un software de nomina.
+     *
+     * Hermana de documentoPrueba(), pero cuelga del software y no de una
+     * resolucion: la nomina no se numera con resolucion, asi que quien la
+     * numera es el prefijo de pruebas del emisor. Nobelio solo la crea sobre
+     * un software de tipo `nomina` —en uno de facturacion responde 400—, y por
+     * eso la accion solo se ofrece en esas lineas.
+     *
+     * El consecutivo tampoco es requerido: sin el toma el siguiente libre.
+     */
+    #[Route('/nobelio/software/nomina-prueba/{id}', name: 'nobelio_software_nomina_prueba', requirements: ['id' => '\\d+'])]
+    public function nominaPrueba(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $form = $this->createFormBuilder()
+            ->add('consecutivo', IntegerType::class, ['required' => false, 'attr' => ['min' => 1]])
+            ->add('btnCrear', SubmitType::class, ['label' => 'Crear'])
+            ->getForm();
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $consecutivo = $form->get('consecutivo')->getData();
+            $datos = $consecutivo !== null ? ['consecutivo' => $consecutivo] : [];
+
+            $respuesta = $nobelio->consumoPost("api/emisores/software/{$id}/crear-nomina-prueba/", $datos);
+            if ($respuesta['error']) {
+                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $creada = $respuesta['datos'];
+                // El periodo se dice porque no se elige: Nobelio continua la
+                // serie hacia atras para no repetir trabajador y periodo, que
+                // es lo que la DIAN rechaza con la regla 90.
+                $periodo = $creada['periodo'] ?? [];
+                Mensajes::success(sprintf(
+                    "Nómina %s creada en estado '%s'%s. Queda en borrador: se emite desde Nómina.",
+                    $creada['numero'] ?? '',
+                    $creada['estado'] ?? '',
+                    count($periodo) === 2 ? " para el periodo {$periodo[0]} a {$periodo[1]}" : '',
+                ));
+            }
+
+            return $this->redirectToRoute('nobelio_software_nomina_prueba', ['id' => $id]);
+        }
+
+        $software = [];
+        $respuestaSoftware = $nobelio->consumoGet("api/emisores/software/{$id}/");
+        if ($respuestaSoftware['error']) {
+            Mensajes::error("Nobelio: {$respuestaSoftware['mensaje']}");
+        } else {
+            $software = $respuestaSoftware['datos'];
+        }
+
+        return $this->render('nobelio/emisor/nomina_prueba.html.twig', [
+            'form' => $form->createView(),
+            'software' => $software,
+        ]);
+    }
 }

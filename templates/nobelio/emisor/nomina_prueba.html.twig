@@ -1,0 +1,36 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Nómina de prueba · Talio{% endblock %}
+{% block ruta %}
+    Nómina de prueba · <b>{{ software.identificador|default('') }}</b>
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Software') }}
+        <dl class="ficha">
+            <dt>Id</dt>
+            <dd>{{ software.id|default('') }}</dd>
+            <dt>Identificador</dt>
+            <dd>{{ software.identificador|default('') }}</dd>
+
+            <dt>Test set id</dt>
+            <dd>{{ software.test_set_id|default('') }}</dd>
+            <dt>Set de pruebas</dt>
+            <dd>{{ ui.estado(software.set_pruebas_aceptado|default(false), 'Aceptado', 'Sin aceptar') }}</dd>
+        </dl>
+    </div>
+
+    <div class="block">
+        {{ ui.cabecera('Crear') }}
+        {# El consecutivo es opcional: en blanco, Nobelio toma el siguiente
+           libre del prefijo de pruebas del emisor. El periodo de liquidacion
+           no se pide —lo continua Nobelio hacia atras para no chocar con la
+           regla 90— y la nomina queda en borrador. #}
+        {{ form_start(form) }}
+        <div class="filters">
+            {{ ui.campo('Consecutivo (opcional)', form.consecutivo) }}
+            {{ form_widget(form.btnCrear) }}
+        </div>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

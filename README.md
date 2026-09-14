@@ -97,6 +97,7 @@ Cada recurso registrado en un router de DRF expone el juego REST completo:
 | `api/emisores/emisor/validar-nit/` | `GET ?nit=<NIT>` |
 | `api/emisores/emisor/crear-habilitacion/` | `POST` · software DIAN de habilitación. |
 | `api/emisores/software/` · `certificado/` · `resolucion/` | Recursos del emisor. |
+| `api/emisores/software/{id}/crear-nomina-prueba/` | `POST` · siembra una nómina de prueba en borrador, con `{"consecutivo": <n>}` opcional (sin él toma el siguiente libre). **Solo sobre software de nómina.** El periodo lo continúa Nobelio. |
 | `api/emisores/certificado/cargar/` | `POST` multipart · sube el `.p12`. |
 | `api/emisores/resolucion/consulta-dian/` · `importar-dian/` | Consulta e importa resoluciones desde la DIAN. |
 | `api/emisores/resolucion/{id}/crear-documento-prueba/` | `POST` · siembra un documento de prueba en borrador sobre la resolución, con `{"consecutivo": <n>}` opcional (sin él toma el siguiente libre). El tipo lo decide el `tipo_factura` de la resolución. |

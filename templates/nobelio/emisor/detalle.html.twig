@@ -131,6 +131,7 @@
                         <th>Tipo</th>
                         <th>Test set id</th>
                         <th>Set de pruebas</th>
+                        <th>Acciones</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -146,9 +147,19 @@
                             <td>{{ programa.tipo_display|default(tiposSoftware[programa.tipo]|default(programa.tipo|default(''))) }}</td>
                             <td class="id">{{ programa.test_set_id }}</td>
                             <td>{{ ui.estado(programa.set_pruebas_aceptado, 'Aceptado', 'Sin aceptar') }}</td>
+                            {# Solo en el software de nomina: la nomina no se
+                               numera con resolucion, asi que es el software
+                               quien la siembra. Los documentos de prueba de
+                               facturacion se crean desde su resolucion, en la
+                               pestaña de al lado. #}
+                            <td class="acciones">
+                                {% if programa.tipo|default('') == 'nomina' %}
+                                    <a href="javascript:abrirVentana('{{ path('nobelio_software_nomina_prueba', { 'id': programa.id }) }}', 'NominaPrueba', 430, 640)">Crear</a>
+                                {% endif %}
+                            </td>
                         </tr>
                     {% else %}
-                        <tr><td colspan="6">Este emisor no tiene software registrado.</td></tr>
+                        <tr><td colspan="7">Este emisor no tiene software registrado.</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>
