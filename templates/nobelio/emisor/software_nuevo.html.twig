@@ -1,0 +1,21 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Nuevo software · Talio{% endblock %}
+{% block ruta %}
+    Nuevo software · <b>{{ emisor.razon_social|default('') }}</b>
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Software') }}
+        {# Solo los campos que Nobelio exige; el emisor es el de la ventana. #}
+        {{ form_start(form) }}
+        <div class="form-stack">
+            {{ ui.campo('Tipo', form.tipo) }}
+            {{ ui.campo('Identificador', form.identificador) }}
+            {{ ui.campo('PIN', form.pin) }}
+            {{ ui.campo('Test set id (opcional)', form.testSetId) }}
+            <div>{{ form_widget(form.btnGuardar) }}</div>
+        </div>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

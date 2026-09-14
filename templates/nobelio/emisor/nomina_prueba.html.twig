@@ -33,4 +33,16 @@
         </div>
         {{ form_end(form) }}
     </div>
+
+    <div class="block">
+        {{ ui.cabecera('Notas de ajuste') }}
+        {# Sin parametros: Nobelio toma la nomina mas reciente aceptada por la
+           DIAN y sin errores y crea sobre ella once notas de reemplazo en
+           borrador. Si no hay ninguna aceptada, responde 400. #}
+        {{ form_start(formNotaAjuste) }}
+        <div class="filters">
+            {{ form_widget(formNotaAjuste.btnCrearNotaAjuste) }}
+        </div>
+        {{ form_end(formNotaAjuste) }}
+    </div>
 {% endblock %}

@@ -120,7 +120,12 @@
         <div class="tab-panel" id="software" role="tabpanel" hidden>
             {# El tipo llega como codigo ('nomina', 'facturacion'); si Nobelio
                empieza a mandar `tipo_display` se usa esa etiqueta. #}
-            {% set tiposSoftware = { 'nomina': 'Nómina', 'facturacion': 'Facturación' } %}
+            {% set tiposSoftware = { 'nomina': 'Nómina', 'facturacion': 'Facturación', 'documento_equivalente': 'Documento equivalente' } %}
+            <div class="filters">
+                <div class="f-right">
+                    <button type="button" class="ghost" onclick="abrirVentana('{{ path('nobelio_emisor_software_nuevo', { 'id': emisor.id }) }}', 'SoftwareNuevo', 430, 640)">Nuevo</button>
+                </div>
+            </div>
             <div class="table-scroll">
                 <table class="data">
                     <thead>
@@ -151,9 +156,10 @@
                                numera con resolucion, asi que es el software
                                quien la siembra. Los documentos de prueba de
                                facturacion se crean desde su resolucion, en la
-                               pestaña de al lado. #}
+                               pestaña de al lado. Con el set de pruebas ya
+                               aceptado no hay nada que sembrar. #}
                             <td class="acciones">
-                                {% if programa.tipo|default('') == 'nomina' %}
+                                {% if programa.tipo|default('') == 'nomina' and not programa.set_pruebas_aceptado %}
                                     <a href="javascript:abrirVentana('{{ path('nobelio_software_nomina_prueba', { 'id': programa.id }) }}', 'NominaPrueba', 430, 640)">Crear</a>
                                 {% endif %}
                             </td>

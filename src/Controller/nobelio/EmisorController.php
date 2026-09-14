@@ -4,6 +4,7 @@ namespace App\Controller\nobelio;
 use App\Utilidades\Mensajes;
 use App\Utilidades\Nobelio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -13,6 +14,13 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class EmisorController extends AbstractController
 {
+    // Los `tipo` que acepta POST api/emisores/software/ (SoftwareDianTipoEnum).
+    private const TIPOS_SOFTWARE = [
+        'Facturación electrónica' => 'facturacion',
+        'Nómina electrónica' => 'nomina',
+        'Documento equivalente electrónico' => 'documento_equivalente',
+    ];
+
     #[Route('/nobelio/emisor/lista', name: 'nobelio_emisor_lista')]
     public function lista(Request $request, Nobelio $nobelio): Response
     {
@@ -112,6 +120,61 @@ class EmisorController extends AbstractController
             'certificados' => $certificados,
             'software' => $software,
             'resoluciones' => $resoluciones,
+        ]);
+    }
+
+    /**
+     * Ventana para registrar un software del emisor.
+     *
+     * Pide lo que Nobelio exige (tipo, identificador y PIN) mas el TestSetId,
+     * que es opcional pero sin el no se puede enviar el Set de Pruebas; el
+     * emisor sale del detalle desde donde se abre. El resto —fabricante,
+     * codigo del PT— tiene default en Nobelio.
+     */
+    #[Route('/nobelio/emisor/software-nuevo/{id}', name: 'nobelio_emisor_software_nuevo', requirements: ['id' => '\\d+'])]
+    public function softwareNuevo(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $form = $this->createFormBuilder()
+            ->add('tipo', ChoiceType::class, ['choices' => self::TIPOS_SOFTWARE])
+            ->add('identificador', TextType::class, ['attr' => ['maxlength' => 100]])
+            ->add('pin', TextType::class, ['attr' => ['maxlength' => 100]])
+            ->add('testSetId', TextType::class, ['required' => false, 'attr' => ['maxlength' => 100]])
+            ->add('btnGuardar', SubmitType::class, ['label' => 'Guardar'])
+            ->getForm();
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $respuesta = $nobelio->consumoPost('api/emisores/software/', [
+                'emisor' => $id,
+                'tipo' => $form->get('tipo')->getData(),
+                'identificador' => trim((string) $form->get('identificador')->getData()),
+                'pin' => trim((string) $form->get('pin')->getData()),
+                'test_set_id' => trim((string) $form->get('testSetId')->getData()),
+            ]);
+            if ($respuesta['error']) {
+                // Sin redirect: asi el form conserva lo digitado para corregir.
+                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            } else {
+                Mensajes::success(sprintf(
+                    'Software %s registrado. Recargue el detalle del emisor para verlo.',
+                    $respuesta['datos']['id'] ?? '',
+                ));
+
+                return $this->redirectToRoute('nobelio_emisor_software_nuevo', ['id' => $id]);
+            }
+        }
+
+        $emisor = [];
+        $respuestaEmisor = $nobelio->consumoGet("api/emisores/emisor/{$id}/");
+        if ($respuestaEmisor['error']) {
+            Mensajes::error("Nobelio: {$respuestaEmisor['mensaje']}");
+        } else {
+            $emisor = $respuestaEmisor['datos'];
+        }
+
+        return $this->render('nobelio/emisor/software_nuevo.html.twig', [
+            'form' => $form->createView(),
+            'emisor' => $emisor,
         ]);
     }
 
@@ -220,6 +283,29 @@ class EmisorController extends AbstractController
             return $this->redirectToRoute('nobelio_software_nomina_prueba', ['id' => $id]);
         }
 
+        // Form aparte y con nombre propio: crear-nota-ajuste-prueba va sin
+        // cuerpo, asi que no debe arrastrar el consecutivo del form de arriba.
+        // Nobelio toma la nomina mas reciente aceptada por la DIAN y sin
+        // errores y crea sobre ella once notas de reemplazo en borrador; si no
+        // hay ninguna responde 400 y no crea nada.
+        $formNotaAjuste = $this->container->get('form.factory')->createNamedBuilder('nota_ajuste')
+            ->add('btnCrearNotaAjuste', SubmitType::class, ['label' => 'Crear notas de ajuste'])
+            ->getForm();
+        $formNotaAjuste->handleRequest($request);
+
+        if ($formNotaAjuste->isSubmitted() && $formNotaAjuste->isValid()) {
+            $respuesta = $nobelio->consumoPost("api/emisores/software/{$id}/crear-nota-ajuste-prueba/", []);
+            if ($respuesta['error']) {
+                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            } else {
+                // El esquema de Nobelio no documenta la respuesta, asi que el
+                // mensaje no depende de sus campos.
+                Mensajes::success('Notas de ajuste creadas en borrador: se emiten desde Nómina.');
+            }
+
+            return $this->redirectToRoute('nobelio_software_nomina_prueba', ['id' => $id]);
+        }
+
         $software = [];
         $respuestaSoftware = $nobelio->consumoGet("api/emisores/software/{$id}/");
         if ($respuestaSoftware['error']) {
@@ -230,6 +316,7 @@ class EmisorController extends AbstractController
 
         return $this->render('nobelio/emisor/nomina_prueba.html.twig', [
             'form' => $form->createView(),
+            'formNotaAjuste' => $formNotaAjuste->createView(),
             'software' => $software,
         ]);
     }
