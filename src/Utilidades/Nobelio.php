@@ -132,22 +132,32 @@ class Nobelio
         return is_array($datos) ? $datos : [];
     }
 
+    /**
+     * Arma un texto legible con el cuerpo de error de Nobelio.
+     *
+     * Nobelio responde siempre `{"detail": "...", "errores": [{"codigo": "...",
+     * "mensaje": "..."}]}`, con la lista nunca vacia. En un error de negocio o
+     * un 404 la lista trae un solo elemento con el mismo texto que `detail`;
+     * en los de campos `detail` es el generico ("La solicitud no es válida.")
+     * y lo que explica el fallo son los mensajes, que ya llevan la ruta del
+     * campo delante (`detalles[0].impuestos[0].tributo: Este campo es
+     * obligatorio.`). Por eso se junta `detail` con los mensajes que no lo
+     * repitan.
+     */
     private function mensajeDeError(array $cuerpo, int $status): string
     {
-        if (isset($cuerpo['detail']) && is_string($cuerpo['detail'])) {
-            return $cuerpo['detail'];
+        $detalle = isset($cuerpo['detail']) && is_string($cuerpo['detail']) ? trim($cuerpo['detail']) : '';
+
+        $mensajes = [];
+        foreach ((array) ($cuerpo['errores'] ?? []) as $error) {
+            $mensaje = is_array($error) ? trim((string) ($error['mensaje'] ?? '')) : '';
+            if ($mensaje !== '' && $mensaje !== $detalle && !in_array($mensaje, $mensajes, true)) {
+                $mensajes[] = $mensaje;
+            }
         }
 
-        $partes = [];
-        foreach ($cuerpo as $campo => $valor) {
-            $texto = is_array($valor) ? implode(' ', array_map('strval', $valor)) : (string) $valor;
-            $partes[] = is_string($campo) ? "{$campo}: {$texto}" : $texto;
-        }
+        $texto = trim($detalle . ' ' . implode(' | ', $mensajes));
 
-        if ($partes) {
-            return implode(' | ', $partes);
-        }
-
-        return "El servicio Nobelio respondió {$status}";
+        return $texto !== '' ? $texto : "El servicio Nobelio respondió {$status}";
     }
 }

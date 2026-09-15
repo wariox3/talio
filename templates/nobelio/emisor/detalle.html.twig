@@ -94,7 +94,6 @@
                     <thead>
                     <tr>
                         <th>Id</th>
-                        <th>Alias</th>
                         <th>Archivo</th>
                         <th>Vigente desde</th>
                         <th>Vigente hasta</th>
@@ -104,13 +103,12 @@
                     {% for certificado in certificados %}
                         <tr>
                             <td class="id">{{ certificado.id }}</td>
-                            <td>{{ certificado.alias }}</td>
                             <td>{{ certificado.nombre_archivo }}</td>
                             <td class="fecha">{{ certificado.vigente_desde }}</td>
                             <td class="fecha">{{ certificado.vigente_hasta }}</td>
                         </tr>
                     {% else %}
-                        <tr><td colspan="5">Este emisor no tiene certificado cargado.</td></tr>
+                        <tr><td colspan="4">Este emisor no tiene certificado cargado.</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>

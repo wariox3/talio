@@ -101,7 +101,7 @@ Cada recurso registrado en un router de DRF expone el juego REST completo:
 | `api/emisores/certificado/cargar/` | `POST` multipart · sube el `.p12`. |
 | `api/emisores/resolucion/consulta-dian/` · `importar-dian/` | Consulta e importa resoluciones desde la DIAN. |
 | `api/emisores/resolucion/{id}/crear-documento-prueba/` | `POST` · siembra un documento de prueba en borrador sobre la resolución, con `{"consecutivo": <n>}` opcional (sin él toma el siguiente libre). El tipo lo decide el `tipo_factura` de la resolución. |
-| `api/documentos/documento/` | Documentos electrónicos. Filtra por `emisor`, `estado` y `documento_tipo`, y ordena con `?ordering=` (campos permitidos en `ordering_fields` del ViewSet; el `-` invierte). |
+| `api/documentos/documento/` | Documentos electrónicos. Filtra por `emisor` (id entero; otra cosa responde 400), `estado`, `documento_tipo` y `notificado`; `?search=` busca por contenido en número, CUFE y NIT o razón social del adquiriente (no hay filtro exacto por número). Ordena con `?ordering=` (campos permitidos en `ordering_fields` del ViewSet; el `-` invierte). |
 | `api/documentos/documento/{id}/emitir/` | `POST` · XML UBL + CUFE + firma. |
 | `api/documentos/documento/{id}/enviar/` | `POST` · envía al WS de la DIAN. |
 | `api/documentos/documento/{id}/consultar/` | `GET` · consulta sin efectos sobre el documento. |

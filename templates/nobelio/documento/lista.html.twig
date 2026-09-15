@@ -25,6 +25,10 @@
     <div class="block">
         <div class="filters">
             {{ ui.campo('Estado', form.estado) }}
+            {# Nobelio no filtra por número exacto: esto va a su SearchFilter,
+               que también mira el CUFE y el NIT o nombre del adquiriente. #}
+            {{ ui.campo('Número', form.numero) }}
+            {{ ui.campo('Id emisor', form.emisor) }}
             <div class="f-right">
                 {{ form_widget(form.btnFiltrar) }}
                 {# Siempre renderizados: si se dejan sin renderizar, form_end()
@@ -166,6 +170,8 @@
     <form id="acciones-documento" method="post" action="{{ path('nobelio_documento_eliminar') }}">
         <input type="hidden" name="_token" value="{{ csrf_token('acciones-documento') }}">
         <input type="hidden" name="estado" value="{{ estado }}">
+        <input type="hidden" name="numero" value="{{ numero }}">
+        <input type="hidden" name="emisor" value="{{ emisor }}">
         <input type="hidden" name="pagina" value="{{ pagina }}">
     </form>
 {% endblock %}

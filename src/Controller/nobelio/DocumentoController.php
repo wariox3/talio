@@ -6,6 +6,7 @@ use App\Utilidades\Nobelio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
@@ -30,6 +31,8 @@ class DocumentoController extends AbstractController
     {
         $form = $this->createFormBuilder()
             ->add('estado', ChoiceType::class, ['required' => false, 'choices' => self::ESTADOS])
+            ->add('numero', TextType::class, ['required' => false])
+            ->add('emisor', TextType::class, ['required' => false, 'attr' => ['inputmode' => 'numeric']])
             ->add('btnFiltrar', SubmitType::class, ['label' => 'Filtrar'])
             ->add('btnAnterior', SubmitType::class, ['label' => 'Anterior'])
             ->add('btnSiguiente', SubmitType::class, ['label' => 'Siguiente'])
@@ -40,9 +43,13 @@ class DocumentoController extends AbstractController
         // recalcularla despues de handleRequest sin pelearse con el form.
         $pagina = max(1, (int) $request->request->get('pagina', 1));
         $estado = '';
+        $numero = '';
+        $emisor = '';
 
         if ($form->isSubmitted() && $form->isValid()) {
             $estado = (string) $form->get('estado')->getData();
+            $numero = trim((string) $form->get('numero')->getData());
+            $emisor = trim((string) $form->get('emisor')->getData());
             if ($form->get('btnFiltrar')->isClicked()) {
                 $pagina = 1;
             } elseif ($form->get('btnAnterior')->isClicked()) {
@@ -59,8 +66,12 @@ class DocumentoController extends AbstractController
             if (!in_array($estado, self::ESTADOS, true)) {
                 $estado = '';
             }
+            $numero = trim((string) $request->query->get('numero', ''));
+            $emisor = trim((string) $request->query->get('emisor', ''));
             $pagina = max(1, (int) $request->query->get('pagina', 1));
             $form->get('estado')->setData($estado);
+            $form->get('numero')->setData($numero);
+            $form->get('emisor')->setData($emisor);
         }
 
         // Lo mas reciente primero. La hora desempata dentro del mismo dia, que
@@ -70,6 +81,17 @@ class DocumentoController extends AbstractController
         $parametros = ['page' => $pagina, 'ordering' => '-fecha_emision,-hora_emision'];
         if ($estado !== '') {
             $parametros['estado'] = $estado;
+        }
+        if ($numero !== '') {
+            // Nobelio no tiene filtro exacto por numero: va por su SearchFilter,
+            // que busca por contenido en el numero, el CUFE y el NIT o la razon
+            // social del adquiriente.
+            $parametros['search'] = $numero;
+        }
+        if ($emisor !== '') {
+            // Se manda tal cual: si no es un entero Nobelio responde 400
+            // diciendo que valor recibio, y ese es el mensaje que sale.
+            $parametros['emisor'] = $emisor;
         }
 
         $documentos = [];
@@ -92,6 +114,8 @@ class DocumentoController extends AbstractController
             'form' => $form->createView(),
             'documentos' => $documentos,
             'estado' => $estado,
+            'numero' => $numero,
+            'emisor' => $emisor,
             'total' => $total,
             'pagina' => $pagina,
             'hayAnterior' => $hayAnterior,
@@ -116,6 +140,13 @@ class DocumentoController extends AbstractController
         // los del filtro; cualquier otra cosa se ignora.
         if ($estado !== '' && in_array($estado, self::ESTADOS, true)) {
             $parametros['estado'] = $estado;
+        }
+
+        foreach (['numero', 'emisor'] as $filtro) {
+            $valor = trim((string) $request->request->get($filtro, ''));
+            if ($valor !== '') {
+                $parametros[$filtro] = $valor;
+            }
         }
 
         $pagina = max(1, (int) $request->request->get('pagina', 1));
