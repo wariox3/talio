@@ -295,7 +295,53 @@
         </div>
 
         <div class="tab-panel" id="eventos" role="tabpanel" hidden>
-            {% include 'nobelio/_eventos.html.twig' with { 'eventos': eventos, 'vacio': 'Esta nómina no tiene eventos.' } only %}
+            {# Nobelio solo registra cambios de estado ante la DIAN —firmado,
+               enviado sin veredicto, validado, rechazado—, en orden de fecha.
+               Lo que trae `datos` depende del tipo: el CUNE al firmar; al
+               enviar o validarse, el origen, la operación, el track_id y el
+               código de la DIAN; al rechazarse, además los errores. #}
+            {% set tiposEvento = {
+                'firmado': 'Firmado',
+                'enviado': 'Enviado sin veredicto',
+                'validado': 'Validado por la DIAN',
+                'rechazado': 'Rechazado por la DIAN',
+            } %}
+            {% set origenes = { 'envio': 'Envío', 'consulta': 'Consulta' } %}
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Fecha</th>
+                        <th>Tipo</th>
+                        <th>Origen</th>
+                        <th>Código DIAN</th>
+                        <th>Detalle</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for evento in eventos %}
+                        {% set datos = evento.datos|default({}) %}
+                        <tr>
+                            <td class="id">{{ evento.id }}</td>
+                            <td class="fecha">{{ evento.fecha ? evento.fecha|date('Y-m-d H:i:s', false) }}</td>
+                            <td>{{ tiposEvento[evento.tipo]|default(evento.tipo) }}</td>
+                            <td>{{ origenes[datos.origen|default('')]|default(datos.origen|default('')) }}</td>
+                            <td class="id">{{ datos.codigo_estado|default('') }}</td>
+                            <td class="wrap">
+                                {% if datos.cune|default('') %}<div>CUNE: <span class="id">{{ datos.cune }}</span></div>{% endif %}
+                                {% if datos.envio|default('') %}<div>Operación: {{ datos.envio }}</div>{% endif %}
+                                {% if datos.track_id|default('') %}<div>Track id: <span class="id">{{ datos.track_id }}</span></div>{% endif %}
+                                {% if datos.fecha_validacion|default('') %}<div>Validación: {{ datos.fecha_validacion|date('Y-m-d H:i', false) }}</div>{% endif %}
+                                {% for error in datos.errores|default([]) %}<div>{{ error }}</div>{% endfor %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="6">Esta nómina no tiene eventos.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 {% endblock %}
