@@ -293,16 +293,15 @@ class DocumentoController extends AbstractController
      * aqui se llama sin ninguno, que es lo que hace viajar solo el
      * AttachedDocument. Un POST con cuerpo JSON vacio le sirve igual. Sin
      * ?descargar=1, que devolveria el zip en vez de enviarlo.
+     *
+     * Se pide desde la ficha del documento y vuelve a ella. El id va en la
+     * ruta, acotado a UUID, porque se concatena a la url del API.
      */
-    #[Route('/nobelio/documento/notificar', name: 'nobelio_documento_notificar', methods: ['POST'])]
-    public function notificar(Request $request, Nobelio $nobelio): Response
+    #[Route('/nobelio/documento/notificar/{id}', name: 'nobelio_documento_notificar', methods: ['POST'], requirements: ['id' => '[0-9a-fA-F-]{36}'])]
+    public function notificar(Request $request, Nobelio $nobelio, string $id): Response
     {
-        $id = (string) $request->request->get('id', '');
-
-        if (!$this->isCsrfTokenValid('acciones-documento', (string) $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('notificar-documento', (string) $request->request->get('_token'))) {
             Mensajes::error('La petición no es válida.');
-        } elseif ($id === '') {
-            Mensajes::error('No se indicó qué documento notificar.');
         } else {
             // Nobelio solo notifica lo que la DIAN acepto y exige que el
             // adquiriente tenga correo; si no, responde 400 explicando cual de
@@ -327,7 +326,7 @@ class DocumentoController extends AbstractController
             }
         }
 
-        return $this->redirigirALista($request);
+        return $this->redirectToRoute('nobelio_documento_detalle', ['id' => $id]);
     }
 
     #[Route('/nobelio/documento/eliminar', name: 'nobelio_documento_eliminar', methods: ['POST'])]

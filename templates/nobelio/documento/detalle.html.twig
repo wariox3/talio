@@ -18,6 +18,14 @@
         <button type="button" class="ghost" onclick="location.href='{{ path('nobelio_documento_descargar', { 'archivo': 'xml', 'id': documento.id }) }}'">XML</button>
         <button type="button" class="ghost" onclick="location.href='{{ path('nobelio_documento_descargar', { 'archivo': 'attached', 'id': documento.id }) }}'">Attached</button>
     {% endif %}
+    {# Solo se notifica lo aceptado: entregarle al adquiriente un documento sin
+       validar le haria creer que tiene una factura valida. Un aceptado puede
+       volver a notificarse. El form va al final del contenido y el boton lo
+       apunta con form=. #}
+    {% if documento.estado_nombre|default('') == 'aceptado' %}
+        <button type="submit" form="notificar-documento"
+                onclick="return confirm('¿{{ documento.notificado ? 'Volver a notificar' : 'Notificar' }} el documento {{ documento.numero }} al adquiriente?')">{{ documento.notificado ? 'Renotificar' : 'Notificar' }}</button>
+    {% endif %}
 {% endblock %}
 {% block content %}
     <div class="block">
@@ -311,4 +319,9 @@
             </div>
         </div>
     </div>
+    {% if documento.estado_nombre|default('') == 'aceptado' %}
+        <form id="notificar-documento" method="post" action="{{ path('nobelio_documento_notificar', { 'id': documento.id }) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('notificar-documento') }}">
+        </form>
+    {% endif %}
 {% endblock %}
