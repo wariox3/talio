@@ -182,6 +182,9 @@
             <button type="button" class="tab" role="tab" aria-selected="false" data-panel="errores">
                 Errores <span class="stamp">{{ errores|length }}</span>
             </button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-panel="eventos">
+                Eventos <span class="stamp">{{ eventos|length }}</span>
+            </button>
         </div>
 
         <div class="tab-panel" id="detalles" role="tabpanel">
@@ -256,6 +259,10 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <div class="tab-panel" id="eventos" role="tabpanel" hidden>
+            {% include 'nobelio/_eventos.html.twig' with { 'eventos': eventos, 'vacio': 'Este documento no tiene eventos.' } only %}
         </div>
     </div>
 {% endblock %}

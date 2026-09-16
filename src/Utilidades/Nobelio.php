@@ -12,6 +12,33 @@ class Nobelio
         return $this->peticion('GET', $url, ['query' => $parametros]);
     }
 
+    /**
+     * GET de un listado paginado, recorriendo todas sus paginas.
+     *
+     * Nobelio pagina de 10 en 10 y no deja pedir mas por pagina, asi que para
+     * listas cortas que se muestran enteras —los eventos de un documento— se
+     * siguen las paginas. En exito, 'datos' es la lista de resultados junta.
+     * El tope evita un bucle largo si un listado resultara no ser corto.
+     */
+    public function consumoGetTodos(string $url, array $parametros = [], int $maxPaginas = 10): array
+    {
+        $resultados = [];
+
+        for ($pagina = 1; $pagina <= $maxPaginas; $pagina++) {
+            $respuesta = $this->consumoGet($url, ['page' => $pagina] + $parametros);
+            if ($respuesta['error']) {
+                return $respuesta;
+            }
+
+            array_push($resultados, ...($respuesta['datos']['results'] ?? []));
+            if (empty($respuesta['datos']['next'])) {
+                break;
+            }
+        }
+
+        return ['error' => false, 'datos' => $resultados];
+    }
+
     public function consumoPost(string $url, array $datos = []): array
     {
         // Un array vacio de PHP se serializa como [], y los endpoints que leen

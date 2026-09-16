@@ -176,11 +176,22 @@ class DocumentoController extends AbstractController
 
         $documento = $respuesta['datos'];
 
+        // Los cambios de estado ante la DIAN no vienen en el retrieve: tienen
+        // su propio endpoint. Si falla, la ficha se pinta igual.
+        $eventos = [];
+        $respuestaEventos = $nobelio->consumoGetTodos('api/documentos/documento-evento/', ['documento' => $id]);
+        if ($respuestaEventos['error']) {
+            Mensajes::error("Nobelio: {$respuestaEventos['mensaje']}");
+        } else {
+            $eventos = $respuestaEventos['datos'];
+        }
+
         return $this->render('nobelio/documento/detalle.html.twig', [
             'documento' => $documento,
             'adquiriente' => $documento['adquiriente'] ?? [],
             'detalles' => $documento['detalles'] ?? [],
             'errores' => $documento['errores'] ?? [],
+            'eventos' => $eventos,
         ]);
     }
 

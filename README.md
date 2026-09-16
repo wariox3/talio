@@ -107,14 +107,16 @@ Cada recurso registrado en un router de DRF expone el juego REST completo:
 | `api/nomina/nomina/{id}/emitir/` | `POST` sin cuerpo · lleva la nómina a su estado final: `borrador` se firma y se envía; `firmado` solo reenvía el mismo CUNE; `enviado` se consulta y se aplica el resultado, sin reenviar. `aceptado` y `rechazado` responden 400. Devuelve `accion` (`enviado` o `consultado`), `estado`, `cune`, `track_id`, `fecha_validacion`, `es_valido`, `codigo_estado`, `descripcion` y `errores`. |
 | `api/nomina/nomina/{id}/consultar/` | `GET` · consulta la DIAN **sin modificar** la nómina, en cualquier estado. |
 | `api/nomina/nomina/{id}/xml/` | **Descarga** del XML firmado. Usar `consumoArchivo()`. |
+| `api/nomina/nomina-evento/` | Solo lectura · cambios de estado de la nómina ante la DIAN (`firmado`, `enviado`, `validado`, `rechazado`). Filtra por `?nomina=<uuid>` y `?tipo=`. Cada uno trae `tipo`, `fecha` y `datos`, que depende del tipo (CUNE; origen, operación, `track_id`, `codigo_estado`, `fecha_validacion` o `errores`). |
 | `api/documentos/documento/` | Documentos electrónicos. Filtra por `emisor` (id entero; otra cosa responde 400), `estado`, `documento_tipo` y `notificado`; `?search=` busca por contenido en número, CUFE y NIT o razón social del adquiriente (no hay filtro exacto por número). Ordena con `?ordering=` (campos permitidos en `ordering_fields` del ViewSet; el `-` invierte). |
+| `api/documentos/documento-evento/` | Solo lectura · lo mismo para documentos: filtra por `?documento=<uuid>` y `?tipo=`; al firmar `datos` trae `cufe_cude`. |
 | `api/documentos/documento/{id}/emitir/` | `POST` sin cuerpo · lleva el documento a su estado final: `borrador` se firma y se envía; `firmado` —envío anterior fallido, p. ej. un 502— solo reenvía el mismo CUFE; `enviado` se consulta y se aplica el resultado, sin reenviar (sustituye a `actualizar-estado/`, que ya no existe). `aceptado` y `rechazado` responden 400: el rechazado se borra y se crea de nuevo. Devuelve `accion` (`enviado` o `consultado`), `estado`, `cufe_cude`, `track_id`, `fecha_validacion`, `es_valido`, `codigo_estado`, `descripcion` y `errores`. |
 | `api/documentos/documento/{id}/consultar/` | `GET` · consulta la DIAN **sin modificar** el documento, en cualquier estado. (`consultar-zip/` ya no existe.) |
 | `api/documentos/documento/{id}/xml/` · `pdf/` · `attached/` | **Descargas** (`FileResponse` / `HttpResponse`). ⚠️ Usar `consumoArchivo()`, **nunca `consumoGet()`**. Ver nota abajo. |
 | `api/documentos/documento/{id}/notificar/` | `POST` multipart (`pdf` y `adjuntos` opcionales) · arma el zip con el AttachedDocument y **lo envía por correo** al adquiriente (Zinc). Devuelve `destinatario`, `codigo_envio`, `notificado`… Si falla el correo responde 502 y el documento no queda notificado. Con `?descargar=1` no envía: devuelve el zip. |
 
-**Alcance de `Nobelio`.** La clase expone `consumoGet()`, `consumoPost()`,
-`consumoPatch()`, `consumoDelete()` y `consumoArchivo()`. `PUT` se añade
+**Alcance de `Nobelio`.** La clase expone `consumoGet()`, `consumoGetTodos()` (recorre las páginas),
+`consumoPost()`, `consumoPatch()`, `consumoDelete()` y `consumoArchivo()`. `PUT` se añade
 cuando haga falta: `peticion()` ya acepta cualquier método, así que un verbo
 nuevo es una línea.
 

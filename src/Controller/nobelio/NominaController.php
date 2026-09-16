@@ -145,11 +145,22 @@ class NominaController extends AbstractController
             }
         }
 
+        // Los cambios de estado ante la DIAN tienen su propio endpoint. Igual
+        // que el empleado: si falla, la ficha se pinta igual.
+        $eventos = [];
+        $respuestaEventos = $nobelio->consumoGetTodos('api/nomina/nomina-evento/', ['nomina' => $id]);
+        if ($respuestaEventos['error']) {
+            Mensajes::error("Nobelio: {$respuestaEventos['mensaje']}");
+        } else {
+            $eventos = $respuestaEventos['datos'];
+        }
+
         return $this->render('nobelio/nomina/detalle.html.twig', [
             'nomina' => $nomina,
             'empleado' => $empleado,
             'conceptos' => $nomina['conceptos'] ?? [],
             'errores' => $nomina['errores'] ?? [],
+            'eventos' => $eventos,
         ]);
     }
 

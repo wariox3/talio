@@ -54,7 +54,6 @@
                     <th>Estado</th>
                     <th>Envío</th>
                     <th class="num">Errores</th>
-                    <th>Validación</th>
                     <th title="Notificado">NOT</th>
                     <th>Acciones</th>
                 </tr>
@@ -86,12 +85,6 @@
                             {% else %}
                                 0
                             {% endif %}
-                        </td>
-                        {# El false deja la hora en la zona que trae el API
-                           (-05:00); sin el, Twig la pasaria a la zona por
-                           defecto de PHP, que aqui es UTC. #}
-                        <td class="fecha">
-                            {{- documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) -}}
                         </td>
                         {# Nobelio lo marca cuando la pasarela acepta el
                            correo: que se envio, no que el adquiriente lo leyera. #}
@@ -131,7 +124,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="14">
+                        <td colspan="13">
                             {% if total == 0 %}
                                 No hay documentos que mostrar.
                             {% else %}
