@@ -6,19 +6,16 @@
     <span class="stamp">{{ total }} documento{{ total == 1 ? '' : 's' }}</span>
 {% endblock %}
 {% block content %}
-    {# La acción que toca en cada estado. Sale de las guardas de Nobelio: un
-       firmado/enviado/aceptado no se puede volver a emitir, solo se envía lo
-       firmado, y el estado solo se refresca en enviado y rechazado. Un
-       aceptado es terminal y no ofrece ninguna. #}
+    {# La acción que toca en cada estado. En Nobelio todo es emitir, que lleva
+       el documento a su estado final: un borrador se firma y se envía; un
+       firmado —un intento anterior que no llegó a enviar— solo reenvía ese
+       mismo CUFE, y un enviado sin veredicto se consulta y se aplica lo que
+       diga la DIAN, sin reenviar. Aceptado y rechazado son finales y no
+       ofrecen ninguna: el rechazado se borra y se crea de nuevo corregido. #}
     {% set accionesPorEstado = {
-        'borrador':  [{ 'accion': 'emitir', 'titulo': 'Emitir', 'pregunta': 'Emitir' }],
-        'generado':  [{ 'accion': 'emitir', 'titulo': 'Emitir', 'pregunta': 'Emitir' }],
-        'firmado':   [{ 'accion': 'enviar', 'titulo': 'Enviar', 'pregunta': 'Enviar a la DIAN' }],
-        'enviado':   [{ 'accion': 'actualizar-estado', 'titulo': 'Actualizar estado' }],
-        'rechazado': [
-            { 'accion': 'emitir', 'titulo': 'Emitir', 'pregunta': 'Volver a emitir' },
-            { 'accion': 'actualizar-estado', 'titulo': 'Actualizar estado' }
-        ],
+        'borrador': [{ 'accion': 'emitir', 'titulo': 'Emitir', 'pregunta': 'Firmar y enviar a la DIAN' }],
+        'firmado':  [{ 'accion': 'emitir', 'titulo': 'Reintentar envío', 'pregunta': 'Enviar a la DIAN' }],
+        'enviado':  [{ 'accion': 'emitir', 'titulo': 'Actualizar estado' }],
     } %}
     {{ form_start(form) }}
     <input type="hidden" name="pagina" value="{{ pagina }}">
@@ -58,7 +55,7 @@
                     <th>Envío</th>
                     <th class="num">Errores</th>
                     <th>Validación</th>
-                    <th>Notificado</th>
+                    <th title="Notificado">NOT</th>
                     <th>Acciones</th>
                 </tr>
                 </thead>
@@ -96,9 +93,8 @@
                         <td class="fecha">
                             {{- documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) -}}
                         </td>
-                        {# Mientras Nobelio no tenga el envio por correo, esto
-                           marca que el paquete se armo y se entrego a quien lo
-                           pidio, no que le haya llegado al adquiriente. #}
+                        {# Nobelio lo marca cuando la pasarela acepta el
+                           correo: que se envio, no que el adquiriente lo leyera. #}
                         <td>{{ ui.estado(documento.notificado, 'Sí', 'No') }}</td>
                         {# Los botones viven dentro del form de filtros, asi que
                            apuntan con form= al de acciones, que va fuera: los
@@ -111,19 +107,6 @@
                                         name="id" value="{{ documento.id }}"
                                         {% if accion.pregunta is defined %}onclick="return confirm('¿{{ accion.pregunta }} el documento {{ documento.numero }}?')"{% endif %}>{{ accion.titulo }}</button>
                             {% endfor %}
-                            {# El XML se guarda al firmar y el attached lo
-                               envuelve, asi que un borrador o un generado
-                               todavia no tienen que descargar. Son descargas,
-                               no acciones: van como enlaces GET fuera del form.
-                               El attached es lo que se le entrega al
-                               adquiriente: el XML firmado y el acuse de la DIAN
-                               en un solo documento. Nobelio lo arma aunque la
-                               DIAN no haya respondido —sirve para revisarlo—,
-                               pero entonces no acredita la validacion. #}
-                            {% if documento.estado_nombre not in ['borrador', 'generado'] %}
-                                <a href="{{ path('nobelio_documento_descargar', { 'archivo': 'xml', 'id': documento.id }) }}">XML</a>
-                                <a href="{{ path('nobelio_documento_descargar', { 'archivo': 'attached', 'id': documento.id }) }}">Attached</a>
-                            {% endif %}
                             {# Solo se notifica lo aceptado: entregarle al
                                adquiriente un documento sin validar le haria
                                creer que tiene una factura valida. Va aparte del

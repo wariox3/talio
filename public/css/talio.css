@@ -637,7 +637,9 @@ table.data td.acciones > * + * { margin-left: 12px; }
 .form-stack input[type="text"],
 .form-stack input[type="number"],
 .form-stack input[type="email"],
+.form-stack input[type="url"],
 .form-stack select { width: 100%; }
+.form-stack > div.check { flex-direction: row; align-items: center; gap: 8px; }
 .form-stack ul { margin: 3px 0 0; padding-left: 16px; color: var(--crit); font-size: .8rem; }
 
 .actions { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }

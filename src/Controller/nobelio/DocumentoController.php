@@ -19,7 +19,6 @@ class DocumentoController extends AbstractController
     private const ESTADOS = [
         'Todos' => '',
         'Borrador' => 'borrador',
-        'XML generado' => 'generado',
         'Firmado' => 'firmado',
         'Enviado a la DIAN' => 'enviado',
         'Aceptado por la DIAN' => 'aceptado',
@@ -205,7 +204,8 @@ class DocumentoController extends AbstractController
         if ($respuesta['error']) {
             Mensajes::error("Nobelio: {$respuesta['mensaje']}");
 
-            return $this->redirectToRoute('nobelio_documento_lista');
+            // Las descargas se piden desde la ficha: se vuelve a ella.
+            return $this->redirectToRoute('nobelio_documento_detalle', ['id' => $id]);
         }
 
         $descarga = new Response($respuesta['contenido'], Response::HTTP_OK, [
@@ -224,11 +224,13 @@ class DocumentoController extends AbstractController
     /**
      * Ejecuta sobre el documento la accion que toca en su estado.
      *
-     * La accion va en la ruta y no en el cuerpo para que las unicas admitidas
+     * Hoy solo es emitir: en Nobelio lleva el documento a su estado final
+     * —firma y envia, o, si ya estaba enviado sin veredicto, consulta y aplica
+     * lo que diga la DIAN— y responde en "accion" cual de las dos hizo. La accion va en la ruta y no en el cuerpo para que las unicas admitidas
      * sean las del requirement: el id se concatena a la url del API y una
      * accion libre dejaria construir cualquier ruta.
      */
-    #[Route('/nobelio/documento/accion/{accion}', name: 'nobelio_documento_accion', methods: ['POST'], requirements: ['accion' => 'emitir|enviar|actualizar-estado'])]
+    #[Route('/nobelio/documento/accion/{accion}', name: 'nobelio_documento_accion', methods: ['POST'], requirements: ['accion' => 'emitir'])]
     public function accion(Request $request, Nobelio $nobelio, string $accion): Response
     {
         $id = (string) $request->request->get('id', '');
@@ -239,21 +241,30 @@ class DocumentoController extends AbstractController
             Mensajes::error('No se indicó sobre qué documento actuar.');
         } else {
             // Nobelio comprueba el estado y responde 400 explicando por que no
-            // se puede ("El documento ya está firmado", etc.); ese es el
-            // mensaje que se muestra.
+            // se puede (ya aceptado, rechazado...); ese es el mensaje que se
+            // muestra.
             $respuesta = $nobelio->consumoPost("api/documentos/documento/{$id}/{$accion}/");
             if ($respuesta['error']) {
                 Mensajes::error("Nobelio: {$respuesta['mensaje']}");
             } else {
-                // Las tres acciones devuelven el estado en que queda; las que
-                // hablan con la DIAN añaden su descripcion, que es lo que
-                // explica un rechazo.
+                // Devuelve el estado en que queda con la descripcion de la
+                // DIAN, que es lo que explica un rechazo.
                 $datos = $respuesta['datos'];
-                $mensaje = "Documento en estado '" . ($datos['estado'] ?? '') . "'.";
+                $mensaje = ($datos['accion'] ?? '') === 'consultado'
+                    ? 'Consultado en la DIAN, sin reenviar.'
+                    : 'Enviado a la DIAN.';
+                $mensaje .= " Documento en estado '" . ($datos['estado'] ?? '') . "'.";
                 if (!empty($datos['descripcion'])) {
                     $mensaje .= " DIAN: {$datos['descripcion']}";
                 }
-                Mensajes::success($mensaje);
+
+                // Rechazado, o enviado y aun sin veredicto: la peticion fue
+                // bien, pero no es un exito.
+                if (array_key_exists('es_valido', $datos) && !$datos['es_valido']) {
+                    Mensajes::warning($mensaje);
+                } else {
+                    Mensajes::success($mensaje);
+                }
             }
         }
 
@@ -261,15 +272,16 @@ class DocumentoController extends AbstractController
     }
 
     /**
-     * Arma la notificacion al adquiriente y marca el documento como notificado.
+     * Envia al adquiriente el documento por correo y lo marca como notificado.
      *
      * No cabe en accion() aunque tambien sea un POST sobre el documento: aquella
      * construye su mensaje con el estado que devuelven las acciones del ciclo
-     * DIAN, y esta responde otra cosa —a quien va, que archivo y de que tamaño—.
+     * DIAN, y esta responde otra cosa —a quien fue y con que codigo de envio—.
      *
      * El endpoint es multipart y acepta un PDF y adjuntos, todos opcionales;
      * aqui se llama sin ninguno, que es lo que hace viajar solo el
-     * AttachedDocument. Un POST con cuerpo JSON vacio le sirve igual.
+     * AttachedDocument. Un POST con cuerpo JSON vacio le sirve igual. Sin
+     * ?descargar=1, que devolveria el zip en vez de enviarlo.
      */
     #[Route('/nobelio/documento/notificar', name: 'nobelio_documento_notificar', methods: ['POST'])]
     public function notificar(Request $request, Nobelio $nobelio): Response
@@ -283,30 +295,24 @@ class DocumentoController extends AbstractController
         } else {
             // Nobelio solo notifica lo que la DIAN acepto y exige que el
             // adquiriente tenga correo; si no, responde 400 explicando cual de
-            // las dos falta y ese es el mensaje que se muestra.
+            // las dos falta. Si lo que falla es la pasarela de correo responde
+            // 502 y el documento no queda notificado, asi que se puede
+            // reintentar. En ambos casos ese es el mensaje que se muestra.
             $respuesta = $nobelio->consumoPost("api/documentos/documento/{$id}/notificar/");
             if ($respuesta['error']) {
                 Mensajes::error("Nobelio: {$respuesta['mensaje']}");
             } else {
-                // Con ?descargar=1 el endpoint devuelve el paquete en vez del
-                // resumen, asi que las claves podrian no venir; se leen con
-                // respaldo en vez de darlas por hechas.
                 $datos = $respuesta['datos'];
                 $destinatario = $datos['destinatario'] ?? '';
-                // El codigo de envio es con lo que se rastrea el documento en
-                // Nobelio; el nombre del archivo no identifica nada.
+                // El codigo de envio es con lo que se rastrea el correo en la
+                // pasarela; el nombre del archivo no identifica nada.
                 $codigoEnvio = $datos['codigo_envio'] ?? '';
 
                 $mensaje = $destinatario !== ''
-                    ? "Paquete armado para {$destinatario}"
-                    : 'Paquete armado';
+                    ? "Documento enviado a {$destinatario}"
+                    : 'Documento enviado';
                 $mensaje .= $codigoEnvio !== '' ? " (envío {$codigoEnvio})." : '.';
-                // El propio Nobelio avisa de que el correo todavia no sale, que
-                // es justo lo que no se puede dar por hecho al ver "notificado".
-                if (!empty($datos['detalle'])) {
-                    $mensaje .= " {$datos['detalle']}";
-                }
-                Mensajes::warning($mensaje);
+                Mensajes::success($mensaje);
             }
         }
 

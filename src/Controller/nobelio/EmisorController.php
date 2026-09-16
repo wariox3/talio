@@ -4,10 +4,13 @@ namespace App\Controller\nobelio;
 use App\Utilidades\Mensajes;
 use App\Utilidades\Nobelio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Form\Extension\Core\Type\UrlType;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -115,12 +118,177 @@ class EmisorController extends AbstractController
             $resoluciones = $listaResoluciones['datos']['results'] ?? [];
         }
 
+        $webhooks = [];
+        $listaWebhooks = $nobelio->consumoGet('api/emisores/webhook/', ['emisor' => $id]);
+        if ($listaWebhooks['error']) {
+            Mensajes::error("Nobelio: {$listaWebhooks['mensaje']}");
+        } else {
+            $webhooks = $listaWebhooks['datos']['results'] ?? [];
+        }
+
         return $this->render('nobelio/emisor/detalle.html.twig', [
             'emisor' => $emisor,
             'certificados' => $certificados,
             'software' => $software,
             'resoluciones' => $resoluciones,
+            'webhooks' => $webhooks,
         ]);
+    }
+
+    /**
+     * Ventana para registrar un webhook del emisor.
+     *
+     * Nobelio pide nombre y URL, y las dos banderas dicen de que se le avisa:
+     * de la validacion de la DIAN y de la notificacion al adquiriente. La URL
+     * tiene que ser HTTPS —el aviso lleva datos fiscales—; eso lo valida
+     * Nobelio y su mensaje es el que se muestra. El emisor sale del detalle
+     * desde donde se abre.
+     */
+    #[Route('/nobelio/emisor/webhook-nuevo/{id}', name: 'nobelio_emisor_webhook_nuevo', requirements: ['id' => '\\d+'])]
+    public function webhookNuevo(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $form = $this->formularioWebhook();
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $respuesta = $nobelio->consumoPost('api/emisores/webhook/', ['emisor' => $id] + $this->datosWebhook($form));
+            if ($respuesta['error']) {
+                // Sin redirect: asi el form conserva lo digitado para corregir.
+                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            } else {
+                Mensajes::success(sprintf(
+                    'Webhook %s registrado. Recargue el detalle del emisor para verlo.',
+                    $respuesta['datos']['id'] ?? '',
+                ));
+
+                return $this->redirectToRoute('nobelio_emisor_webhook_nuevo', ['id' => $id]);
+            }
+        }
+
+        $emisor = [];
+        $respuestaEmisor = $nobelio->consumoGet("api/emisores/emisor/{$id}/");
+        if ($respuestaEmisor['error']) {
+            Mensajes::error("Nobelio: {$respuestaEmisor['mensaje']}");
+        } else {
+            $emisor = $respuestaEmisor['datos'];
+        }
+
+        return $this->render('nobelio/emisor/webhook.html.twig', [
+            'form' => $form->createView(),
+            'emisor' => $emisor,
+            'webhook' => [],
+        ]);
+    }
+
+    /**
+     * Ventana para editar un webhook: nombre, URL y de que se le avisa.
+     *
+     * Va por PATCH y sin `emisor`: Nobelio no deja cambiar un webhook de
+     * emisor, y mandarlo solo serviria para arriesgar ese 400. El form se llena
+     * con lo que tiene Nobelio en el GET y, si el guardado falla, conserva lo
+     * digitado. El id es un entero que se concatena a la url del API: el
+     * requirement lo acota.
+     */
+    #[Route('/nobelio/emisor/webhook-editar/{id}', name: 'nobelio_emisor_webhook_editar', requirements: ['id' => '\\d+'])]
+    public function webhookEditar(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $webhook = [];
+        $respuestaWebhook = $nobelio->consumoGet("api/emisores/webhook/{$id}/");
+        if ($respuestaWebhook['error']) {
+            Mensajes::error("Nobelio: {$respuestaWebhook['mensaje']}");
+        } else {
+            $webhook = $respuestaWebhook['datos'];
+        }
+
+        $form = $this->formularioWebhook($webhook);
+        $form->handleRequest($request);
+
+        if ($webhook && $form->isSubmitted() && $form->isValid()) {
+            $respuesta = $nobelio->consumoPatch("api/emisores/webhook/{$id}/", $this->datosWebhook($form));
+            if ($respuesta['error']) {
+                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            } else {
+                Mensajes::success('Webhook actualizado. Recargue el detalle del emisor para ver los cambios.');
+
+                return $this->redirectToRoute('nobelio_emisor_webhook_editar', ['id' => $id]);
+            }
+        }
+
+        $emisor = [];
+        if (!empty($webhook['emisor'])) {
+            $respuestaEmisor = $nobelio->consumoGet("api/emisores/emisor/{$webhook['emisor']}/");
+            if (!$respuestaEmisor['error']) {
+                $emisor = $respuestaEmisor['datos'];
+            }
+        }
+
+        return $this->render('nobelio/emisor/webhook.html.twig', [
+            'form' => $form->createView(),
+            'emisor' => $emisor,
+            'webhook' => $webhook,
+        ]);
+    }
+
+    /**
+     * El form del webhook, vacio para el alta o con lo que tiene Nobelio para
+     * editar.
+     */
+    private function formularioWebhook(array $webhook = []): FormInterface
+    {
+        return $this->createFormBuilder([
+            'nombre' => $webhook['nombre'] ?? null,
+            'url' => $webhook['url'] ?? null,
+            'estadoValidado' => (bool) ($webhook['estado_validado'] ?? false),
+            'estadoNotificado' => (bool) ($webhook['estado_notificado'] ?? false),
+        ])
+            ->add('nombre', TextType::class, ['attr' => ['maxlength' => 150]])
+            // Sin protocolo por defecto: si no se escribe https:// que lo diga
+            // Nobelio, en vez de completarlo aqui con http://.
+            ->add('url', UrlType::class, ['default_protocol' => null, 'attr' => ['maxlength' => 500, 'placeholder' => 'https://']])
+            ->add('estadoValidado', CheckboxType::class, ['required' => false])
+            ->add('estadoNotificado', CheckboxType::class, ['required' => false])
+            ->add('btnGuardar', SubmitType::class, ['label' => 'Guardar'])
+            ->getForm();
+    }
+
+    /**
+     * Lo que se manda a Nobelio, igual en el alta y en la edicion.
+     */
+    private function datosWebhook(FormInterface $form): array
+    {
+        return [
+            'nombre' => trim((string) $form->get('nombre')->getData()),
+            'url' => trim((string) $form->get('url')->getData()),
+            'estado_validado' => (bool) $form->get('estadoValidado')->getData(),
+            'estado_notificado' => (bool) $form->get('estadoNotificado')->getData(),
+        ];
+    }
+
+    /**
+     * Elimina un webhook y vuelve al detalle del emisor, en su pestaña.
+     *
+     * El id del webhook es un entero y se concatena a la url del API, asi que
+     * se acota antes de usarlo. El emisor solo sirve para volver.
+     */
+    #[Route('/nobelio/emisor/webhook-eliminar/{id}', name: 'nobelio_emisor_webhook_eliminar', methods: ['POST'], requirements: ['id' => '\\d+'])]
+    public function webhookEliminar(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $webhook = (string) $request->request->get('webhook', '');
+
+        if (!$this->isCsrfTokenValid('webhooks-emisor', (string) $request->request->get('_token'))) {
+            Mensajes::error('La petición de borrado no es válida.');
+        } elseif (!ctype_digit($webhook)) {
+            Mensajes::error('No se indicó qué webhook eliminar.');
+        } else {
+            $respuesta = $nobelio->consumoDelete("api/emisores/webhook/{$webhook}/");
+            if ($respuesta['error']) {
+                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            } else {
+                Mensajes::success('Webhook eliminado.');
+            }
+        }
+
+        return $this->redirectToRoute('nobelio_emisor_detalle', ['id' => $id, '_fragment' => 'webhooks']);
     }
 
     /**

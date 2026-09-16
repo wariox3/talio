@@ -20,6 +20,12 @@ class Nobelio
         return $this->peticion('POST', $url, ['json' => $datos ?: new \stdClass()]);
     }
 
+    public function consumoPatch(string $url, array $datos = []): array
+    {
+        // Mismo motivo que en consumoPost(): un array vacio saldria como [].
+        return $this->peticion('PATCH', $url, ['json' => $datos ?: new \stdClass()]);
+    }
+
     public function consumoDelete(string $url): array
     {
         return $this->peticion('DELETE', $url, []);

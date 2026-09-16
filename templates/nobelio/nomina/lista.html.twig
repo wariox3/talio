@@ -6,19 +6,17 @@
     <span class="stamp">{{ total }} nómina{{ total == 1 ? '' : 's' }}</span>
 {% endblock %}
 {% block content %}
-    {# La acción que toca en cada estado. Sale de las guardas de Nobelio: una
-       firmada o enviada no se puede volver a emitir, solo se envía lo que ya
-       tiene XML, y una aceptada es terminal —se corrige con una nota de ajuste,
-       no reintentando—. La rechazada admite las dos: se corrige y se vuelve a
-       emitir, o se reintenta el envío tal cual. #}
+    {# La acción que toca en cada estado. En Nobelio todo es emitir, que lleva
+       la nómina a su estado final: una borrador se firma y se envía; una
+       firmada —un intento anterior que no llegó a enviar— solo reenvía ese
+       mismo CUNE, y una enviada sin veredicto se consulta y se aplica lo que
+       diga la DIAN, sin reenviar. Aceptada y rechazada son finales: la
+       aceptada se corrige con una nota de ajuste y la rechazada se borra y se
+       crea de nuevo corregida. #}
     {% set accionesPorEstado = {
-        'borrador':  [{ 'accion': 'emitir', 'titulo': 'Emitir', 'pregunta': 'Emitir' }],
-        'firmado':   [{ 'accion': 'enviar', 'titulo': 'Enviar', 'pregunta': 'Enviar a la DIAN' }],
-        'enviado':   [{ 'accion': 'enviar', 'titulo': 'Reenviar', 'pregunta': 'Volver a enviar a la DIAN' }],
-        'rechazado': [
-            { 'accion': 'emitir', 'titulo': 'Emitir', 'pregunta': 'Volver a emitir' },
-            { 'accion': 'enviar', 'titulo': 'Enviar', 'pregunta': 'Enviar a la DIAN' }
-        ],
+        'borrador': [{ 'accion': 'emitir', 'titulo': 'Emitir', 'pregunta': 'Firmar y enviar a la DIAN' }],
+        'firmado':  [{ 'accion': 'emitir', 'titulo': 'Reintentar envío', 'pregunta': 'Enviar a la DIAN' }],
+        'enviado':  [{ 'accion': 'emitir', 'titulo': 'Actualizar estado' }],
     } %}
     {% set tipos = { '102': 'Nómina', '103': 'Nota de ajuste' } %}
     {% set tiposNota = { '1': 'Reemplaza', '2': 'Elimina' } %}
@@ -126,10 +124,9 @@
                                         name="id" value="{{ nomina.id }}"
                                         onclick="return confirm('¿{{ accion.pregunta }} la nómina {{ nomina.numero }}?')">{{ accion.titulo }}</button>
                             {% endfor %}
-                            {# Consultar es un GetStatus por el CUNE: dice qué
-                               piensa la DIAN, pero no cambia el estado de la
-                               nómina —eso solo lo hace el envío—. Sin CUNE no
-                               hay por qué preguntar. #}
+                            {# Consultar solo lee lo que dice la DIAN —p. ej. el
+                               detalle de una rechazada—; no cambia la nómina.
+                               Sin CUNE no hay por qué preguntar. #}
                             {% if nomina.cune %}
                                 <button type="submit" class="link" form="acciones-nomina"
                                         formaction="{{ path('nobelio_nomina_consultar') }}"

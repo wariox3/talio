@@ -14,9 +14,8 @@ use Symfony\Component\Routing\Attribute\Route;
 
 class NominaController extends AbstractController
 {
-    // La nomina reusa el catalogo DocumentoEstado, pero no todo el ciclo: su
-    // emision firma de una (no hay paso intermedio), asi que nunca queda en
-    // "generado" y ese estado no se ofrece como filtro.
+    // Los estados son los de DocumentoEstado.Nombre en Nobelio, que la nomina
+    // comparte con los documentos.
     private const ESTADOS = [
         'Todos' => '',
         'Borrador' => 'borrador',
@@ -157,13 +156,15 @@ class NominaController extends AbstractController
     /**
      * Ejecuta sobre la nomina la accion que toca en su estado.
      *
-     * Las dos que cambian el documento —firmar y enviar— devuelven el estado en
-     * que queda, asi que comparten respuesta y salen por aqui; consultar() va
-     * aparte porque no lo toca. La accion va en la ruta y no en el cuerpo para
-     * que las unicas admitidas sean las del requirement: el id se concatena a
-     * la url del API y una accion libre dejaria construir cualquier ruta.
+     * Hoy solo es emitir, que en Nobelio lleva la nomina a su estado final
+     * —firma y envia, o, si ya estaba enviada sin veredicto, consulta y aplica
+     * lo que diga la DIAN— y responde en "accion" cual de las dos hizo.
+     * consultar() va aparte porque solo lee. La accion va en
+     * la ruta y no en el cuerpo para que las unicas admitidas sean las del
+     * requirement: el id se concatena a la url del API y una accion libre
+     * dejaria construir cualquier ruta.
      */
-    #[Route('/nobelio/nomina/accion/{accion}', name: 'nobelio_nomina_accion', methods: ['POST'], requirements: ['accion' => 'emitir|enviar'])]
+    #[Route('/nobelio/nomina/accion/{accion}', name: 'nobelio_nomina_accion', methods: ['POST'], requirements: ['accion' => 'emitir'])]
     public function accion(Request $request, Nobelio $nobelio, string $accion): Response
     {
         $id = (string) $request->request->get('id', '');
@@ -181,10 +182,13 @@ class NominaController extends AbstractController
                 Mensajes::error("Nobelio: {$respuesta['mensaje']}");
             } else {
                 $datos = $respuesta['datos'];
-                $mensaje = "Nómina en estado '" . ($datos['estado'] ?? '') . "'.";
-                // Emitir devuelve el CUNE que acaba de calcular; enviar, lo que
-                // contesto la DIAN. El CUNE se recalcula en cada firma, asi que
-                // el de un reintento no es el de antes.
+                $mensaje = ($datos['accion'] ?? '') === 'consultado'
+                    ? 'Consultada en la DIAN, sin reenviar.'
+                    : 'Enviada a la DIAN.';
+                $mensaje .= " Nómina en estado '" . ($datos['estado'] ?? '') . "'.";
+                // Emitir devuelve el CUNE y lo que contesto la DIAN. Si un
+                // envio anterior fallo, la nomina quedo firmada y el reintento
+                // manda ese mismo CUNE.
                 if (!empty($datos['cune'])) {
                     $mensaje .= " CUNE: {$datos['cune']}";
                 }
@@ -193,8 +197,8 @@ class NominaController extends AbstractController
                 }
                 $mensaje .= $this->resumenDeErrores($datos);
 
-                // Un envio con errores termina en rechazado y no es un exito
-                // aunque la peticion haya ido bien.
+                // Rechazada, o enviada y aun sin veredicto: la peticion fue
+                // bien, pero no es un exito.
                 if (array_key_exists('es_valido', $datos) && !$datos['es_valido']) {
                     Mensajes::warning($mensaje);
                 } else {
@@ -209,10 +213,10 @@ class NominaController extends AbstractController
     /**
      * Pregunta a la DIAN por el CUNE y muestra lo que conteste.
      *
-     * En Nobelio es un GET y de solo lectura: no cambia el estado de la nomina
-     * —eso solo lo hace enviar()—, asi que sirve para saber que dice la DIAN,
-     * no para refrescar el listado. Aqui llega por POST igual que las demas
-     * acciones: viaja en el mismo formulario con su token y evita que un
+     * En Nobelio es un GET de solo lectura en cualquier estado: no cambia la
+     * nomina —eso lo hace emitir()—, asi que sirve para saber que dice la DIAN,
+     * por ejemplo el detalle de una rechazada. Aqui llega por POST igual que
+     * las demas acciones: viaja en el mismo formulario con su token y evita que un
      * enlace, al recorrerlo cualquier cosa que siga enlaces, dispare una
      * llamada a la DIAN.
      */

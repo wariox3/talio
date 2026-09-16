@@ -86,6 +86,9 @@
             <button type="button" class="tab" role="tab" aria-selected="false" data-panel="resoluciones">
                 Resoluciones <span class="stamp">{{ resoluciones|length }}</span>
             </button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-panel="webhooks">
+                Webhooks <span class="stamp">{{ webhooks|length }}</span>
+            </button>
         </div>
 
         <div class="tab-panel" id="certificados" role="tabpanel">
@@ -210,5 +213,54 @@
                 </table>
             </div>
         </div>
+
+        <div class="tab-panel" id="webhooks" role="tabpanel" hidden>
+            {# Las URLs a las que Nobelio le avisa al emisor, y de qué. Nobelio
+               todavía solo las guarda: el envío de los avisos no está hecho. #}
+            <div class="filters">
+                <div class="f-right">
+                    <button type="button" class="ghost" onclick="abrirVentana('{{ path('nobelio_emisor_webhook_nuevo', { 'id': emisor.id }) }}', 'WebhookNuevo', 430, 640)">Nuevo</button>
+                </div>
+            </div>
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Nombre</th>
+                        <th>URL</th>
+                        <th>Validación</th>
+                        <th>Notificación</th>
+                        <th>Creado</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for webhook in webhooks %}
+                        <tr>
+                            <td class="id">{{ webhook.id }}</td>
+                            <td>{{ webhook.nombre }}</td>
+                            <td>{{ webhook.url }}</td>
+                            <td>{{ ui.estado(webhook.estado_validado, 'Avisa', 'No avisa') }}</td>
+                            <td>{{ ui.estado(webhook.estado_notificado, 'Avisa', 'No avisa') }}</td>
+                            <td class="fecha">{{ webhook.creado_en ? webhook.creado_en|date('Y-m-d H:i', false) }}</td>
+                            <td class="acciones">
+                                <a href="javascript:abrirVentana('{{ path('nobelio_emisor_webhook_editar', { 'id': webhook.id }) }}', 'WebhookEditar', 430, 640)">Editar</a>
+                                <button type="submit" class="link" form="webhooks-emisor"
+                                        name="webhook" value="{{ webhook.id }}"
+                                        onclick="return confirm('¿Eliminar el webhook {{ webhook.nombre|e('js') }}?')">Eliminar</button>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="7">Este emisor no tiene webhooks registrados.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
+    {# Fuera de las pestañas: los botones de eliminar apuntan aquí con form=. #}
+    <form id="webhooks-emisor" method="post" action="{{ path('nobelio_emisor_webhook_eliminar', { 'id': emisor.id }) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('webhooks-emisor') }}">
+    </form>
 {% endblock %}

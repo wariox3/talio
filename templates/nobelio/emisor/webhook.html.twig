@@ -1,0 +1,30 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{# Sirve al alta y a la edición: con webhook.id se está editando. #}
+{% set editando = webhook.id is defined %}
+{% block title %}{{ editando ? 'Editar webhook' : 'Nuevo webhook' }} · Talio{% endblock %}
+{% block ruta %}
+    {{ editando ? 'Webhook ' ~ webhook.id : 'Nuevo webhook' }} · <b>{{ emisor.razon_social|default('') }}</b>
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Webhook') }}
+        {# El emisor es el de la ventana. Las banderas dicen de qué se le avisa
+           a esta URL; sin ninguna marcada el webhook queda guardado pero mudo. #}
+        {{ form_start(form) }}
+        <div class="form-stack">
+            {{ ui.campo('Nombre', form.nombre) }}
+            {{ ui.campo('URL (https)', form.url) }}
+            <div class="check">
+                {{ form_widget(form.estadoValidado) }}
+                <label for="{{ form.estadoValidado.vars.id }}">Avisar la validación de la DIAN</label>
+            </div>
+            <div class="check">
+                {{ form_widget(form.estadoNotificado) }}
+                <label for="{{ form.estadoNotificado.vars.id }}">Avisar la notificación al adquiriente</label>
+            </div>
+            <div>{{ form_widget(form.btnGuardar) }}</div>
+        </div>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

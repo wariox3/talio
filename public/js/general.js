@@ -37,3 +37,13 @@ document.addEventListener('click', evento => {
     });
 });
 
+// Abre la pestaña que nombre el fragmento de la URL (#webhooks), para volver a
+// ella tras una acción que redirige a la página.
+document.addEventListener('DOMContentLoaded', () => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (!id) {
+        return;
+    }
+    document.querySelector(`.tabs-head .tab[data-panel="${CSS.escape(id)}"]`)?.click();
+});
+

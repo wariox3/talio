@@ -8,6 +8,16 @@
 {% endblock %}
 {% block acciones %}
     <span class="stamp">{{ documento.estado_nombre|capitalize }}</span>
+    {# El XML se guarda al firmar y el attached lo envuelve, asi que un
+       borrador todavia no tiene que descargar. Son descargas, no acciones:
+       van por GET. El attached es lo que se le entrega al adquiriente: el XML
+       firmado y el acuse de la DIAN en un solo documento. Nobelio lo arma
+       aunque la DIAN no haya respondido —sirve para revisarlo—, pero entonces
+       no acredita la validacion. #}
+    {% if documento.estado_nombre|default('') != 'borrador' %}
+        <button type="button" class="ghost" onclick="location.href='{{ path('nobelio_documento_descargar', { 'archivo': 'xml', 'id': documento.id }) }}'">XML</button>
+        <button type="button" class="ghost" onclick="location.href='{{ path('nobelio_documento_descargar', { 'archivo': 'attached', 'id': documento.id }) }}'">Attached</button>
+    {% endif %}
 {% endblock %}
 {% block content %}
     <div class="block">
@@ -64,9 +74,8 @@
             <dt>Validación DIAN</dt>
             <dd>{{ documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) }}</dd>
 
-            {# Mientras Nobelio no tenga el envio por correo, esto marca que el
-               paquete se armo y se entrego a quien lo pidio, no que le haya
-               llegado al adquiriente. #}
+            {# Nobelio lo marca cuando la pasarela acepta el correo: que se
+               envio, no que el adquiriente lo leyera. #}
             <dt>Notificado</dt>
             <dd>{{ ui.estado(documento.notificado, 'Sí', 'No') }}</dd>
             {# Solo lo llevan las notas credito/debito: es el documento que corrigen. #}

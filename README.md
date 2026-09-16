@@ -75,10 +75,10 @@ parte.
 
 #### Endpoints de Nobelio
 
-Inventario tomado de los `urls.py` de Nobelio el 2026-08-25. **Puede quedar
+Inventario tomado de los `urls.py` y del `schema.yml` de Nobelio el 2026-09-16. **Puede quedar
 desactualizado**: la fuente de verdad son
-`/home/desarrollo/proyectos/nobelio/apps/*/urls.py` y los `@action` de sus
-ViewSets. Las rutas se pasan a `Nobelio::consumoGet()` y compañía sin barra
+`/home/desarrollo/proyectos/nobelio/apps/*/urls.py`, los `@action` de sus
+ViewSets y su `schema.yml`. Las rutas se pasan a `Nobelio::consumoGet()` y compañía sin barra
 inicial, porque `BASE_NOBELIO` ya termina en `/`.
 
 Cada recurso registrado en un router de DRF expone el juego REST completo:
@@ -87,32 +87,35 @@ Cada recurso registrado en un router de DRF expone el juego REST completo:
 | Ruta | Notas |
 |---|---|
 | `estado/` | Estado del servicio. Único endpoint **sin autenticación**. |
-| `api/seguridad/token/` | Login. Devuelve `{access, refresh}`. |
-| `api/seguridad/token/refresh/` · `token/verify/` | Renovar y verificar. |
+| `api/seguridad/token/` | Login. Devuelve `{access, refresh}`. Con MFA sigue en `token/mfa/`. |
+| `api/seguridad/token/refresh/` · `token/cerrar/` | Renovar y cerrar sesión. También `token/recuperar/` y `token/restablecer/`. |
+| `api/seguridad/registro/` · `me/` · `mfa/…` | Registro, usuario actual y segundo factor. Talio no los consume. |
 | `api/seguridad/usuario/` | **Solo staff.** |
 | `api/seguridad/llave-api/` | **Solo staff.** Gestión de API Keys. |
-| `api/cuentas/cuenta/` | Cuentas, propietarias de los emisores. |
-| `api/catalogos/…` | 12 catálogos de solo lectura: `tipo-factura`, `tipo-identificacion`, `tipo-organizacion`, `responsabilidad-fiscal`, `tributo`, `unidad-medida`, `forma-pago`, `medio-pago`, `moneda`, `pais`, `departamento`, `municipio`. Aceptan `?search=`. |
+| `api/catalogos/…` | 16 catálogos de solo lectura: `tipo-factura`, `tipo-identificacion`, `tipo-organizacion`, `responsabilidad-fiscal`, `tributo`, `unidad-medida`, `forma-pago`, `medio-pago`, `moneda`, `pais`, `departamento`, `municipio` y, de nómina, `periodo-nomina`, `tipo-contrato`, `tipo-trabajador`, `subtipo-trabajador`. Aceptan `?search=`. |
 | `api/emisores/emisor/` | Emisores (OFE). |
 | `api/emisores/emisor/validar-nit/` | `GET ?nit=<NIT>` |
-| `api/emisores/emisor/crear-habilitacion/` | `POST` · software DIAN de habilitación. |
 | `api/emisores/software/` · `certificado/` · `resolucion/` | Recursos del emisor. |
+| `api/emisores/webhook/` | Webhooks del emisor, CRUD completo. Filtra por `?emisor=<id>`. Campos: `emisor`, `nombre`, `url` (**solo HTTPS**), `estado_validado` y `estado_notificado` (de qué se avisa). El `emisor` no se puede cambiar. Nobelio aún no envía los avisos: solo los guarda. |
 | `api/emisores/software/{id}/crear-nomina-prueba/` | `POST` · siembra una nómina de prueba en borrador, con `{"consecutivo": <n>}` opcional (sin él toma el siguiente libre). **Solo sobre software de nómina.** El periodo lo continúa Nobelio. |
+| `api/emisores/software/{id}/crear-nota-ajuste-prueba/` | `POST` · clona la última nómina aceptada en notas de ajuste de prueba, en borrador. **Solo sobre software de nómina** y con el emisor en pruebas. |
 | `api/emisores/certificado/cargar/` | `POST` multipart · sube el `.p12`. |
 | `api/emisores/resolucion/consulta-dian/` · `importar-dian/` | Consulta e importa resoluciones desde la DIAN. |
 | `api/emisores/resolucion/{id}/crear-documento-prueba/` | `POST` · siembra un documento de prueba en borrador sobre la resolución, con `{"consecutivo": <n>}` opcional (sin él toma el siguiente libre). El tipo lo decide el `tipo_factura` de la resolución. |
+| `api/nomina/empleado/` | Empleados. |
+| `api/nomina/nomina/` | Nóminas. **No se editan** (sin `PUT`/`PATCH`). Filtra por `emisor`, `empleado`, `estado` y `tipo_xml` (`102` nómina, `103` nota de ajuste); `?search=` mira número, CUNE y documento del empleado. |
+| `api/nomina/nomina/{id}/emitir/` | `POST` sin cuerpo · lleva la nómina a su estado final: `borrador` se firma y se envía; `firmado` solo reenvía el mismo CUNE; `enviado` se consulta y se aplica el resultado, sin reenviar. `aceptado` y `rechazado` responden 400. Devuelve `accion` (`enviado` o `consultado`), `estado`, `cune`, `track_id`, `fecha_validacion`, `es_valido`, `codigo_estado`, `descripcion` y `errores`. |
+| `api/nomina/nomina/{id}/consultar/` | `GET` · consulta la DIAN **sin modificar** la nómina, en cualquier estado. |
+| `api/nomina/nomina/{id}/xml/` | **Descarga** del XML firmado. Usar `consumoArchivo()`. |
 | `api/documentos/documento/` | Documentos electrónicos. Filtra por `emisor` (id entero; otra cosa responde 400), `estado`, `documento_tipo` y `notificado`; `?search=` busca por contenido en número, CUFE y NIT o razón social del adquiriente (no hay filtro exacto por número). Ordena con `?ordering=` (campos permitidos en `ordering_fields` del ViewSet; el `-` invierte). |
-| `api/documentos/documento/{id}/emitir/` | `POST` · XML UBL + CUFE + firma. |
-| `api/documentos/documento/{id}/enviar/` | `POST` · envía al WS de la DIAN. |
-| `api/documentos/documento/{id}/consultar/` | `GET` · consulta sin efectos sobre el documento. |
-| `api/documentos/documento/{id}/consultar-zip/` | `GET` · **devuelve JSON, no un ZIP**. Consulta el estado del *envío* contra la DIAN (`GetStatusZip` por `track_id`). Usar `consumoGet()`. |
-| `api/documentos/documento/{id}/actualizar-estado/` | `POST` · aplica el resultado al documento. |
+| `api/documentos/documento/{id}/emitir/` | `POST` sin cuerpo · lleva el documento a su estado final: `borrador` se firma y se envía; `firmado` —envío anterior fallido, p. ej. un 502— solo reenvía el mismo CUFE; `enviado` se consulta y se aplica el resultado, sin reenviar (sustituye a `actualizar-estado/`, que ya no existe). `aceptado` y `rechazado` responden 400: el rechazado se borra y se crea de nuevo. Devuelve `accion` (`enviado` o `consultado`), `estado`, `cufe_cude`, `track_id`, `fecha_validacion`, `es_valido`, `codigo_estado`, `descripcion` y `errores`. |
+| `api/documentos/documento/{id}/consultar/` | `GET` · consulta la DIAN **sin modificar** el documento, en cualquier estado. (`consultar-zip/` ya no existe.) |
 | `api/documentos/documento/{id}/xml/` · `pdf/` · `attached/` | **Descargas** (`FileResponse` / `HttpResponse`). ⚠️ Usar `consumoArchivo()`, **nunca `consumoGet()`**. Ver nota abajo. |
-| `api/documentos/documento/{id}/notificar/` | `POST` multipart · arma el paquete para el adquiriente. Devuelve JSON, salvo con `?descargar=1`. El envío por correo **aún no existe** en Nobelio (`enviado: false`). |
+| `api/documentos/documento/{id}/notificar/` | `POST` multipart (`pdf` y `adjuntos` opcionales) · arma el zip con el AttachedDocument y **lo envía por correo** al adquiriente (Zinc). Devuelve `destinatario`, `codigo_envio`, `notificado`… Si falla el correo responde 502 y el documento no queda notificado. Con `?descargar=1` no envía: devuelve el zip. |
 
 **Alcance de `Nobelio`.** La clase expone `consumoGet()`, `consumoPost()`,
-`consumoDelete()` y `consumoArchivo()`. `PUT`/`PATCH` se añaden
-cuando hagan falta: `peticion()` ya acepta cualquier método, así que un verbo
+`consumoPatch()`, `consumoDelete()` y `consumoArchivo()`. `PUT` se añade
+cuando haga falta: `peticion()` ya acepta cualquier método, así que un verbo
 nuevo es una línea.
 
 **Las descargas van por `consumoArchivo()`.** `xml/` y `pdf/` devuelven archivo,
