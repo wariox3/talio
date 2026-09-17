@@ -344,6 +344,95 @@ pre {
 .fig a { color: inherit; }
 .fig a:hover { color: var(--accent); }
 
+/* Tarjetas de estado enlazables. El modificador fija el color (--kc) de la
+   franja lateral, el icono y el numero; el fondo solo se tiñe cuando hay algo
+   que atender (crit / warn), para que lo normal no compita con lo urgente. */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.kpi {
+    --kc: var(--muted);
+    --kbg: var(--surface);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    padding: 14px 16px 12px 19px;
+    background: var(--kbg);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    color: var(--ink);
+    overflow: hidden;
+    transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.kpi::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--kc);
+}
+.kpi:hover {
+    text-decoration: none;
+    border-color: var(--line-2);
+    box-shadow: 0 4px 14px -6px var(--sombra-scroll);
+    transform: translateY(-1px);
+}
+.kpi--accent { --kc: var(--accent); }
+.kpi--ok     { --kc: var(--ok); }
+.kpi--warn   { --kc: var(--warn); --kbg: var(--warn-bg); }
+.kpi--crit   { --kc: var(--crit); --kbg: var(--crit-bg); }
+.kpi--idle   { --kc: var(--line-2); }
+
+.kpi-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.kpi-l {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+}
+.kpi-ico {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    fill: none;
+    stroke: var(--kc);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.kpi-v {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 2.1rem;
+    letter-spacing: -.03em;
+    line-height: 1.1;
+    color: var(--ink);
+}
+.kpi--crit .kpi-v, .kpi--warn .kpi-v, .kpi--accent .kpi-v { color: var(--kc); }
+.kpi--idle .kpi-v { color: var(--muted); }
+.kpi-f {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+}
+.kpi--crit .kpi-f, .kpi--warn .kpi-f { border-top-color: color-mix(in srgb, var(--kc) 22%, transparent); }
+.kpi-f .tag { color: var(--kc); }
+.kpi-f .tag .dot { background: var(--kc); }
+.kpi--idle .kpi-f .tag { color: var(--muted); }
+.kpi--crit .kpi-f .dot { box-shadow: 0 0 0 3px color-mix(in srgb, var(--kc) 25%, transparent); }
+.kpi-ir {
+    margin-left: auto;
+    color: var(--kc);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity .15s, transform .15s;
+}
+.kpi:hover .kpi-ir, .kpi:focus-visible .kpi-ir { opacity: 1; transform: none; }
+
 /* -------------------------------------------------------------- tablas -- */
 /* El contenedor es el que scrollea, en los dos ejes. Acotarlo en alto es lo
    que permite que la cabecera quede fija; con tablas cortas el max-height no

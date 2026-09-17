@@ -47,28 +47,52 @@
 
     <div class="block">
         {{ ui.cabecera('Documentos') }}
-        <div class="figs">
-            <div class="fig">
-                <span class="fig-l">Por enviar</span>
-                <span class="fig-v"><a href="{{ path('wolframio_documento_enviar') }}">{{ arrEstados.enviar }}</a></span>
-                <span class="fig-f">En cola</span>
-            </div>
-            <div class="fig">
-                <span class="fig-l">En error</span>
-                <span class="fig-v"><a href="{{ path('wolframio_documento_error') }}">{{ arrEstados.error }}</a></span>
-                <span class="fig-f">
+        <div class="kpis">
+            <a class="kpi {{ arrEstados.enviar > 0 ? 'kpi--accent' : 'kpi--idle' }}" href="{{ path('wolframio_documento_enviar') }}">
+                <span class="kpi-head">
+                    <span class="kpi-l">Por enviar</span>
+                    <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2-7-8-1z"/></svg>
+                </span>
+                <span class="kpi-v">{{ arrEstados.enviar|number_format(0, ',', '.') }}</span>
+                <span class="kpi-f">
+                    {% if arrEstados.enviar > 0 %}
+                        <span class="tag"><span class="dot"></span>En cola de emisión</span>
+                    {% else %}
+                        <span class="tag idle"><span class="dot"></span>Cola vacía</span>
+                    {% endif %}
+                    <span class="kpi-ir" aria-hidden="true">→</span>
+                </span>
+            </a>
+            <a class="kpi {{ arrEstados.error > 0 ? 'kpi--crit' : 'kpi--ok' }}" href="{{ path('wolframio_documento_error') }}">
+                <span class="kpi-head">
+                    <span class="kpi-l">En error</span>
+                    <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>
+                </span>
+                <span class="kpi-v">{{ arrEstados.error|number_format(0, ',', '.') }}</span>
+                <span class="kpi-f">
                     {% if arrEstados.error > 0 %}
                         <span class="tag crit"><span class="dot"></span>Requiere revisión</span>
                     {% else %}
-                        Sin errores
+                        <span class="tag ok"><span class="dot"></span>Sin errores</span>
                     {% endif %}
+                    <span class="kpi-ir" aria-hidden="true">→</span>
                 </span>
-            </div>
-            <div class="fig">
-                <span class="fig-l">Esperando respuesta</span>
-                <span class="fig-v"><a href="{{ path('wolframio_documento_respuesta') }}">{{ arrEstados.respuesta }}</a></span>
-                <span class="fig-f">Pendientes de notificar</span>
-            </div>
+            </a>
+            <a class="kpi {{ arrEstados.respuesta > 0 ? 'kpi--warn' : 'kpi--idle' }}" href="{{ path('wolframio_documento_respuesta') }}">
+                <span class="kpi-head">
+                    <span class="kpi-l">Esperando respuesta</span>
+                    <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                <span class="kpi-v">{{ arrEstados.respuesta|number_format(0, ',', '.') }}</span>
+                <span class="kpi-f">
+                    {% if arrEstados.respuesta > 0 %}
+                        <span class="tag warn"><span class="dot"></span>Pendientes de notificar</span>
+                    {% else %}
+                        <span class="tag idle"><span class="dot"></span>Nada pendiente</span>
+                    {% endif %}
+                    <span class="kpi-ir" aria-hidden="true">→</span>
+                </span>
+            </a>
         </div>
     </div>
 
