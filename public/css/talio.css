@@ -623,6 +623,8 @@ table.kv tr:last-child th, table.kv tr:last-child td { border-bottom: 0; }
     flex-wrap: wrap;
     margin-bottom: 18px;
 }
+/* Filtro suelto en su propio bloque: el margen ya lo da el bloque. */
+.filters--flat { margin-bottom: 0; }
 .field { display: flex; flex-direction: column; gap: 3px; }
 .field > label {
     font-family: "IBM Plex Mono", ui-monospace, monospace;

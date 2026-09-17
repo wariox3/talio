@@ -2,7 +2,7 @@
 {% import '_macros.html.twig' as ui %}
 
 {% block title %}Nginx · Talio{% endblock %}
-{% block ruta %}Auditoría <span>/</span> <b>Nginx</b>{% endblock %}
+{% block ruta %}Auditoría <span>/</span> Nginx <span>/</span> <b>{{ servidor|capitalize }}</b>{% endblock %}
 
 {% block acciones %}
     {% if error %}
@@ -13,6 +13,20 @@
 {% endblock %}
 
 {% block content %}
+    <div class="block block--tight">
+        <form class="filters filters--flat" method="get" action="{{ path('auditoria_nginx_monitor') }}">
+            <div class="field">
+                <label for="servidor">Servidor</label>
+                <select id="servidor" name="servidor" onchange="this.form.submit()">
+                    {% for item in servidores %}
+                        <option value="{{ item }}" {{ item == servidor ? 'selected' }}>{{ item|capitalize }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <noscript><button type="submit">Filtrar</button></noscript>
+        </form>
+    </div>
+
     <div class="mitades">
         <div class="block">
             {{ ui.cabecera('Accesos nginx por hora', 'Últimas 24 h') }}

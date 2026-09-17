@@ -24,9 +24,28 @@ class BdLogNginx
     }
 
     /**
+     * Servidores que tienen accesos registrados, en orden alfabético.
+     */
+    public function servidores(): array
+    {
+        $sql = "SELECT DISTINCT servidor FROM nginx_acceso WHERE servidor IS NOT NULL ORDER BY servidor";
+        try {
+            return [
+                'error' => false,
+                'datos' => $this->conexion()->query($sql)->fetchAll(\PDO::FETCH_COLUMN)
+            ];
+        } catch (\PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
      * Accesos de las últimas 24 horas agrupados por hora, incluidas las horas sin accesos.
      */
-    public function accesosPorHora(): array
+    public function accesosPorHora(string $servidor): array
     {
         $sql = "SELECT to_char(h.hora, 'HH24') AS hora, count(a.id) AS cantidad
                 FROM generate_series(
@@ -34,13 +53,14 @@ class BdLogNginx
                     date_trunc('hour', now() AT TIME ZONE :zona),
                     interval '1 hour') AS h(hora)
                 LEFT JOIN nginx_acceso a
-                    ON a.fecha >= h.hora AT TIME ZONE :zona
+                    ON a.servidor = :servidor
+                    AND a.fecha >= h.hora AT TIME ZONE :zona
                     AND a.fecha < (h.hora + interval '1 hour') AT TIME ZONE :zona
                 GROUP BY h.hora
                 ORDER BY h.hora";
         try {
             $consulta = $this->conexion()->prepare($sql);
-            $consulta->execute(['zona' => self::ZONA_HORARIA]);
+            $consulta->execute(['zona' => self::ZONA_HORARIA, 'servidor' => $servidor]);
             return [
                 'error' => false,
                 'datos' => $consulta->fetchAll()
@@ -56,16 +76,18 @@ class BdLogNginx
     /**
      * Últimos accesos registrados, del más reciente al más antiguo.
      */
-    public function ultimosAccesos(int $limite = 20): array
+    public function ultimosAccesos(string $servidor, int $limite = 20): array
     {
         $sql = "SELECT id, to_char(fecha AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS fecha,
                     host, host(ip) AS ip, metodo, uri, status, bytes, request_time
                 FROM nginx_acceso
+                WHERE servidor = :servidor
                 ORDER BY fecha DESC
                 LIMIT :limite";
         try {
             $consulta = $this->conexion()->prepare($sql);
             $consulta->bindValue('zona', self::ZONA_HORARIA);
+            $consulta->bindValue('servidor', $servidor);
             $consulta->bindValue('limite', $limite, \PDO::PARAM_INT);
             $consulta->execute();
             return [
@@ -84,16 +106,17 @@ class BdLogNginx
      * Total de accesos por host en las últimas 24 horas, del que más tiene al que menos.
      * Usa la misma ventana que accesosPorHora() para que los totales coincidan con la gráfica.
      */
-    public function accesosPorHost(): array
+    public function accesosPorHost(string $servidor): array
     {
         $sql = "SELECT coalesce(host, '(sin host)') AS host, count(*) AS total
                 FROM nginx_acceso
-                WHERE fecha >= (date_trunc('hour', now() AT TIME ZONE :zona) - interval '23 hours') AT TIME ZONE :zona
+                WHERE servidor = :servidor
+                    AND fecha >= (date_trunc('hour', now() AT TIME ZONE :zona) - interval '23 hours') AT TIME ZONE :zona
                 GROUP BY host
                 ORDER BY total DESC, host";
         try {
             $consulta = $this->conexion()->prepare($sql);
-            $consulta->execute(['zona' => self::ZONA_HORARIA]);
+            $consulta->execute(['zona' => self::ZONA_HORARIA, 'servidor' => $servidor]);
             return [
                 'error' => false,
                 'datos' => $consulta->fetchAll()
@@ -110,17 +133,19 @@ class BdLogNginx
      * URIs con más accesos en las últimas 24 horas. Agrupa por ruta, sin la query string,
      * para que /lista?page=1 y /lista?page=2 cuenten como la misma URI.
      */
-    public function accesosPorUri(int $limite = 20): array
+    public function accesosPorUri(string $servidor, int $limite = 20): array
     {
         $sql = "SELECT coalesce(host, '(sin host)') AS host, split_part(uri, '?', 1) AS uri, count(*) AS total
                 FROM nginx_acceso
-                WHERE fecha >= (date_trunc('hour', now() AT TIME ZONE :zona) - interval '23 hours') AT TIME ZONE :zona
+                WHERE servidor = :servidor
+                    AND fecha >= (date_trunc('hour', now() AT TIME ZONE :zona) - interval '23 hours') AT TIME ZONE :zona
                 GROUP BY host, split_part(uri, '?', 1)
                 ORDER BY total DESC, uri
                 LIMIT :limite";
         try {
             $consulta = $this->conexion()->prepare($sql);
             $consulta->bindValue('zona', self::ZONA_HORARIA);
+            $consulta->bindValue('servidor', $servidor);
             $consulta->bindValue('limite', $limite, \PDO::PARAM_INT);
             $consulta->execute();
             return [
