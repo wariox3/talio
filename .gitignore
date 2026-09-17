@@ -11,8 +11,6 @@
 .env
 /phpunit.xml
 .phpunit.result.cache
-.phpunit.result.cache
-/phpunit.xml
 /nbproject/private/
 /nbproject/*
 /.idea/

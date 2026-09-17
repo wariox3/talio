@@ -1,0 +1,130 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+
+{% block title %}Ares · Talio{% endblock %}
+{% block ruta %}Servidores <span>/</span> <b>Ares</b>{% endblock %}
+
+{% block acciones %}
+    {% if error %}
+        <span class="tag crit"><span class="dot"></span>Sin conexión a bdlognginx</span>
+    {% else %}
+        <span class="stamp">{{ data|reduce((total, v) => total + v, 0) }} accesos · 24 h</span>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <div class="mitades">
+        <div class="block">
+            {{ ui.cabecera('Accesos nginx por hora', 'Últimas 24 h') }}
+            {% if error %}
+                <p class="hint">No fue posible consultar bdlognginx: {{ error }}</p>
+            {% else %}
+                <div class="chart-wrap">
+                    <svg data-grafica
+                         data-labels='{{ labels|json_encode|raw }}'
+                         data-valores='{{ data|json_encode|raw }}'
+                         data-unidad="acc"></svg>
+                    <div class="chart-tip"></div>
+                </div>
+                <div class="chart-cap"><i></i>Accesos registrados</div>
+            {% endif %}
+        </div>
+
+        {% if not error %}
+        <div class="block">
+            {{ ui.cabecera('Últimos accesos', ultimosAccesos|length ~ ' registros') }}
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Id</th><th>Fecha</th><th>Host</th><th>IP</th><th>Método</th>
+                        <th>URI</th><th class="center">Status</th><th class="num">Bytes</th><th class="num">Tiempo</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for acceso in ultimosAccesos %}
+                        <tr>
+                            <td class="id">{{ acceso.id }}</td>
+                            <td class="fecha">{{ acceso.fecha }}</td>
+                            <td>{{ acceso.host }}</td>
+                            <td class="nowrap">{{ acceso.ip }}</td>
+                            <td>{{ acceso.metodo }}</td>
+                            <td class="wrap" style="word-break: break-all;">{{ acceso.uri }}</td>
+                            <td class="center">
+                                {% if acceso.status >= 500 %}
+                                    <span class="tag crit"><span class="dot"></span>{{ acceso.status }}</span>
+                                {% elseif acceso.status >= 400 %}
+                                    <span class="tag warn"><span class="dot"></span>{{ acceso.status }}</span>
+                                {% elseif acceso.status >= 300 %}
+                                    <span class="tag idle"><span class="dot"></span>{{ acceso.status }}</span>
+                                {% else %}
+                                    <span class="tag ok"><span class="dot"></span>{{ acceso.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="num">{{ acceso.bytes|number_format(0, ',', '.') }}</td>
+                            <td class="num">{{ acceso.request_time }} s</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="9">Sin accesos registrados.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if not error %}
+        {% set totalAccesos = accesosPorHost|reduce((suma, h) => suma + h.total, 0) %}
+        <div class="mitades">
+            <div class="block">
+                {{ ui.cabecera('Accesos por host', accesosPorHost|length ~ ' hosts · Últimas 24 h') }}
+                <div class="table-scroll">
+                    <table class="data">
+                        <thead>
+                        <tr><th>Host</th><th class="num">Accesos</th><th class="num">%</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for host in accesosPorHost %}
+                            <tr>
+                                <td>{{ host.host }}</td>
+                                <td class="num">{{ host.total|number_format(0, ',', '.') }}</td>
+                                <td class="num">{{ totalAccesos > 0 ? (host.total * 100 / totalAccesos)|number_format(1, ',', '.') : 0 }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="3">Sin accesos registrados.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="block">
+                {{ ui.cabecera('Accesos por URI', 'Top ' ~ accesosPorUri|length ~ ' · Últimas 24 h') }}
+                <div class="table-scroll">
+                    <table class="data">
+                        <thead>
+                        <tr><th>URI</th><th>Host</th><th class="num">Accesos</th><th class="num">%</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for acceso in accesosPorUri %}
+                            <tr>
+                                <td class="wrap" style="word-break: break-all;">{{ acceso.uri }}</td>
+                                <td class="nowrap">{{ acceso.host }}</td>
+                                <td class="num">{{ acceso.total|number_format(0, ',', '.') }}</td>
+                                <td class="num">{{ totalAccesos > 0 ? (acceso.total * 100 / totalAccesos)|number_format(1, ',', '.') : 0 }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="4">Sin accesos registrados.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ asset('js/grafica.js') }}"></script>
+{% endblock %}

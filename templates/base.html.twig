@@ -72,6 +72,17 @@
             </details>
         </div>
 
+        <div class="nav-sec">
+            <div class="nav-head">Servidores</div>
+
+            <details class="nav-group" {{ ruta starts with 'servidores_ares_' ? 'open' }}>
+                <summary>Ares</summary>
+                <div class="nav-sub">
+                    <a class="{{ ruta == 'servidores_ares_monitor' ? 'on' }}" href="{{ path('servidores_ares_monitor') }}">Monitor</a>
+                </div>
+            </details>
+        </div>
+
         <div class="side-foot">
             {{ app.user ? app.user.userIdentifier : 'Sin sesión' }}
             <small><a href="{{ path('logout') }}">Salir</a></small>
