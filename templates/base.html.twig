@@ -73,12 +73,12 @@
         </div>
 
         <div class="nav-sec">
-            <div class="nav-head">Servidores</div>
+            <div class="nav-head">Auditoría</div>
 
-            <details class="nav-group" {{ ruta starts with 'servidores_ares_' ? 'open' }}>
-                <summary>Ares</summary>
+            <details class="nav-group" {{ ruta starts with 'auditoria_nginx_' ? 'open' }}>
+                <summary>Nginx</summary>
                 <div class="nav-sub">
-                    <a class="{{ ruta == 'servidores_ares_monitor' ? 'on' }}" href="{{ path('servidores_ares_monitor') }}">Monitor</a>
+                    <a class="{{ ruta == 'auditoria_nginx_monitor' ? 'on' }}" href="{{ path('auditoria_nginx_monitor') }}">Monitor</a>
                 </div>
             </details>
         </div>

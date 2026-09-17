@@ -1,5 +1,5 @@
 <?php
-namespace App\Controller\servidores;
+namespace App\Controller\auditoria;
 
 use App\Utilidades\BdLogNginx;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -7,9 +7,9 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-class AresController extends AbstractController
+class NginxController extends AbstractController
 {
-    #[Route('/servidores/ares/monitor', name: 'servidores_ares_monitor')]
+    #[Route('/auditoria/nginx/monitor', name: 'auditoria_nginx_monitor')]
     public function monitor(Request $request, BdLogNginx $bdLogNginx): Response
     {
         $error = null;
@@ -39,7 +39,7 @@ class AresController extends AbstractController
         if(!$respuesta['error']) {
             $accesosPorUri = $respuesta['datos'];
         }
-        return $this->render('servidores/ares/monitor.html.twig', [
+        return $this->render('auditoria/nginx/monitor.html.twig', [
             'error' => $error,
             'labels' => $labels,
             'data' => $data,
