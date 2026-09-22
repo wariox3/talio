@@ -25,11 +25,20 @@ class DocumentoController extends AbstractController
         'Rechazado por la DIAN' => 'rechazado',
     ];
 
+    // Filtro por respuesta_validado. Nobelio lo recibe como true/false; el
+    // vacio no manda el parametro y trae los dos.
+    private const RESPUESTA_VALIDADO = [
+        'Todos' => '',
+        'Sí' => 'true',
+        'No' => 'false',
+    ];
+
     #[Route('/nobelio/documento/lista', name: 'nobelio_documento_lista')]
     public function lista(Request $request, Nobelio $nobelio): Response
     {
         $form = $this->createFormBuilder()
             ->add('estado', ChoiceType::class, ['required' => false, 'choices' => self::ESTADOS])
+            ->add('respuestaValidado', ChoiceType::class, ['required' => false, 'choices' => self::RESPUESTA_VALIDADO])
             ->add('numero', TextType::class, ['required' => false])
             ->add('emisor', TextType::class, ['required' => false, 'attr' => ['inputmode' => 'numeric']])
             ->add('btnFiltrar', SubmitType::class, ['label' => 'Filtrar'])
@@ -42,11 +51,13 @@ class DocumentoController extends AbstractController
         // recalcularla despues de handleRequest sin pelearse con el form.
         $pagina = max(1, (int) $request->request->get('pagina', 1));
         $estado = '';
+        $respuestaValidado = '';
         $numero = '';
         $emisor = '';
 
         if ($form->isSubmitted() && $form->isValid()) {
             $estado = (string) $form->get('estado')->getData();
+            $respuestaValidado = (string) $form->get('respuestaValidado')->getData();
             $numero = trim((string) $form->get('numero')->getData());
             $emisor = trim((string) $form->get('emisor')->getData());
             if ($form->get('btnFiltrar')->isClicked()) {
@@ -65,10 +76,15 @@ class DocumentoController extends AbstractController
             if (!in_array($estado, self::ESTADOS, true)) {
                 $estado = '';
             }
+            $respuestaValidado = (string) $request->query->get('respuesta_validado', '');
+            if (!in_array($respuestaValidado, self::RESPUESTA_VALIDADO, true)) {
+                $respuestaValidado = '';
+            }
             $numero = trim((string) $request->query->get('numero', ''));
             $emisor = trim((string) $request->query->get('emisor', ''));
             $pagina = max(1, (int) $request->query->get('pagina', 1));
             $form->get('estado')->setData($estado);
+            $form->get('respuestaValidado')->setData($respuestaValidado);
             $form->get('numero')->setData($numero);
             $form->get('emisor')->setData($emisor);
         }
@@ -80,6 +96,9 @@ class DocumentoController extends AbstractController
         $parametros = ['page' => $pagina, 'ordering' => '-fecha_emision,-hora_emision'];
         if ($estado !== '') {
             $parametros['estado'] = $estado;
+        }
+        if ($respuestaValidado !== '') {
+            $parametros['respuesta_validado'] = $respuestaValidado;
         }
         if ($numero !== '') {
             // Nobelio no tiene filtro exacto por numero: va por su SearchFilter,
@@ -113,6 +132,7 @@ class DocumentoController extends AbstractController
             'form' => $form->createView(),
             'documentos' => $documentos,
             'estado' => $estado,
+            'respuestaValidado' => $respuestaValidado,
             'numero' => $numero,
             'emisor' => $emisor,
             'total' => $total,
@@ -139,6 +159,13 @@ class DocumentoController extends AbstractController
         // los del filtro; cualquier otra cosa se ignora.
         if ($estado !== '' && in_array($estado, self::ESTADOS, true)) {
             $parametros['estado'] = $estado;
+        }
+
+        // Igual que el estado: se reenvia al API, asi que solo pasa si es uno
+        // de los valores del filtro.
+        $respuestaValidado = (string) $request->request->get('respuesta_validado', '');
+        if ($respuestaValidado !== '' && in_array($respuestaValidado, self::RESPUESTA_VALIDADO, true)) {
+            $parametros['respuesta_validado'] = $respuestaValidado;
         }
 
         foreach (['numero', 'emisor'] as $filtro) {
@@ -186,12 +213,49 @@ class DocumentoController extends AbstractController
             $eventos = $respuestaEventos['datos'];
         }
 
+        // Los envios del documento al adquiriente por correo, uno por intento
+        // que llego a la pasarela, haya salido o no. Si falla, la ficha se
+        // pinta sin ellos.
+        $notificaciones = [];
+        $respuestaNotificaciones = $nobelio->consumoGetTodos('api/documentos/documento-notificacion/', ['documento' => $id]);
+        if ($respuestaNotificaciones['error']) {
+            Mensajes::error("Nobelio: {$respuestaNotificaciones['mensaje']}");
+        } else {
+            $notificaciones = $respuestaNotificaciones['datos'];
+        }
+
+        // Los avisos a los webhooks del emisor —al validarse o notificarse el
+        // documento— tambien van por su endpoint. Igual que los eventos: si
+        // falla, la ficha se pinta sin ellos.
+        $avisos = [];
+        $respuestaAvisos = $nobelio->consumoGetTodos('api/emisores/webhook-aviso/', ['documento' => $id]);
+        if ($respuestaAvisos['error']) {
+            Mensajes::error("Nobelio: {$respuestaAvisos['mensaje']}");
+        } else {
+            $avisos = $respuestaAvisos['datos'];
+        }
+
+        // El aviso solo trae el id del webhook; el nombre sale de los webhooks
+        // del emisor. Si esto falla basta con el id, asi que no se avisa.
+        $nombresWebhook = [];
+        if ($avisos && !empty($documento['emisor'])) {
+            $respuestaWebhooks = $nobelio->consumoGetTodos('api/emisores/webhook/', ['emisor' => $documento['emisor']]);
+            if (!$respuestaWebhooks['error']) {
+                foreach ($respuestaWebhooks['datos'] as $webhook) {
+                    $nombresWebhook[$webhook['id']] = $webhook['nombre'] ?? '';
+                }
+            }
+        }
+
         return $this->render('nobelio/documento/detalle.html.twig', [
             'documento' => $documento,
             'adquiriente' => $documento['adquiriente'] ?? [],
             'detalles' => $documento['detalles'] ?? [],
             'errores' => $documento['errores'] ?? [],
             'eventos' => $eventos,
+            'notificaciones' => $notificaciones,
+            'avisos' => $avisos,
+            'nombresWebhook' => $nombresWebhook,
         ]);
     }
 
@@ -327,6 +391,47 @@ class DocumentoController extends AbstractController
         }
 
         return $this->redirectToRoute('nobelio_documento_detalle', ['id' => $id]);
+    }
+
+    /**
+     * Avisa la validacion a los webhooks del emisor y la da por respondida.
+     *
+     * Solo se ofrece en la lista para un aceptado con respuesta_validado en
+     * false. Tampoco cabe en accion(): no devuelve un estado DIAN sino los
+     * avisos que se mandaron, uno por webhook con estado_validado.
+     *
+     * Nobelio vuelve a comprobar que este aceptado, sin respuesta y con algun
+     * webhook, y responde 400 explicando cual falta; si ningun webhook
+     * contesta 200 responde 502 y el documento sigue igual, asi que se puede
+     * reintentar. En ambos casos ese es el mensaje que se muestra.
+     */
+    #[Route('/nobelio/documento/respuesta-validado', name: 'nobelio_documento_respuesta_validado', methods: ['POST'])]
+    public function respuestaValidado(Request $request, Nobelio $nobelio): Response
+    {
+        $id = (string) $request->request->get('id', '');
+
+        if (!$this->isCsrfTokenValid('acciones-documento', (string) $request->request->get('_token'))) {
+            Mensajes::error('La petición no es válida.');
+        } elseif (!preg_match('/^[0-9a-fA-F-]{36}$/', $id)) {
+            // El id se concatena a la url del API: solo pasa con forma de UUID.
+            Mensajes::error('No se indicó sobre qué documento actuar.');
+        } else {
+            $respuesta = $nobelio->consumoPost("api/documentos/documento/{$id}/respuesta-validado/");
+            if ($respuesta['error']) {
+                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $avisos = $respuesta['datos']['avisos'] ?? [];
+                $conOk = count(array_filter($avisos, fn ($aviso) => ($aviso['codigo_http'] ?? null) === 200));
+                Mensajes::success(sprintf(
+                    'Validación respondida: %d de %d webhook%s contestó 200.',
+                    $conOk,
+                    count($avisos),
+                    count($avisos) === 1 ? '' : 's',
+                ));
+            }
+        }
+
+        return $this->redirigirALista($request);
     }
 
     #[Route('/nobelio/documento/eliminar', name: 'nobelio_documento_eliminar', methods: ['POST'])]

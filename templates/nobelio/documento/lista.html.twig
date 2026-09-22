@@ -22,6 +22,7 @@
     <div class="block">
         <div class="filters">
             {{ ui.campo('Estado', form.estado) }}
+            {{ ui.campo('R_VAL', form.respuestaValidado) }}
             {# Nobelio no filtra por número exacto: esto va a su SearchFilter,
                que también mira el CUFE y el NIT o nombre del adquiriente. #}
             {{ ui.campo('Número', form.numero) }}
@@ -53,6 +54,7 @@
                     <th class="num">Total</th>
                     <th>Estado</th>
                     <th>Envío</th>
+                    <th>R_VAL</th>
                     <th class="num">Errores</th>
                     <th>Acciones</th>
                 </tr>
@@ -74,6 +76,7 @@
                         <td class="num">{{ documento.total_a_pagar|number_format(0, ',', '.') }}</td>
                         <td>{{ documento.estado_nombre|capitalize }}</td>
                         <td>{{ documento.envio }}</td>
+                        <td>{{ ui.estado(documento.respuesta_validado|default(false), 'Sí', 'No') }}</td>
                         {# El listado solo trae el conteo —las filas de error las
                            explica el detalle—, asi que el numero es el enlace a
                            la ventana que las va a buscar. #}
@@ -96,6 +99,14 @@
                                         name="id" value="{{ documento.id }}"
                                         {% if accion.pregunta is defined %}onclick="return confirm('¿{{ accion.pregunta }} el documento {{ documento.numero }}?')"{% endif %}>{{ accion.titulo }}</button>
                             {% endfor %}
+                            {# Aceptado y sin respuesta: los webhooks del emisor
+                               aun no han confirmado la validacion. #}
+                            {% if documento.estado_nombre == 'aceptado' and not documento.respuesta_validado|default(false) %}
+                                <button type="submit" class="link" form="acciones-documento"
+                                        formaction="{{ path('nobelio_documento_respuesta_validado') }}"
+                                        name="id" value="{{ documento.id }}"
+                                        onclick="return confirm('¿Avisar la validación del documento {{ documento.numero }} a los webhooks del emisor?')">Responder validado</button>
+                            {% endif %}
                             {# Nobelio no deja borrar lo que la DIAN ya validó,
                                asi que en un aceptado no se ofrece el boton. #}
                             {% if documento.estado_nombre != 'aceptado' %}
@@ -107,7 +118,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="12">
+                        <td colspan="13">
                             {% if total == 0 %}
                                 No hay documentos que mostrar.
                             {% else %}
@@ -129,6 +140,7 @@
     <form id="acciones-documento" method="post" action="{{ path('nobelio_documento_eliminar') }}">
         <input type="hidden" name="_token" value="{{ csrf_token('acciones-documento') }}">
         <input type="hidden" name="estado" value="{{ estado }}">
+        <input type="hidden" name="respuesta_validado" value="{{ respuestaValidado }}">
         <input type="hidden" name="numero" value="{{ numero }}">
         <input type="hidden" name="emisor" value="{{ emisor }}">
         <input type="hidden" name="pagina" value="{{ pagina }}">
