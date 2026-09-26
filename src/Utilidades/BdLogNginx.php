@@ -6,6 +6,26 @@ class BdLogNginx
 {
     private const ZONA_HORARIA = 'America/Bogota';
 
+    /**
+     * Periodos que se pueden consultar, en horas. El paso es el tamaño de cada punto de la
+     * gráfica: por hora en los periodos largos y en minutos en los cortos, para que la
+     * gráfica tenga suficientes puntos.
+     */
+    public const PERIODOS = [
+        24 => ['paso' => 60, 'texto' => 'Últimas 24 h'],
+        12 => ['paso' => 60, 'texto' => 'Últimas 12 h'],
+        6 => ['paso' => 15, 'texto' => 'Últimas 6 h'],
+        1 => ['paso' => 5, 'texto' => 'Última hora'],
+    ];
+    public const PERIODO_DEFECTO = 24;
+
+    /**
+     * Inicio del periodo, en hora local: el inicio del intervalo actual menos los intervalos
+     * restantes. Todas las consultas lo usan para que los totales coincidan con la gráfica.
+     */
+    private const INICIO_PERIODO = "(date_bin(CAST(:paso AS interval), now() AT TIME ZONE :zona, timestamp '2000-01-01')
+                    - CAST(:paso AS interval) * (CAST(:puntos AS integer) - 1))";
+
     private ?\PDO $conexion = null;
 
     private function conexion(): \PDO
@@ -21,6 +41,58 @@ class BdLogNginx
             ]);
         }
         return $this->conexion;
+    }
+
+    /**
+     * Parámetros de la ventana de tiempo para las consultas. Un periodo no válido
+     * se trata como el de defecto.
+     */
+    private function ventana(int $horas): array
+    {
+        if (!isset(self::PERIODOS[$horas])) {
+            $horas = self::PERIODO_DEFECTO;
+        }
+        $paso = self::PERIODOS[$horas]['paso'];
+        return [
+            'zona' => self::ZONA_HORARIA,
+            'paso' => $paso . ' minutes',
+            'puntos' => intdiv($horas * 60, $paso),
+        ];
+    }
+
+    /**
+     * Condición SQL de los filtros opcionales: cada uno con su parámetro en NULL no filtra.
+     * El filtro de IP es por ip_real (la IP del cliente), no por ip (la de la conexión, que detrás
+     * de Cloudflare es un nodo compartido por muchos clientes).
+     * El alias es el de la tabla nginx_acceso cuando la consulta tiene joins.
+     */
+    private function condicionFiltros(string $alias = ''): string
+    {
+        $c = $alias === '' ? '' : $alias . '.';
+        return "(CAST(:ip AS inet) IS NULL OR {$c}ip_real = CAST(:ip AS inet))
+                    AND (CAST(:api_key AS text) IS NULL OR {$c}api_key = CAST(:api_key AS text))
+                    AND (CAST(:ruta AS text) IS NULL OR {$c}ruta = CAST(:ruta AS text))";
+    }
+
+    /**
+     * Parámetros de los filtros opcionales; los que no vienen quedan en NULL.
+     *
+     * @param array{ip?: ?string, api_key?: ?string, ruta?: ?string} $filtros
+     */
+    private function parametrosFiltros(array $filtros): array
+    {
+        return [
+            'ip' => $filtros['ip'] ?? null,
+            'api_key' => $filtros['api_key'] ?? null,
+            'ruta' => $filtros['ruta'] ?? null,
+        ];
+    }
+
+    private function enlazarFiltros(\PDOStatement $consulta, array $filtros): void
+    {
+        foreach ($this->parametrosFiltros($filtros) as $clave => $valor) {
+            $consulta->bindValue($clave, $valor, $valor === null ? \PDO::PARAM_NULL : \PDO::PARAM_STR);
+        }
     }
 
     /**
@@ -43,24 +115,53 @@ class BdLogNginx
     }
 
     /**
-     * Accesos de las últimas 24 horas agrupados por hora, incluidas las horas sin accesos.
+     * API keys que tienen accesos en el periodo, en orden alfabético.
      */
-    public function accesosPorHora(string $servidor): array
+    public function apiKeys(string $servidor, int $horas = self::PERIODO_DEFECTO): array
     {
-        $sql = "SELECT to_char(h.hora, 'HH24') AS hora, count(a.id) AS cantidad
+        $sql = "SELECT DISTINCT api_key
+                FROM nginx_acceso
+                WHERE servidor = :servidor
+                    AND api_key IS NOT NULL
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                ORDER BY api_key";
+        try {
+            $consulta = $this->conexion()->prepare($sql);
+            $consulta->execute([...$this->ventana($horas), 'servidor' => $servidor]);
+            return [
+                'error' => false,
+                'datos' => $consulta->fetchAll(\PDO::FETCH_COLUMN)
+            ];
+        } catch (\PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Accesos del periodo agrupados por intervalo, incluidos los intervalos sin accesos.
+     * La etiqueta es la hora (HH) si el intervalo es de una hora, o HH:MI si es de minutos.
+     */
+    public function accesosPorHora(string $servidor, int $horas = self::PERIODO_DEFECTO, array $filtros = []): array
+    {
+        $sql = "SELECT to_char(h.hora, CASE WHEN CAST(:paso AS interval) >= interval '1 hour' THEN 'HH24' ELSE 'HH24:MI' END) AS hora,
+                    count(a.id) AS cantidad
                 FROM generate_series(
-                    date_trunc('hour', now() AT TIME ZONE :zona) - interval '23 hours',
-                    date_trunc('hour', now() AT TIME ZONE :zona),
-                    interval '1 hour') AS h(hora)
+                    " . self::INICIO_PERIODO . ",
+                    date_bin(CAST(:paso AS interval), now() AT TIME ZONE :zona, timestamp '2000-01-01'),
+                    CAST(:paso AS interval)) AS h(hora)
                 LEFT JOIN nginx_acceso a
                     ON a.servidor = :servidor
+                    AND " . $this->condicionFiltros('a') . "
                     AND a.fecha >= h.hora AT TIME ZONE :zona
-                    AND a.fecha < (h.hora + interval '1 hour') AT TIME ZONE :zona
+                    AND a.fecha < (h.hora + CAST(:paso AS interval)) AT TIME ZONE :zona
                 GROUP BY h.hora
                 ORDER BY h.hora";
         try {
             $consulta = $this->conexion()->prepare($sql);
-            $consulta->execute(['zona' => self::ZONA_HORARIA, 'servidor' => $servidor]);
+            $consulta->execute([...$this->ventana($horas), 'servidor' => $servidor, ...$this->parametrosFiltros($filtros)]);
             return [
                 'error' => false,
                 'datos' => $consulta->fetchAll()
@@ -76,18 +177,21 @@ class BdLogNginx
     /**
      * Últimos accesos registrados, del más reciente al más antiguo.
      */
-    public function ultimosAccesos(string $servidor, int $limite = 20): array
+    public function ultimosAccesos(string $servidor, int $limite = 20, array $filtros = []): array
     {
         $sql = "SELECT id, to_char(fecha AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS fecha,
-                    host, host(ip) AS ip, metodo, uri, status, bytes, request_time
+                    host, host(ip) AS ip, host(ip_real) AS ip_real, metodo,
+                    ruta, parametros, api_key, status, bytes, request_time
                 FROM nginx_acceso
                 WHERE servidor = :servidor
+                    AND " . $this->condicionFiltros() . "
                 ORDER BY fecha DESC
                 LIMIT :limite";
         try {
             $consulta = $this->conexion()->prepare($sql);
             $consulta->bindValue('zona', self::ZONA_HORARIA);
             $consulta->bindValue('servidor', $servidor);
+            $this->enlazarFiltros($consulta, $filtros);
             $consulta->bindValue('limite', $limite, \PDO::PARAM_INT);
             $consulta->execute();
             return [
@@ -103,20 +207,20 @@ class BdLogNginx
     }
 
     /**
-     * Total de accesos por host en las últimas 24 horas, del que más tiene al que menos.
-     * Usa la misma ventana que accesosPorHora() para que los totales coincidan con la gráfica.
+     * Total de accesos por host en el periodo, del que más tiene al que menos.
      */
-    public function accesosPorHost(string $servidor): array
+    public function accesosPorHost(string $servidor, int $horas = self::PERIODO_DEFECTO, array $filtros = []): array
     {
         $sql = "SELECT coalesce(host, '(sin host)') AS host, count(*) AS total
                 FROM nginx_acceso
                 WHERE servidor = :servidor
-                    AND fecha >= (date_trunc('hour', now() AT TIME ZONE :zona) - interval '23 hours') AT TIME ZONE :zona
+                    AND " . $this->condicionFiltros() . "
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
                 GROUP BY host
                 ORDER BY total DESC, host";
         try {
             $consulta = $this->conexion()->prepare($sql);
-            $consulta->execute(['zona' => self::ZONA_HORARIA, 'servidor' => $servidor]);
+            $consulta->execute([...$this->ventana($horas), 'servidor' => $servidor, ...$this->parametrosFiltros($filtros)]);
             return [
                 'error' => false,
                 'datos' => $consulta->fetchAll()
@@ -130,22 +234,95 @@ class BdLogNginx
     }
 
     /**
-     * URIs con más accesos en las últimas 24 horas. Agrupa por ruta, sin la query string,
-     * para que /lista?page=1 y /lista?page=2 cuenten como la misma URI.
+     * IPs de cliente (ip_real) con más accesos en el periodo, con cuántos de ellos terminaron en
+     * error (status >= 400) y la fecha del último acceso, para detectar bots o abusos. Los accesos sin
+     * ip_real (anteriores a que Lantano la registrara) salen en una fila aparte con ip_real en NULL.
      */
-    public function accesosPorUri(string $servidor, int $limite = 20): array
+    public function accesosPorIp(string $servidor, int $horas = self::PERIODO_DEFECTO, int $limite = 20, array $filtros = []): array
     {
-        $sql = "SELECT coalesce(host, '(sin host)') AS host, split_part(uri, '?', 1) AS uri, count(*) AS total
+        $sql = "SELECT host(ip_real) AS ip_real, count(*) AS total,
+                    count(*) FILTER (WHERE status >= 400) AS errores,
+                    to_char(max(fecha) AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS ultimo
                 FROM nginx_acceso
                 WHERE servidor = :servidor
-                    AND fecha >= (date_trunc('hour', now() AT TIME ZONE :zona) - interval '23 hours') AT TIME ZONE :zona
-                GROUP BY host, split_part(uri, '?', 1)
-                ORDER BY total DESC, uri
+                    AND " . $this->condicionFiltros() . "
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                GROUP BY ip_real
+                ORDER BY total DESC, ip_real
                 LIMIT :limite";
         try {
             $consulta = $this->conexion()->prepare($sql);
-            $consulta->bindValue('zona', self::ZONA_HORARIA);
+            foreach ($this->ventana($horas) as $clave => $valor) {
+                $consulta->bindValue($clave, $valor);
+            }
             $consulta->bindValue('servidor', $servidor);
+            $this->enlazarFiltros($consulta, $filtros);
+            $consulta->bindValue('limite', $limite, \PDO::PARAM_INT);
+            $consulta->execute();
+            return [
+                'error' => false,
+                'datos' => $consulta->fetchAll()
+            ];
+        } catch (\PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Accesos del periodo por API key, del que más tiene al que menos, con cuántos terminaron
+     * en error (status >= 400) y la fecha del último acceso. Los accesos sin API key salen
+     * en una fila aparte con api_key en NULL.
+     */
+    public function accesosPorApiKey(string $servidor, int $horas = self::PERIODO_DEFECTO, array $filtros = []): array
+    {
+        $sql = "SELECT api_key, count(*) AS total,
+                    count(*) FILTER (WHERE status >= 400) AS errores,
+                    to_char(max(fecha) AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS ultimo
+                FROM nginx_acceso
+                WHERE servidor = :servidor
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                    AND " . $this->condicionFiltros() . "
+                GROUP BY api_key
+                ORDER BY total DESC, api_key";
+        try {
+            $consulta = $this->conexion()->prepare($sql);
+            $consulta->execute([...$this->ventana($horas), 'servidor' => $servidor, ...$this->parametrosFiltros($filtros)]);
+            return [
+                'error' => false,
+                'datos' => $consulta->fetchAll()
+            ];
+        } catch (\PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Rutas con más accesos en el periodo. Los parámetros no cuentan, así que
+     * /lista?page=1 y /lista?page=2 suman en la misma ruta.
+     */
+    public function accesosPorRuta(string $servidor, int $horas = self::PERIODO_DEFECTO, int $limite = 20, array $filtros = []): array
+    {
+        $sql = "SELECT coalesce(host, '(sin host)') AS host, ruta, count(*) AS total
+                FROM nginx_acceso
+                WHERE servidor = :servidor
+                    AND " . $this->condicionFiltros() . "
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                GROUP BY host, ruta
+                ORDER BY total DESC, ruta
+                LIMIT :limite";
+        try {
+            $consulta = $this->conexion()->prepare($sql);
+            foreach ($this->ventana($horas) as $clave => $valor) {
+                $consulta->bindValue($clave, $valor);
+            }
+            $consulta->bindValue('servidor', $servidor);
+            $this->enlazarFiltros($consulta, $filtros);
             $consulta->bindValue('limite', $limite, \PDO::PARAM_INT);
             $consulta->execute();
             return [

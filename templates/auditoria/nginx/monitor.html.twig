@@ -8,91 +8,160 @@
     {% if error %}
         <span class="tag crit"><span class="dot"></span>Sin conexión a bdlognginx</span>
     {% else %}
-        <span class="stamp">{{ data|reduce((total, v) => total + v, 0) }} accesos · 24 h</span>
+        <span class="stamp">{{ data|reduce((total, v) => total + v, 0) }} accesos · {{ periodos[horas].texto }}</span>
     {% endif %}
 {% endblock %}
 
 {% block content %}
+    {# Filtros actuales, sin los vacíos, para que los enlaces de las tablas los conserven. #}
+    {% set filtrosUrl = { servidor: servidor, horas: horas, ip: ip, api_key: apiKey, ruta: filtroRuta }|filter(v => v) %}
     <div class="block block--tight">
-        <form class="filters filters--flat" method="get" action="{{ path('auditoria_nginx_monitor') }}">
+        <form class="filters filters--flat" method="get" action="{{ path('auditoria_nginx_monitor') }}" id="filtros-nginx">
             <div class="field">
                 <label for="servidor">Servidor</label>
-                <select id="servidor" name="servidor" onchange="this.form.submit()">
+                <select id="servidor" name="servidor" onchange="this.form.requestSubmit()">
                     {% for item in servidores %}
                         <option value="{{ item }}" {{ item == servidor ? 'selected' }}>{{ item|capitalize }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <noscript><button type="submit">Filtrar</button></noscript>
-        </form>
-    </div>
-
-    <div class="mitades">
-        <div class="block">
-            {{ ui.cabecera('Accesos nginx por hora', 'Últimas 24 h') }}
-            {% if error %}
-                <p class="hint">No fue posible consultar bdlognginx: {{ error }}</p>
-            {% else %}
-                <div class="chart-wrap">
-                    <svg data-grafica
-                         data-labels='{{ labels|json_encode|raw }}'
-                         data-valores='{{ data|json_encode|raw }}'
-                         data-unidad="acc"></svg>
-                    <div class="chart-tip"></div>
-                </div>
-                <div class="chart-cap"><i></i>Accesos registrados</div>
-            {% endif %}
-        </div>
-
-        {% if not error %}
-        <div class="block">
-            {{ ui.cabecera('Últimos accesos', ultimosAccesos|length ~ ' registros') }}
-            <div class="table-scroll">
-                <table class="data">
-                    <thead>
-                    <tr>
-                        <th>Id</th><th>Fecha</th><th>Host</th><th>IP</th><th>Método</th>
-                        <th>URI</th><th class="center">Status</th><th class="num">Bytes</th><th class="num">Tiempo</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {% for acceso in ultimosAccesos %}
-                        <tr>
-                            <td class="id">{{ acceso.id }}</td>
-                            <td class="fecha">{{ acceso.fecha }}</td>
-                            <td>{{ acceso.host }}</td>
-                            <td class="nowrap">{{ acceso.ip }}</td>
-                            <td>{{ acceso.metodo }}</td>
-                            <td class="wrap" style="word-break: break-all;">{{ acceso.uri }}</td>
-                            <td class="center">
-                                {% if acceso.status >= 500 %}
-                                    <span class="tag crit"><span class="dot"></span>{{ acceso.status }}</span>
-                                {% elseif acceso.status >= 400 %}
-                                    <span class="tag warn"><span class="dot"></span>{{ acceso.status }}</span>
-                                {% elseif acceso.status >= 300 %}
-                                    <span class="tag idle"><span class="dot"></span>{{ acceso.status }}</span>
-                                {% else %}
-                                    <span class="tag ok"><span class="dot"></span>{{ acceso.status }}</span>
-                                {% endif %}
-                            </td>
-                            <td class="num">{{ acceso.bytes|number_format(0, ',', '.') }}</td>
-                            <td class="num">{{ acceso.request_time }} s</td>
-                        </tr>
-                    {% else %}
-                        <tr><td colspan="9">Sin accesos registrados.</td></tr>
+            <div class="field">
+                <label for="horas">Periodo</label>
+                <select id="horas" name="horas" onchange="this.form.requestSubmit()">
+                    {% for valor, periodo in periodos %}
+                        <option value="{{ valor }}" {{ valor == horas ? 'selected' }}>{{ periodo.texto }}</option>
                     {% endfor %}
-                    </tbody>
-                </table>
+                </select>
             </div>
-        </div>
+            <div class="field">
+                <label for="ip" title="IP del cliente (ip_real), no la del nodo de Cloudflare">IP cliente</label>
+                <input type="text" id="ip" name="ip" value="{{ ip }}" placeholder="Todas" autocomplete="off">
+            </div>
+            <div class="field">
+                <label for="api_key">API key</label>
+                <select id="api_key" name="api_key" onchange="this.form.requestSubmit()">
+                    <option value="">Todas</option>
+                    {% for item in apiKeys %}
+                        <option value="{{ item }}" {{ item == apiKey ? 'selected' }}>{{ item }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="ruta">Ruta</label>
+                <input type="text" id="ruta" name="ruta" value="{{ filtroRuta }}" placeholder="Todas, ej. /gen/tercero/lista" autocomplete="off">
+            </div>
+            <button type="submit">Filtrar</button>
+            {% if ip or apiKey or filtroRuta %}
+                <a href="{{ path('auditoria_nginx_monitor', { servidor: servidor, horas: horas }) }}">Quitar filtros</a>
+            {% endif %}
+        </form>
+        {% if ipInvalida %}
+            <p class="hint">«{{ ip }}» no es una IP válida; se muestran todas las IPs.</p>
         {% endif %}
     </div>
+
+    <div class="block">
+        {% set paso = periodos[horas].paso %}
+        {{ ui.cabecera('Accesos nginx ' ~ (paso >= 60 ? 'por hora' : 'cada ' ~ paso ~ ' min'), periodos[horas].texto) }}
+        {% if error %}
+            <p class="hint">No fue posible consultar bdlognginx: {{ error }}</p>
+        {% else %}
+            <div class="chart-wrap">
+                <svg data-grafica
+                     data-labels='{{ labels|json_encode|raw }}'
+                     data-valores='{{ data|json_encode|raw }}'
+                     data-unidad="acc"></svg>
+                <div class="chart-tip"></div>
+            </div>
+            <div class="chart-cap"><i></i>Accesos registrados</div>
+        {% endif %}
+    </div>
+
+    {% if not error %}
+    {# Significado de los códigos HTTP para el tooltip del status; 444 y 499 son propios de nginx. #}
+    {% set significadoStatus = {
+        200: 'OK: la petición se atendió correctamente',
+        201: 'Created: se creó el recurso',
+        202: 'Accepted: petición aceptada, se procesa después',
+        204: 'No Content: correcto, sin contenido en la respuesta',
+        206: 'Partial Content: se entregó solo una parte (descarga por rangos)',
+        301: 'Moved Permanently: redirección permanente',
+        302: 'Found: redirección temporal',
+        303: 'See Other: redirección tras un envío (POST)',
+        304: 'Not Modified: el navegador usa su copia en caché',
+        307: 'Temporary Redirect: redirección temporal conservando el método',
+        308: 'Permanent Redirect: redirección permanente conservando el método',
+        400: 'Bad Request: petición mal formada',
+        401: 'Unauthorized: requiere autenticación',
+        403: 'Forbidden: acceso denegado',
+        404: 'Not Found: el recurso no existe',
+        405: 'Method Not Allowed: método HTTP no permitido',
+        408: 'Request Timeout: el cliente tardó demasiado en enviar la petición',
+        409: 'Conflict: conflicto con el estado del recurso',
+        413: 'Content Too Large: el cuerpo supera el límite (client_max_body_size)',
+        414: 'URI Too Long: la URI es demasiado larga',
+        415: 'Unsupported Media Type: tipo de contenido no soportado',
+        422: 'Unprocessable Content: datos válidos en forma pero rechazados',
+        429: 'Too Many Requests: se superó el límite de peticiones',
+        444: 'No Response: nginx cerró la conexión sin responder',
+        499: 'Client Closed Request: el cliente cerró la conexión antes de la respuesta',
+        500: 'Internal Server Error: error en la aplicación',
+        502: 'Bad Gateway: el backend (PHP-FPM, upstream) respondió mal o no está disponible',
+        503: 'Service Unavailable: servicio no disponible o en mantenimiento',
+        504: 'Gateway Timeout: el backend no respondió a tiempo'
+    } %}
+    <div class="block">
+        {{ ui.cabecera('Últimos accesos', ultimosAccesos|length ~ ' registros') }}
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Id</th><th>Fecha</th><th>Host</th><th>IP cliente</th>
+                    <th title="IP de la conexión: el nodo de Cloudflare o, si no pasó por Cloudflare, la del cliente">IP conexión</th><th>API key</th><th>Método</th>
+                    <th>Ruta</th><th>Parámetros</th><th class="center">Status</th><th class="num">Bytes</th><th class="num">Tiempo</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for acceso in ultimosAccesos %}
+                    <tr>
+                        <td class="id">{{ acceso.id }}</td>
+                        <td class="fecha">{{ acceso.fecha }}</td>
+                        <td>{{ acceso.host }}</td>
+                        <td class="nowrap">
+                            {% if acceso.ip_real %}
+                                <a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ ip: acceso.ip_real })) }}" title="Filtrar por esta IP">{{ acceso.ip_real }}</a>
+                            {% endif %}
+                        </td>
+                        <td class="nowrap">{{ acceso.ip }}</td>
+                        <td class="nowrap">
+                            {% if acceso.api_key %}
+                                <a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ api_key: acceso.api_key })) }}" title="Filtrar por esta API key">{{ acceso.api_key }}</a>
+                            {% endif %}
+                        </td>
+                        <td>{{ acceso.metodo }}</td>
+                        <td class="wrap" style="word-break: break-all;"><a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ ruta: acceso.ruta })) }}" title="Filtrar por esta ruta">{{ acceso.ruta }}</a></td>
+                        <td class="wrap" style="word-break: break-all;">{{ acceso.parametros }}</td>
+                        <td class="center">
+                            {% set claseStatus = acceso.status >= 500 ? 'crit' : (acceso.status >= 400 ? 'warn' : (acceso.status >= 300 ? 'idle' : 'ok')) %}
+                            <span class="tag {{ claseStatus }}" title="{{ significadoStatus[acceso.status] ?? 'Código ' ~ acceso.status }}"><span class="dot"></span>{{ acceso.status }}</span>
+                        </td>
+                        <td class="num">{{ acceso.bytes|number_format(0, ',', '.') }}</td>
+                        <td class="num">{{ acceso.request_time }} s</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="12">Sin accesos registrados.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
 
     {% if not error %}
         {% set totalAccesos = accesosPorHost|reduce((suma, h) => suma + h.total, 0) %}
         <div class="mitades">
             <div class="block">
-                {{ ui.cabecera('Accesos por host', accesosPorHost|length ~ ' hosts · Últimas 24 h') }}
+                {{ ui.cabecera('Accesos por host', accesosPorHost|length ~ ' hosts · ' ~ periodos[horas].texto) }}
                 <div class="table-scroll">
                     <table class="data">
                         <thead>
@@ -114,16 +183,16 @@
             </div>
 
             <div class="block">
-                {{ ui.cabecera('Accesos por URI', 'Top ' ~ accesosPorUri|length ~ ' · Últimas 24 h') }}
-                <div class="table-scroll">
+                {{ ui.cabecera('Accesos por ruta', 'Top ' ~ accesosPorRuta|length ~ ' · ' ~ periodos[horas].texto) }}
+                <div class="table-scroll" style="--tabla-alto: 360px;">
                     <table class="data">
                         <thead>
-                        <tr><th>URI</th><th>Host</th><th class="num">Accesos</th><th class="num">%</th></tr>
+                        <tr><th>Ruta</th><th>Host</th><th class="num">Accesos</th><th class="num">%</th></tr>
                         </thead>
                         <tbody>
-                        {% for acceso in accesosPorUri %}
+                        {% for acceso in accesosPorRuta %}
                             <tr>
-                                <td class="wrap" style="word-break: break-all;">{{ acceso.uri }}</td>
+                                <td class="wrap" style="word-break: break-all;"><a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ ruta: acceso.ruta })) }}" title="Filtrar por esta ruta">{{ acceso.ruta }}</a></td>
                                 <td class="nowrap">{{ acceso.host }}</td>
                                 <td class="num">{{ acceso.total|number_format(0, ',', '.') }}</td>
                                 <td class="num">{{ totalAccesos > 0 ? (acceso.total * 100 / totalAccesos)|number_format(1, ',', '.') : 0 }}</td>
@@ -136,9 +205,94 @@
                 </div>
             </div>
         </div>
+
+        <div class="mitades">
+            <div class="block">
+                {{ ui.cabecera('Accesos por IP cliente', 'Top ' ~ accesosPorIp|length ~ ' · ' ~ periodos[horas].texto) }}
+                <div class="table-scroll">
+                    <table class="data">
+                        <thead>
+                        <tr>
+                            <th>IP cliente</th><th class="num">Accesos</th><th class="num">%</th>
+                            <th class="num" title="Accesos con status 4xx o 5xx">Errores</th><th>Último acceso</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for acceso in accesosPorIp %}
+                            <tr>
+                                <td class="nowrap">
+                                    {% if acceso.ip_real %}
+                                        <a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ ip: acceso.ip_real })) }}" title="Filtrar por esta IP">{{ acceso.ip_real }}</a>
+                                    {% else %}
+                                        <span title="Accesos registrados antes de que Lantano guardara la IP del cliente">(sin IP cliente)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="num">{{ acceso.total|number_format(0, ',', '.') }}</td>
+                                <td class="num">{{ totalAccesos > 0 ? (acceso.total * 100 / totalAccesos)|number_format(1, ',', '.') : 0 }}</td>
+                                <td class="num">{{ acceso.errores|number_format(0, ',', '.') }}</td>
+                                <td class="fecha">{{ acceso.ultimo }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="5">Sin accesos registrados.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="block">
+                {{ ui.cabecera('Accesos por API key', accesosPorApiKey|length ~ ' grupos · ' ~ periodos[horas].texto) }}
+                <div class="table-scroll">
+                    <table class="data">
+                        <thead>
+                        <tr>
+                            <th>API key</th><th class="num">Accesos</th><th class="num">%</th>
+                            <th class="num" title="Accesos con status 4xx o 5xx">Errores</th><th>Último acceso</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for acceso in accesosPorApiKey %}
+                            <tr>
+                                <td class="nowrap">
+                                    {% if acceso.api_key %}
+                                        <a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ api_key: acceso.api_key })) }}" title="Filtrar por esta API key">{{ acceso.api_key }}</a>
+                                    {% else %}
+                                        (sin API key)
+                                    {% endif %}
+                                </td>
+                                <td class="num">{{ acceso.total|number_format(0, ',', '.') }}</td>
+                                <td class="num">{{ totalAccesos > 0 ? (acceso.total * 100 / totalAccesos)|number_format(1, ',', '.') : 0 }}</td>
+                                <td class="num">{{ acceso.errores|number_format(0, ',', '.') }}</td>
+                                <td class="fecha">{{ acceso.ultimo }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="5">Sin accesos registrados.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     {% endif %}
 {% endblock %}
 
 {% block javascripts %}
     <script src="{{ asset('js/grafica.js') }}"></script>
+    <script>
+        /* Los campos vacíos se deshabilitan al enviar para que no queden en la URL
+           como ?ip=&api_key=&ruta=. */
+        document.getElementById('filtros-nginx').addEventListener('submit', function () {
+            this.querySelectorAll('input, select').forEach(function (campo) {
+                if (campo.name && campo.value.trim() === '') {
+                    campo.disabled = true;
+                }
+            });
+        });
+        /* Al volver con "atrás" el navegador puede restaurar la página con los campos aún deshabilitados. */
+        window.addEventListener('pageshow', function () {
+            document.querySelectorAll('#filtros-nginx [disabled]').forEach(function (campo) {
+                campo.disabled = false;
+            });
+        });
+    </script>
 {% endblock %}
