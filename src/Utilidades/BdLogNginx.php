@@ -20,6 +20,17 @@ class BdLogNginx
     public const PERIODO_DEFECTO = 24;
 
     /**
+     * Grupos de status que se pueden filtrar además de un código exacto, con su rango.
+     */
+    public const GRUPOS_STATUS = [
+        'errores' => ['min' => 400, 'max' => 599, 'texto' => 'Errores (4xx y 5xx)'],
+        '2xx' => ['min' => 200, 'max' => 299, 'texto' => '2xx Correctos'],
+        '3xx' => ['min' => 300, 'max' => 399, 'texto' => '3xx Redirecciones'],
+        '4xx' => ['min' => 400, 'max' => 499, 'texto' => '4xx Errores del cliente'],
+        '5xx' => ['min' => 500, 'max' => 599, 'texto' => '5xx Errores del servidor'],
+    ];
+
+    /**
      * Inicio del periodo, en hora local: el inicio del intervalo actual menos los intervalos
      * restantes. Todas las consultas lo usan para que los totales coincidan con la gráfica.
      */
@@ -71,13 +82,17 @@ class BdLogNginx
         $c = $alias === '' ? '' : $alias . '.';
         return "(CAST(:ip AS inet) IS NULL OR {$c}ip_real = CAST(:ip AS inet))
                     AND (CAST(:api_key AS text) IS NULL OR {$c}api_key = CAST(:api_key AS text))
-                    AND (CAST(:ruta AS text) IS NULL OR {$c}ruta = CAST(:ruta AS text))";
+                    AND (CAST(:ruta AS text) IS NULL OR {$c}ruta = CAST(:ruta AS text))
+                    AND (CAST(:host AS text) IS NULL OR {$c}host = CAST(:host AS text))
+                    AND (CAST(:status_min AS integer) IS NULL
+                        OR {$c}status BETWEEN CAST(:status_min AS integer) AND CAST(:status_max AS integer))";
     }
 
     /**
      * Parámetros de los filtros opcionales; los que no vienen quedan en NULL.
+     * El status es un grupo de GRUPOS_STATUS o un código exacto, y se consulta como rango.
      *
-     * @param array{ip?: ?string, api_key?: ?string, ruta?: ?string} $filtros
+     * @param array{ip?: ?string, api_key?: ?string, ruta?: ?string, host?: ?string, status?: ?string} $filtros
      */
     private function parametrosFiltros(array $filtros): array
     {
@@ -85,7 +100,29 @@ class BdLogNginx
             'ip' => $filtros['ip'] ?? null,
             'api_key' => $filtros['api_key'] ?? null,
             'ruta' => $filtros['ruta'] ?? null,
+            'host' => $filtros['host'] ?? null,
+            ...$this->rangoStatus($filtros['status'] ?? null),
         ];
+    }
+
+    /**
+     * Rango de un filtro de status: un grupo de GRUPOS_STATUS o un código exacto.
+     * Lo que no es ninguno de los dos no filtra.
+     */
+    private function rangoStatus(?string $status): array
+    {
+        if ($status !== null && isset(self::GRUPOS_STATUS[$status])) {
+            return ['status_min' => self::GRUPOS_STATUS[$status]['min'], 'status_max' => self::GRUPOS_STATUS[$status]['max']];
+        }
+        if (self::esCodigoStatus($status)) {
+            return ['status_min' => (int)$status, 'status_max' => (int)$status];
+        }
+        return ['status_min' => null, 'status_max' => null];
+    }
+
+    public static function esCodigoStatus(?string $status): bool
+    {
+        return $status !== null && preg_match('/^[1-5]\d\d$/', $status) === 1;
     }
 
     private function enlazarFiltros(\PDOStatement $consulta, array $filtros): void
@@ -125,6 +162,58 @@ class BdLogNginx
                     AND api_key IS NOT NULL
                     AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
                 ORDER BY api_key";
+        try {
+            $consulta = $this->conexion()->prepare($sql);
+            $consulta->execute([...$this->ventana($horas), 'servidor' => $servidor]);
+            return [
+                'error' => false,
+                'datos' => $consulta->fetchAll(\PDO::FETCH_COLUMN)
+            ];
+        } catch (\PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Códigos de status que tienen accesos en el periodo, de menor a mayor.
+     */
+    public function statuses(string $servidor, int $horas = self::PERIODO_DEFECTO): array
+    {
+        $sql = "SELECT DISTINCT status
+                FROM nginx_acceso
+                WHERE servidor = :servidor
+                    AND status IS NOT NULL
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                ORDER BY status";
+        try {
+            $consulta = $this->conexion()->prepare($sql);
+            $consulta->execute([...$this->ventana($horas), 'servidor' => $servidor]);
+            return [
+                'error' => false,
+                'datos' => array_map('strval', $consulta->fetchAll(\PDO::FETCH_COLUMN))
+            ];
+        } catch (\PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Hosts que tienen accesos en el periodo, en orden alfabético.
+     */
+    public function hosts(string $servidor, int $horas = self::PERIODO_DEFECTO): array
+    {
+        $sql = "SELECT DISTINCT host
+                FROM nginx_acceso
+                WHERE servidor = :servidor
+                    AND host IS NOT NULL
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                ORDER BY host";
         try {
             $consulta = $this->conexion()->prepare($sql);
             $consulta->execute([...$this->ventana($horas), 'servidor' => $servidor]);
@@ -181,7 +270,7 @@ class BdLogNginx
     {
         $sql = "SELECT id, to_char(fecha AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS fecha,
                     host, host(ip) AS ip, host(ip_real) AS ip_real, metodo,
-                    ruta, parametros, api_key, status, bytes, request_time
+                    ruta, parametros, referer, api_key, status, bytes, request_time
                 FROM nginx_acceso
                 WHERE servidor = :servidor
                     AND " . $this->condicionFiltros() . "

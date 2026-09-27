@@ -38,10 +38,18 @@ class NginxController extends AbstractController
         $apiKey = trim((string)$request->query->get('api_key', ''));
         // Solo la ruta: si se pega con parámetros, se ignora lo que va después del "?".
         $ruta = trim(explode('?', (string)$request->query->get('ruta', ''), 2)[0]);
+        $host = trim((string)$request->query->get('host', ''));
+        // Solo se acepta un grupo conocido (4xx, errores...) o un código de tres cifras.
+        $status = trim((string)$request->query->get('status', ''));
+        if(!isset(BdLogNginx::GRUPOS_STATUS[$status]) && !BdLogNginx::esCodigoStatus($status)) {
+            $status = '';
+        }
         $filtros = [
             'ip' => ($ip === '' || $ipInvalida) ? null : $ip,
             'api_key' => $apiKey === '' ? null : $apiKey,
             'ruta' => $ruta === '' ? null : $ruta,
+            'host' => $host === '' ? null : $host,
+            'status' => $status === '' ? null : $status,
         ];
         $apiKeys = [];
         $respuesta = $bdLogNginx->apiKeys($servidor, $horas);
@@ -52,6 +60,26 @@ class NginxController extends AbstractController
         if($apiKey !== '' && !in_array($apiKey, $apiKeys, true)) {
             $apiKeys[] = $apiKey;
             sort($apiKeys);
+        }
+        $hosts = [];
+        $respuesta = $bdLogNginx->hosts($servidor, $horas);
+        if(!$respuesta['error']) {
+            $hosts = $respuesta['datos'];
+        }
+        // El host elegido se conserva en la lista aunque no tenga accesos en el periodo.
+        if($host !== '' && !in_array($host, $hosts, true)) {
+            $hosts[] = $host;
+            sort($hosts);
+        }
+        $statuses = [];
+        $respuesta = $bdLogNginx->statuses($servidor, $horas);
+        if(!$respuesta['error']) {
+            $statuses = $respuesta['datos'];
+        }
+        // El código elegido se conserva en la lista aunque no tenga accesos en el periodo.
+        if(BdLogNginx::esCodigoStatus($status) && !in_array($status, $statuses, true)) {
+            $statuses[] = $status;
+            sort($statuses);
         }
         $respuesta = $bdLogNginx->accesosPorHora($servidor, $horas, $filtros);
         if(!$respuesta['error']) {
@@ -97,6 +125,11 @@ class NginxController extends AbstractController
             'ipInvalida' => $ipInvalida,
             'apiKey' => $apiKey,
             'apiKeys' => $apiKeys,
+            'host' => $host,
+            'hosts' => $hosts,
+            'status' => $status,
+            'statuses' => $statuses,
+            'gruposStatus' => BdLogNginx::GRUPOS_STATUS,
             // No se llama 'ruta': base.html.twig usa esa variable para el nombre de la ruta de Symfony.
             'filtroRuta' => $ruta,
             'labels' => $labels,

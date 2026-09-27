@@ -14,7 +14,7 @@
 
 {% block content %}
     {# Filtros actuales, sin los vacíos, para que los enlaces de las tablas los conserven. #}
-    {% set filtrosUrl = { servidor: servidor, horas: horas, ip: ip, api_key: apiKey, ruta: filtroRuta }|filter(v => v) %}
+    {% set filtrosUrl = { servidor: servidor, horas: horas, ip: ip, api_key: apiKey, ruta: filtroRuta, host: host, status: status }|filter(v => v) %}
     <div class="block block--tight">
         <form class="filters filters--flat" method="get" action="{{ path('auditoria_nginx_monitor') }}" id="filtros-nginx">
             <div class="field">
@@ -31,6 +31,33 @@
                     {% for valor, periodo in periodos %}
                         <option value="{{ valor }}" {{ valor == horas ? 'selected' }}>{{ periodo.texto }}</option>
                     {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="host">Host</label>
+                <select id="host" name="host" onchange="this.form.requestSubmit()">
+                    <option value="">Todos</option>
+                    {% for item in hosts %}
+                        <option value="{{ item }}" {{ item == host ? 'selected' }}>{{ item }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="status">Status</label>
+                <select id="status" name="status" onchange="this.form.requestSubmit()">
+                    <option value="">Todos</option>
+                    <optgroup label="Grupos">
+                        {% for valor, grupo in gruposStatus %}
+                            <option value="{{ valor }}" {{ valor == status ? 'selected' }}>{{ grupo.texto }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    {% if statuses %}
+                        <optgroup label="Códigos">
+                            {% for item in statuses %}
+                                <option value="{{ item }}" {{ item == status ? 'selected' }}>{{ item }}</option>
+                            {% endfor %}
+                        </optgroup>
+                    {% endif %}
                 </select>
             </div>
             <div class="field">
@@ -51,7 +78,7 @@
                 <input type="text" id="ruta" name="ruta" value="{{ filtroRuta }}" placeholder="Todas, ej. /gen/tercero/lista" autocomplete="off">
             </div>
             <button type="submit">Filtrar</button>
-            {% if ip or apiKey or filtroRuta %}
+            {% if ip or apiKey or filtroRuta or host or status %}
                 <a href="{{ path('auditoria_nginx_monitor', { servidor: servidor, horas: horas }) }}">Quitar filtros</a>
             {% endif %}
         </form>
@@ -118,7 +145,7 @@
                 <tr>
                     <th>Id</th><th>Fecha</th><th>Host</th><th>IP cliente</th>
                     <th title="IP de la conexión: el nodo de Cloudflare o, si no pasó por Cloudflare, la del cliente">IP conexión</th><th>API key</th><th>Método</th>
-                    <th>Ruta</th><th>Parámetros</th><th class="center">Status</th><th class="num">Bytes</th><th class="num">Tiempo</th>
+                    <th>Ruta</th><th>Parámetros</th><th>Referer</th><th class="center">Status</th><th class="num">Bytes</th><th class="num">Tiempo</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -126,7 +153,11 @@
                     <tr>
                         <td class="id">{{ acceso.id }}</td>
                         <td class="fecha">{{ acceso.fecha }}</td>
-                        <td>{{ acceso.host }}</td>
+                        <td>
+                            {% if acceso.host %}
+                                <a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ host: acceso.host })) }}" title="Filtrar por este host">{{ acceso.host }}</a>
+                            {% endif %}
+                        </td>
                         <td class="nowrap">
                             {% if acceso.ip_real %}
                                 <a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ ip: acceso.ip_real })) }}" title="Filtrar por esta IP">{{ acceso.ip_real }}</a>
@@ -141,15 +172,16 @@
                         <td>{{ acceso.metodo }}</td>
                         <td class="wrap" style="word-break: break-all;"><a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ ruta: acceso.ruta })) }}" title="Filtrar por esta ruta">{{ acceso.ruta }}</a></td>
                         <td class="wrap" style="word-break: break-all;">{{ acceso.parametros }}</td>
+                        <td class="wrap" style="word-break: break-all;">{{ acceso.referer }}</td>
                         <td class="center">
                             {% set claseStatus = acceso.status >= 500 ? 'crit' : (acceso.status >= 400 ? 'warn' : (acceso.status >= 300 ? 'idle' : 'ok')) %}
-                            <span class="tag {{ claseStatus }}" title="{{ significadoStatus[acceso.status] ?? 'Código ' ~ acceso.status }}"><span class="dot"></span>{{ acceso.status }}</span>
+                            <a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ status: acceso.status })) }}" class="tag {{ claseStatus }}" title="{{ significadoStatus[acceso.status] ?? 'Código ' ~ acceso.status }} · Filtrar por este status"><span class="dot"></span>{{ acceso.status }}</a>
                         </td>
                         <td class="num">{{ acceso.bytes|number_format(0, ',', '.') }}</td>
                         <td class="num">{{ acceso.request_time }} s</td>
                     </tr>
                 {% else %}
-                    <tr><td colspan="12">Sin accesos registrados.</td></tr>
+                    <tr><td colspan="13">Sin accesos registrados.</td></tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -170,7 +202,13 @@
                         <tbody>
                         {% for host in accesosPorHost %}
                             <tr>
-                                <td>{{ host.host }}</td>
+                                <td>
+                                    {% if host.host != '(sin host)' %}
+                                        <a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ host: host.host })) }}" title="Filtrar por este host">{{ host.host }}</a>
+                                    {% else %}
+                                        {{ host.host }}
+                                    {% endif %}
+                                </td>
                                 <td class="num">{{ host.total|number_format(0, ',', '.') }}</td>
                                 <td class="num">{{ totalAccesos > 0 ? (host.total * 100 / totalAccesos)|number_format(1, ',', '.') : 0 }}</td>
                             </tr>
@@ -193,7 +231,13 @@
                         {% for acceso in accesosPorRuta %}
                             <tr>
                                 <td class="wrap" style="word-break: break-all;"><a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ ruta: acceso.ruta })) }}" title="Filtrar por esta ruta">{{ acceso.ruta }}</a></td>
-                                <td class="nowrap">{{ acceso.host }}</td>
+                                <td class="nowrap">
+                                    {% if acceso.host != '(sin host)' %}
+                                        <a href="{{ path('auditoria_nginx_monitor', filtrosUrl|merge({ host: acceso.host })) }}" title="Filtrar por este host">{{ acceso.host }}</a>
+                                    {% else %}
+                                        {{ acceso.host }}
+                                    {% endif %}
+                                </td>
                                 <td class="num">{{ acceso.total|number_format(0, ',', '.') }}</td>
                                 <td class="num">{{ totalAccesos > 0 ? (acceso.total * 100 / totalAccesos)|number_format(1, ',', '.') : 0 }}</td>
                             </tr>
@@ -280,7 +324,7 @@
     <script src="{{ asset('js/grafica.js') }}"></script>
     <script>
         /* Los campos vacíos se deshabilitan al enviar para que no queden en la URL
-           como ?ip=&api_key=&ruta=. */
+           como ?ip=&api_key=&ruta=&host=&status=. */
         document.getElementById('filtros-nginx').addEventListener('submit', function () {
             this.querySelectorAll('input, select').forEach(function (campo) {
                 if (campo.name && campo.value.trim() === '') {
