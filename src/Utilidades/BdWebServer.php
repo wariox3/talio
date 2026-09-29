@@ -2,7 +2,7 @@
 
 namespace App\Utilidades;
 
-class BdLogNginx
+class BdWebServer
 {
     private const ZONA_HORARIA = 'America/Bogota';
 
@@ -18,6 +18,14 @@ class BdLogNginx
         1 => ['paso' => 5, 'texto' => 'Última hora'],
     ];
     public const PERIODO_DEFECTO = 24;
+
+    /**
+     * Servidores web de los que Lantano guarda el access.log (columna origen de acceso).
+     */
+    public const ORIGENES = [
+        'nginx' => 'Nginx',
+        'apache' => 'Apache',
+    ];
 
     /**
      * Grupos de status que se pueden filtrar además de un código exacto, con su rango.
@@ -42,7 +50,7 @@ class BdLogNginx
     private function conexion(): \PDO
     {
         if ($this->conexion === null) {
-            $url = parse_url($_ENV['DATABASE_BDLOGNGINX_URL']);
+            $url = parse_url($_ENV['DATABASE_BDLANTANO_URL']);
             $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s',
                 $url['host'], $url['port'] ?? 5432, ltrim($url['path'], '/'));
             $this->conexion = new \PDO($dsn, urldecode($url['user']), urldecode($url['pass'] ?? ''), [
@@ -75,12 +83,13 @@ class BdLogNginx
      * Condición SQL de los filtros opcionales: cada uno con su parámetro en NULL no filtra.
      * El filtro de IP es por ip_real (la IP del cliente), no por ip (la de la conexión, que detrás
      * de Cloudflare es un nodo compartido por muchos clientes).
-     * El alias es el de la tabla nginx_acceso cuando la consulta tiene joins.
+     * El alias es el de la tabla acceso cuando la consulta tiene joins.
      */
     private function condicionFiltros(string $alias = ''): string
     {
         $c = $alias === '' ? '' : $alias . '.';
-        return "(CAST(:ip AS inet) IS NULL OR {$c}ip_real = CAST(:ip AS inet))
+        return "(CAST(:origen AS text) IS NULL OR {$c}origen = CAST(:origen AS text))
+                    AND (CAST(:ip AS inet) IS NULL OR {$c}ip_real = CAST(:ip AS inet))
                     AND (CAST(:api_key AS text) IS NULL OR {$c}api_key = CAST(:api_key AS text))
                     AND (CAST(:ruta AS text) IS NULL OR {$c}ruta = CAST(:ruta AS text))
                     AND (CAST(:host AS text) IS NULL OR {$c}host = CAST(:host AS text))
@@ -92,11 +101,12 @@ class BdLogNginx
      * Parámetros de los filtros opcionales; los que no vienen quedan en NULL.
      * El status es un grupo de GRUPOS_STATUS o un código exacto, y se consulta como rango.
      *
-     * @param array{ip?: ?string, api_key?: ?string, ruta?: ?string, host?: ?string, status?: ?string} $filtros
+     * @param array{origen?: ?string, ip?: ?string, api_key?: ?string, ruta?: ?string, host?: ?string, status?: ?string} $filtros
      */
     private function parametrosFiltros(array $filtros): array
     {
         return [
+            'origen' => $filtros['origen'] ?? null,
             'ip' => $filtros['ip'] ?? null,
             'api_key' => $filtros['api_key'] ?? null,
             'ruta' => $filtros['ruta'] ?? null,
@@ -137,7 +147,7 @@ class BdLogNginx
      */
     public function servidores(): array
     {
-        $sql = "SELECT DISTINCT servidor FROM nginx_acceso WHERE servidor IS NOT NULL ORDER BY servidor";
+        $sql = "SELECT DISTINCT servidor FROM acceso WHERE servidor IS NOT NULL ORDER BY servidor";
         try {
             return [
                 'error' => false,
@@ -157,7 +167,7 @@ class BdLogNginx
     public function apiKeys(string $servidor, int $horas = self::PERIODO_DEFECTO): array
     {
         $sql = "SELECT DISTINCT api_key
-                FROM nginx_acceso
+                FROM acceso
                 WHERE servidor = :servidor
                     AND api_key IS NOT NULL
                     AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
@@ -183,7 +193,7 @@ class BdLogNginx
     public function statuses(string $servidor, int $horas = self::PERIODO_DEFECTO): array
     {
         $sql = "SELECT DISTINCT status
-                FROM nginx_acceso
+                FROM acceso
                 WHERE servidor = :servidor
                     AND status IS NOT NULL
                     AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
@@ -209,7 +219,7 @@ class BdLogNginx
     public function hosts(string $servidor, int $horas = self::PERIODO_DEFECTO): array
     {
         $sql = "SELECT DISTINCT host
-                FROM nginx_acceso
+                FROM acceso
                 WHERE servidor = :servidor
                     AND host IS NOT NULL
                     AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
@@ -241,7 +251,7 @@ class BdLogNginx
                     " . self::INICIO_PERIODO . ",
                     date_bin(CAST(:paso AS interval), now() AT TIME ZONE :zona, timestamp '2000-01-01'),
                     CAST(:paso AS interval)) AS h(hora)
-                LEFT JOIN nginx_acceso a
+                LEFT JOIN acceso a
                     ON a.servidor = :servidor
                     AND " . $this->condicionFiltros('a') . "
                     AND a.fecha >= h.hora AT TIME ZONE :zona
@@ -269,9 +279,9 @@ class BdLogNginx
     public function ultimosAccesos(string $servidor, int $horas = self::PERIODO_DEFECTO, int $limite = 20, array $filtros = []): array
     {
         $sql = "SELECT id, to_char(fecha AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS fecha,
-                    host, host(ip) AS ip, host(ip_real) AS ip_real, metodo,
+                    origen, host, host(ip) AS ip, host(ip_real) AS ip_real, metodo,
                     ruta, parametros, referer, api_key, status, bytes, request_time
-                FROM nginx_acceso
+                FROM acceso
                 WHERE servidor = :servidor
                     AND " . $this->condicionFiltros() . "
                     AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
@@ -304,7 +314,7 @@ class BdLogNginx
     public function accesosPorHost(string $servidor, int $horas = self::PERIODO_DEFECTO, array $filtros = []): array
     {
         $sql = "SELECT coalesce(host, '(sin host)') AS host, count(*) AS total
-                FROM nginx_acceso
+                FROM acceso
                 WHERE servidor = :servidor
                     AND " . $this->condicionFiltros() . "
                     AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
@@ -335,7 +345,7 @@ class BdLogNginx
         $sql = "SELECT host(ip_real) AS ip_real, count(*) AS total,
                     count(*) FILTER (WHERE status >= 400) AS errores,
                     to_char(max(fecha) AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS ultimo
-                FROM nginx_acceso
+                FROM acceso
                 WHERE servidor = :servidor
                     AND " . $this->condicionFiltros() . "
                     AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
@@ -373,7 +383,7 @@ class BdLogNginx
         $sql = "SELECT api_key, count(*) AS total,
                     count(*) FILTER (WHERE status >= 400) AS errores,
                     to_char(max(fecha) AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS ultimo
-                FROM nginx_acceso
+                FROM acceso
                 WHERE servidor = :servidor
                     AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
                     AND " . $this->condicionFiltros() . "
@@ -401,7 +411,7 @@ class BdLogNginx
     public function accesosPorRuta(string $servidor, int $horas = self::PERIODO_DEFECTO, int $limite = 20, array $filtros = []): array
     {
         $sql = "SELECT coalesce(host, '(sin host)') AS host, ruta, count(*) AS total
-                FROM nginx_acceso
+                FROM acceso
                 WHERE servidor = :servidor
                     AND " . $this->condicionFiltros() . "
                     AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona

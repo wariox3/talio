@@ -75,10 +75,10 @@
         <div class="nav-sec">
             <div class="nav-head">Auditoría</div>
 
-            <details class="nav-group" {{ ruta starts with 'auditoria_nginx_' ? 'open' }}>
-                <summary>Nginx</summary>
+            <details class="nav-group" {{ ruta starts with 'auditoria_webserver_' ? 'open' }}>
+                <summary>WebServer</summary>
                 <div class="nav-sub">
-                    <a class="{{ ruta == 'auditoria_nginx_monitor' ? 'on' }}" href="{{ path('auditoria_nginx_monitor') }}">Monitor</a>
+                    <a class="{{ ruta == 'auditoria_webserver_monitor' ? 'on' }}" href="{{ path('auditoria_webserver_monitor') }}">Monitor</a>
                 </div>
             </details>
         </div>

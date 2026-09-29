@@ -1,27 +1,27 @@
 <?php
 namespace App\Controller\auditoria;
 
-use App\Utilidades\BdLogNginx;
+use App\Utilidades\BdWebServer;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-class NginxController extends AbstractController
+class WebServerController extends AbstractController
 {
     private const SERVIDOR_DEFECTO = 'ares';
     // Servidores que siempre salen en la lista, aunque todavía no tengan accesos registrados.
-    private const SERVIDORES = [self::SERVIDOR_DEFECTO, 'jardin'];
+    private const SERVIDORES = [self::SERVIDOR_DEFECTO, 'hebe', 'jardin'];
 
-    #[Route('/auditoria/nginx/monitor', name: 'auditoria_nginx_monitor')]
-    public function monitor(Request $request, BdLogNginx $bdLogNginx): Response
+    #[Route('/auditoria/webserver/monitor', name: 'auditoria_webserver_monitor')]
+    public function monitor(Request $request, BdWebServer $bdWebServer): Response
     {
         $error = null;
         $labels = [];
         $data = [];
         // Solo se aceptan los servidores conocidos o que existan en la tabla; lo demás vuelve al de defecto.
         $servidores = self::SERVIDORES;
-        $respuesta = $bdLogNginx->servidores();
+        $respuesta = $bdWebServer->servidores();
         if(!$respuesta['error']) {
             $servidores = array_values(array_unique([...self::SERVIDORES, ...$respuesta['datos']]));
         }
@@ -30,9 +30,14 @@ class NginxController extends AbstractController
         if(!in_array($servidor, $servidores, true)) {
             $servidor = self::SERVIDOR_DEFECTO;
         }
-        $horas = $request->query->getInt('horas', BdLogNginx::PERIODO_DEFECTO);
-        if(!isset(BdLogNginx::PERIODOS[$horas])) {
-            $horas = BdLogNginx::PERIODO_DEFECTO;
+        $horas = $request->query->getInt('horas', BdWebServer::PERIODO_DEFECTO);
+        if(!isset(BdWebServer::PERIODOS[$horas])) {
+            $horas = BdWebServer::PERIODO_DEFECTO;
+        }
+        // Solo se acepta un servidor web conocido (nginx, apache); lo demás muestra todos.
+        $origen = (string)$request->query->get('origen', '');
+        if(!isset(BdWebServer::ORIGENES[$origen])) {
+            $origen = '';
         }
         // Una IP mal escrita no se aplica: se avisa en la vista y se muestra todo.
         $ip = trim((string)$request->query->get('ip', ''));
@@ -43,10 +48,11 @@ class NginxController extends AbstractController
         $host = trim((string)$request->query->get('host', ''));
         // Solo se acepta un grupo conocido (4xx, errores...) o un código de tres cifras.
         $status = trim((string)$request->query->get('status', ''));
-        if(!isset(BdLogNginx::GRUPOS_STATUS[$status]) && !BdLogNginx::esCodigoStatus($status)) {
+        if(!isset(BdWebServer::GRUPOS_STATUS[$status]) && !BdWebServer::esCodigoStatus($status)) {
             $status = '';
         }
         $filtros = [
+            'origen' => $origen === '' ? null : $origen,
             'ip' => ($ip === '' || $ipInvalida) ? null : $ip,
             'api_key' => $apiKey === '' ? null : $apiKey,
             'ruta' => $ruta === '' ? null : $ruta,
@@ -54,7 +60,7 @@ class NginxController extends AbstractController
             'status' => $status === '' ? null : $status,
         ];
         $apiKeys = [];
-        $respuesta = $bdLogNginx->apiKeys($servidor, $horas);
+        $respuesta = $bdWebServer->apiKeys($servidor, $horas);
         if(!$respuesta['error']) {
             $apiKeys = $respuesta['datos'];
         }
@@ -64,7 +70,7 @@ class NginxController extends AbstractController
             sort($apiKeys);
         }
         $hosts = [];
-        $respuesta = $bdLogNginx->hosts($servidor, $horas);
+        $respuesta = $bdWebServer->hosts($servidor, $horas);
         if(!$respuesta['error']) {
             $hosts = $respuesta['datos'];
         }
@@ -74,16 +80,16 @@ class NginxController extends AbstractController
             sort($hosts);
         }
         $statuses = [];
-        $respuesta = $bdLogNginx->statuses($servidor, $horas);
+        $respuesta = $bdWebServer->statuses($servidor, $horas);
         if(!$respuesta['error']) {
             $statuses = $respuesta['datos'];
         }
         // El código elegido se conserva en la lista aunque no tenga accesos en el periodo.
-        if(BdLogNginx::esCodigoStatus($status) && !in_array($status, $statuses, true)) {
+        if(BdWebServer::esCodigoStatus($status) && !in_array($status, $statuses, true)) {
             $statuses[] = $status;
             sort($statuses);
         }
-        $respuesta = $bdLogNginx->accesosPorHora($servidor, $horas, $filtros);
+        $respuesta = $bdWebServer->accesosPorHora($servidor, $horas, $filtros);
         if(!$respuesta['error']) {
             foreach ($respuesta['datos'] as $item) {
                 $labels[] = $item['hora'];
@@ -93,36 +99,38 @@ class NginxController extends AbstractController
             $error = $respuesta['mensaje'];
         }
         $ultimosAccesos = [];
-        $respuesta = $bdLogNginx->ultimosAccesos($servidor, $horas, 10, $filtros);
+        $respuesta = $bdWebServer->ultimosAccesos($servidor, $horas, 10, $filtros);
         if(!$respuesta['error']) {
             $ultimosAccesos = $respuesta['datos'];
         }
         $accesosPorHost = [];
-        $respuesta = $bdLogNginx->accesosPorHost($servidor, $horas, $filtros);
+        $respuesta = $bdWebServer->accesosPorHost($servidor, $horas, $filtros);
         if(!$respuesta['error']) {
             $accesosPorHost = $respuesta['datos'];
         }
         $accesosPorIp = [];
-        $respuesta = $bdLogNginx->accesosPorIp($servidor, $horas, 20, $filtros);
+        $respuesta = $bdWebServer->accesosPorIp($servidor, $horas, 20, $filtros);
         if(!$respuesta['error']) {
             $accesosPorIp = $respuesta['datos'];
         }
         $accesosPorApiKey = [];
-        $respuesta = $bdLogNginx->accesosPorApiKey($servidor, $horas, $filtros);
+        $respuesta = $bdWebServer->accesosPorApiKey($servidor, $horas, $filtros);
         if(!$respuesta['error']) {
             $accesosPorApiKey = $respuesta['datos'];
         }
         $accesosPorRuta = [];
-        $respuesta = $bdLogNginx->accesosPorRuta($servidor, $horas, 20, $filtros);
+        $respuesta = $bdWebServer->accesosPorRuta($servidor, $horas, 20, $filtros);
         if(!$respuesta['error']) {
             $accesosPorRuta = $respuesta['datos'];
         }
-        return $this->render('auditoria/nginx/monitor.html.twig', [
+        return $this->render('auditoria/webserver/monitor.html.twig', [
             'error' => $error,
             'servidores' => $servidores,
             'servidor' => $servidor,
-            'periodos' => BdLogNginx::PERIODOS,
+            'periodos' => BdWebServer::PERIODOS,
             'horas' => $horas,
+            'origenes' => BdWebServer::ORIGENES,
+            'origen' => $origen,
             'ip' => $ip,
             'ipInvalida' => $ipInvalida,
             'apiKey' => $apiKey,
@@ -131,7 +139,7 @@ class NginxController extends AbstractController
             'hosts' => $hosts,
             'status' => $status,
             'statuses' => $statuses,
-            'gruposStatus' => BdLogNginx::GRUPOS_STATUS,
+            'gruposStatus' => BdWebServer::GRUPOS_STATUS,
             // No se llama 'ruta': base.html.twig usa esa variable para el nombre de la ruta de Symfony.
             'filtroRuta' => $ruta,
             'labels' => $labels,
