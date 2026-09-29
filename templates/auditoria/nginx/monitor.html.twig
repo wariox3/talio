@@ -138,7 +138,7 @@
         504: 'Gateway Timeout: el backend no respondió a tiempo'
     } %}
     <div class="block">
-        {{ ui.cabecera('Últimos accesos', ultimosAccesos|length ~ ' registros') }}
+        {{ ui.cabecera('Últimos accesos', ultimosAccesos|length ~ ' registros · ' ~ periodos[horas].texto) }}
         <div class="table-scroll">
             <table class="data">
                 <thead>

@@ -10,6 +10,8 @@ use Symfony\Component\Routing\Attribute\Route;
 class NginxController extends AbstractController
 {
     private const SERVIDOR_DEFECTO = 'ares';
+    // Servidores que siempre salen en la lista, aunque todavía no tengan accesos registrados.
+    private const SERVIDORES = [self::SERVIDOR_DEFECTO, 'jardin'];
 
     #[Route('/auditoria/nginx/monitor', name: 'auditoria_nginx_monitor')]
     public function monitor(Request $request, BdLogNginx $bdLogNginx): Response
@@ -17,13 +19,13 @@ class NginxController extends AbstractController
         $error = null;
         $labels = [];
         $data = [];
-        // Solo se aceptan servidores que existan en la tabla; lo demás vuelve al de defecto.
-        $servidores = [self::SERVIDOR_DEFECTO];
+        // Solo se aceptan los servidores conocidos o que existan en la tabla; lo demás vuelve al de defecto.
+        $servidores = self::SERVIDORES;
         $respuesta = $bdLogNginx->servidores();
         if(!$respuesta['error']) {
-            $servidores = array_values(array_unique([self::SERVIDOR_DEFECTO, ...$respuesta['datos']]));
-            sort($servidores);
+            $servidores = array_values(array_unique([...self::SERVIDORES, ...$respuesta['datos']]));
         }
+        sort($servidores);
         $servidor = (string)$request->query->get('servidor', self::SERVIDOR_DEFECTO);
         if(!in_array($servidor, $servidores, true)) {
             $servidor = self::SERVIDOR_DEFECTO;
@@ -91,7 +93,7 @@ class NginxController extends AbstractController
             $error = $respuesta['mensaje'];
         }
         $ultimosAccesos = [];
-        $respuesta = $bdLogNginx->ultimosAccesos($servidor, 10, $filtros);
+        $respuesta = $bdLogNginx->ultimosAccesos($servidor, $horas, 10, $filtros);
         if(!$respuesta['error']) {
             $ultimosAccesos = $respuesta['datos'];
         }

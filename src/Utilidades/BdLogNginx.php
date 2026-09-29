@@ -264,9 +264,9 @@ class BdLogNginx
     }
 
     /**
-     * Últimos accesos registrados, del más reciente al más antiguo.
+     * Últimos accesos del periodo, del más reciente al más antiguo.
      */
-    public function ultimosAccesos(string $servidor, int $limite = 20, array $filtros = []): array
+    public function ultimosAccesos(string $servidor, int $horas = self::PERIODO_DEFECTO, int $limite = 20, array $filtros = []): array
     {
         $sql = "SELECT id, to_char(fecha AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS fecha,
                     host, host(ip) AS ip, host(ip_real) AS ip_real, metodo,
@@ -274,11 +274,14 @@ class BdLogNginx
                 FROM nginx_acceso
                 WHERE servidor = :servidor
                     AND " . $this->condicionFiltros() . "
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
                 ORDER BY fecha DESC
                 LIMIT :limite";
         try {
             $consulta = $this->conexion()->prepare($sql);
-            $consulta->bindValue('zona', self::ZONA_HORARIA);
+            foreach ($this->ventana($horas) as $clave => $valor) {
+                $consulta->bindValue($clave, $valor);
+            }
             $consulta->bindValue('servidor', $servidor);
             $this->enlazarFiltros($consulta, $filtros);
             $consulta->bindValue('limite', $limite, \PDO::PARAM_INT);
