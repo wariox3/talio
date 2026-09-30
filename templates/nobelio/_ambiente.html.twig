@@ -1,0 +1,29 @@
+{# Ambiente de Nobelio en la cabecera de todas sus pantallas.
+
+   editable: selector para cambiarlo (pantallas del menu). En las ventanas
+   emergentes solo se muestra: actuan sobre un emisor o documento de la
+   pantalla que las abrio y cambiarlo ahi las dejaria desincronizadas.
+
+   Produccion va en rojo para no confundirla con prueba o desarrollo. #}
+{% set clase = nobelio.ambiente == 'produccion' ? 'crit' : 'warn' %}
+{% if editable|default(false) %}
+    <form class="ambiente {{ clase }}" method="post" action="{{ path('nobelio_ambiente') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('nobelio-ambiente') }}">
+        <input type="hidden" name="ruta" value="{{ app.request.attributes.get('_route') }}">
+        <span class="dot"></span>
+        <label for="nobelio-ambiente">Nobelio</label>
+        <select id="nobelio-ambiente" name="ambiente" onchange="this.form.submit()">
+            {% set disponibles = nobelio.ambientesDisponibles %}
+            {% for clave, nombre in constant('App\\Utilidades\\Nobelio::AMBIENTES') %}
+                <option value="{{ clave }}" {{ clave == nobelio.ambiente ? 'selected' }} {{ clave not in disponibles ? 'disabled' }}>
+                    {{ nombre }}{{ clave not in disponibles ? ' (sin configurar)' }}
+                </option>
+            {% endfor %}
+        </select>
+        <noscript><button type="submit" class="ghost">Cambiar</button></noscript>
+    </form>
+{% else %}
+    <span class="tag {{ clase }}" title="Ambiente de Nobelio">
+        <span class="dot"></span>Nobelio: {{ nobelio.nombreAmbiente }}
+    </span>
+{% endif %}

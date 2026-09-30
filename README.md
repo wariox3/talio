@@ -311,9 +311,12 @@ Hay tres instancias de Nobelio: **producción**, **prueba** y **desarrollo**.
 Cada una tiene su URL y su API Key en el `.env`
 (`BASE_NOBELIO_<AMBIENTE>` y `NOBELIO_TOKEN_<AMBIENTE>`).
 
-- **Elegir:** con el selector "Ambiente" del grupo Nobelio del menú
-  (`POST /nobelio/ambiente`, con token CSRF). Al cambiar se vuelve a la lista
-  de la sección: un detalle abierto es de otro ambiente y allí no existe.
+- **Elegir:** con el selector "Nobelio" de la cabecera, presente en todas
+  las pantallas de Nobelio (`POST /nobelio/ambiente`, con token CSRF). Al
+  cambiar se vuelve a la lista de la sección: un detalle abierto es de otro
+  ambiente y allí no existe. Las ventanas emergentes (errores, webhook,
+  pruebas) muestran el ambiente pero no dejan cambiarlo: actúan sobre algo de
+  la pantalla que las abrió.
 - **Dónde se guarda:** en la sesión del usuario (`nobelio_ambiente`), así que
   vale para todas las pantallas de Nobelio hasta que se cambie o se cierre la
   sesión. Cada usuario tiene la suya.
@@ -322,12 +325,13 @@ Cada una tiene su URL y su API Key en el `.env`
 - **Sin configurar:** un ambiente al que le falta la URL o la llave sale
   deshabilitado en el selector. Si no hay ninguno, las pantallas de Nobelio
   muestran el error en vez de llamar a la API.
-- **A la vista:** todas las páginas de Nobelio muestran en la cabecera
-  "Nobelio: <ambiente>", en rojo si es producción.
+- **A la vista:** el selector va en rojo si es producción y en ámbar si es
+  prueba o desarrollo.
 
 El código está en `Nobelio::ambiente()`, `ambientesDisponibles()` y
 `cambiarAmbiente()`. La clase se expone a Twig como la variable global
-`nobelio` (`config/packages/twig.yaml`) para el selector y la etiqueta.
+`nobelio` (`config/packages/twig.yaml`); el selector está en
+`templates/nobelio/_ambiente.html.twig`.
 
 **Credenciales.** Nobelio (Django + DRF) tiene dos
 mecanismos de autenticación, y Talio usa el primero:

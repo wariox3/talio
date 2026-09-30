@@ -228,10 +228,6 @@ pre {
 .nav-sub a:hover { color: var(--ink); text-decoration: none; }
 .nav-sub a.on { color: var(--accent); font-weight: 600; }
 
-/* Selector de ambiente dentro de un grupo del menu (Nobelio). */
-.nav-ambiente { display: flex; align-items: center; gap: 8px; padding: 4px 17px 6px 29px; }
-.nav-ambiente label { font-size: .75rem; color: var(--muted); }
-.nav-ambiente select { flex: 1; min-width: 0; font-size: .8rem; }
 
 .side-foot {
     margin-top: auto;
@@ -261,6 +257,15 @@ pre {
 .topbar .path b { color: var(--ink); font-weight: 600; }
 .topbar .path a { color: var(--muted); }
 .topbar .right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+
+/* Selector de ambiente en la cabecera (Nobelio): mismo color que su .tag. */
+.topbar .ambiente { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; }
+.topbar .ambiente label { font-weight: 600; }
+.topbar .ambiente select { font-size: .78rem; padding-top: 2px; padding-bottom: 2px; color: inherit; }
+.topbar .ambiente.crit { color: var(--crit); }
+.topbar .ambiente.warn { color: var(--warn); }
+.topbar .ambiente.crit .dot { background: var(--crit); }
+.topbar .ambiente.warn .dot { background: var(--warn); }
 
 .stamp {
     font-family: "IBM Plex Mono", ui-monospace, monospace;

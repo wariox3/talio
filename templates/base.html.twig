@@ -57,21 +57,6 @@
             <details class="nav-group" {{ ruta starts with 'nobelio_' ? 'open' }}>
                 <summary>Nobelio</summary>
                 <div class="nav-sub">
-                    {# Ambiente contra el que trabajan todas las pantallas de Nobelio (se guarda en la sesion). #}
-                    <form class="nav-ambiente" method="post" action="{{ path('nobelio_ambiente') }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('nobelio-ambiente') }}">
-                        <input type="hidden" name="ruta" value="{{ ruta }}">
-                        <label for="nobelio-ambiente">Ambiente</label>
-                        <select id="nobelio-ambiente" name="ambiente" onchange="this.form.submit()">
-                            {% set disponibles = nobelio.ambientesDisponibles %}
-                            {% for clave, nombre in constant('App\\Utilidades\\Nobelio::AMBIENTES') %}
-                                <option value="{{ clave }}" {{ clave == nobelio.ambiente ? 'selected' }} {{ clave not in disponibles ? 'disabled' }}>
-                                    {{ nombre }}{{ clave not in disponibles ? ' (sin configurar)' }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                        <noscript><button type="submit" class="ghost">Cambiar</button></noscript>
-                    </form>
                     <a class="{{ ruta == 'nobelio_emisor_lista' ? 'on' }}" href="{{ path('nobelio_emisor_lista') }}">Emisor</a>
                     <a class="{{ ruta == 'nobelio_documento_lista' ? 'on' }}" href="{{ path('nobelio_documento_lista') }}">Documento</a>
                     <a class="{{ ruta == 'nobelio_nomina_lista' ? 'on' }}" href="{{ path('nobelio_nomina_lista') }}">Nómina</a>
@@ -112,10 +97,7 @@
             <div class="path">{% block ruta %}{% endblock %}</div>
             <div class="right">
                 {% if ruta starts with 'nobelio_' %}
-                    {# Siempre a la vista: produccion en rojo para no confundirla con las de prueba. #}
-                    <span class="tag {{ nobelio.ambiente == 'produccion' ? 'crit' : 'warn' }}" title="Ambiente de Nobelio">
-                        <span class="dot"></span>Nobelio: {{ nobelio.nombreAmbiente }}
-                    </span>
+                    {{ include('nobelio/_ambiente.html.twig', { editable: true }) }}
                 {% endif %}
                 {% block acciones %}{% endblock %}
             </div>

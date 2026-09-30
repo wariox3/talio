@@ -15,7 +15,12 @@
         {% block ventana %}
             <div class="topbar">
                 <div class="path">{% block ruta %}{% endblock %}</div>
-                <div class="right">{% block acciones %}{% endblock %}</div>
+                <div class="right">
+                    {% if app.request.attributes.get('_route') starts with 'nobelio_' %}
+                        {{ include('nobelio/_ambiente.html.twig') }}
+                    {% endif %}
+                    {% block acciones %}{% endblock %}
+                </div>
             </div>
         {% endblock %}
 
