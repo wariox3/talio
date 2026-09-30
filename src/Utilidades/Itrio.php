@@ -1,243 +1,114 @@
 <?php
 
 namespace App\Utilidades;
-use Symfony\Component\HttpClient\HttpClient;
+
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-class Itrio
+/**
+ * Cliente de la API de Itrio (proyecto RUTEOAPP), autenticado con JWT.
+ *
+ * El token se pide con ITRIO_USUARIO / ITRIO_CLAVE la primera vez que hace
+ * falta y se guarda en la sesion del usuario de Talio. Todas las peticiones lo
+ * llevan —antes POST y PATCH salian sin el— y, si Itrio responde 401 porque
+ * caduco, se pide uno nuevo y se reintenta una sola vez. Antes el token
+ * caducado se quedaba en sesion y todo Itrio fallaba hasta cerrar sesion.
+ */
+class Itrio extends ClienteApi
 {
+    private const CLAVE_SESION = 'itrio_token';
 
-    public function __construct(private RequestStack $requestStack)
+    public function __construct(
+        HttpClientInterface $httpClient,
+        private readonly RequestStack $requestStack,
+        #[Autowire(env: 'BASE_ITRIO')] string $urlBase,
+        #[Autowire(env: 'ITRIO_USUARIO')] private readonly string $usuario,
+        #[Autowire(env: 'ITRIO_CLAVE')] private readonly string $clave,
+    ) {
+        parent::__construct($httpClient, $urlBase, 'Itrio');
+    }
+
+    public function consumoGet(string $url): array
     {
-
+        return $this->autenticada('GET', $url);
     }
 
-    public function consumoPost($url, $datos) {
-        $client = HttpClient::create();
-        $urlCompleta = $_ENV['BASE_ITRIO'] .  $url;
-        try {
-            $headers = [
-                'Content-Type' => 'application/json',
-            ];
-            $response = $client->request('POST', $urlCompleta, [
-                'headers' => $headers,
-                'json' => $datos,
-            ]);
-            $status = $response->getStatusCode();
-            if($status == 200) {
-                $responseData = $response->toArray();
-                return [
-                    "error" => false,
-                    "datos" => $responseData
-
-                ];
-            } elseif($status == 400) {
-                $responseData = $response->toArray(false);
-                return [
-                    "error" => true,
-                    "mensaje" => $responseData['mensaje']
-                ];
-            } else {
-                return [
-                    "error" => true,
-                    "mensaje" => "El servidor no responde correctamente"
-                ];
-            }
-        } catch (TransportExceptionInterface $e) {
-            return [
-                "error" => true,
-                "mensaje" => $e->getMessage()
-            ];
-        }
-    }
-
-    public function consumoPath($url, $datos) {
-        $client = HttpClient::create();
-        $urlCompleta = $_ENV['BASE_ITRIO'] .  $url;
-        try {
-            $headers = [
-                'Content-Type' => 'application/json',
-            ];
-            $response = $client->request('PATCH', $urlCompleta, [
-                'headers' => $headers,
-                'json' => $datos,
-            ]);
-            $status = $response->getStatusCode();
-            if($status == 200) {
-                $responseData = $response->toArray();
-                return [
-                    "error" => false,
-                    "datos" => $responseData
-
-                ];
-            } elseif($status == 400) {
-                $responseData = $response->toArray(false);
-                return [
-                    "error" => true,
-                    "mensaje" => $responseData['mensaje']
-                ];
-            } else {
-                return [
-                    "error" => true,
-                    "mensaje" => "El servidor no responde correctamente"
-                ];
-            }
-        } catch (TransportExceptionInterface $e) {
-            return [
-                "error" => true,
-                "mensaje" => $e->getMessage()
-            ];
-        }
-    }
-    public function consumoGet($url) {
-        $session = $this->requestStack->getSession();
-        $client = HttpClient::create();
-        $urlCompleta = $_ENV['BASE_ITRIO'] .  $url;
-        try {
-            $token = $session->get('token');
-            if (empty($token)) {
-                $respuesta = $this->autenticar();
-                if($respuesta["error"]) {
-                    return [
-                        "error" => true,
-                        "mensaje" => $respuesta["mensaje"]
-                    ];
-                } else {
-                    $token = $respuesta["token"];
-                    $session->set('token', $token);
-                }
-
-            }
-            $headers = ['Authorization' => 'Bearer ' . $token];
-            $response = $client->request('GET', $urlCompleta, [
-                'headers' => $headers,
-            ]);
-            $status = $response->getStatusCode();
-            if($status == 200) {
-                $responseData = $response->toArray();
-                return [
-                    "error" => false,
-                    "datos" => $responseData
-                ];
-            } else {
-                return [
-                    "error" => true,
-                    "mensaje" => "El servidor no resopnde correctamente"
-                ];
-            }
-        } catch (TransportExceptionInterface $e) {
-            return [
-                "error" => true,
-                "mensaje" => $e->getMessage()
-            ];
-        }
-    }
-
-    public function consumoArchivoGet($url) {
-        $session = $this->requestStack->getSession();
-        $client = HttpClient::create();
-        $urlCompleta = $_ENV['BASE_ITRIO'] .  $url;
-        try {
-            $token = $session->get('token');
-            if (empty($token)) {
-                $respuesta = $this->autenticar();
-                if($respuesta["error"]) {
-                    return [
-                        "error" => true,
-                        "mensaje" => $respuesta["mensaje"]
-                    ];
-                } else {
-                    $token = $respuesta["token"];
-                    $session->set('token', $token);
-                }
-
-            }
-            $headers = ['Authorization' => 'Bearer ' . $token];
-            $response = $client->request('GET', $urlCompleta, [
-                'headers' => $headers,
-            ]);
-            $status = $response->getStatusCode();
-            if($status == 200) {
-                $content = $response->getContent();
-                $responseHeaders = $response->getHeaders();
-                return [
-                    "error" => false,
-                    "content" => $content,
-                    "headers" => $responseHeaders,
-                    "status" => $status
-                ];
-            } else {
-                return [
-                    "error" => true,
-                    "mensaje" => "El servidor no resopnde correctamente"
-                ];
-            }
-        } catch (TransportExceptionInterface $e) {
-            return [
-                "error" => true,
-                "mensaje" => $e->getMessage()
-            ];
-        }
-    }
-
-    public function consumoDelete($url) {
-        $session = $this->requestStack->getSession();
-        $client = HttpClient::create();
-        $urlCompleta = $_ENV['BASE_ITRIO'] .  $url;
-        try {
-            $headers = ['Authorization' => 'Bearer ' . $session->get('token')];
-            $response = $client->request('DELETE', $urlCompleta, [
-                'headers' => $headers,
-            ]);
-            $status = $response->getStatusCode();
-            if($status == 200) {
-                return ["error" => false];
-            } else {
-                return [
-                    "error" => true,
-                    "mensaje" => "El servidor no resopnde correctamente"
-                ];
-            }
-        } catch (TransportExceptionInterface $e) {
-            return [
-                "error" => true,
-                "mensaje" => $e->getMessage()
-            ];
-        }
-    }
-
-    public function autenticar()
+    public function consumoPost(string $url, array $datos = []): array
     {
-        $client = HttpClient::create();
-        $urlAutenticacion = $_ENV['BASE_ITRIO'] . 'seguridad/login/';
-        try {
-            $response = $client->request('POST', $urlAutenticacion, [
-                'json' => [
-                    'username' => $_ENV['ITRIO_USUARIO'],
-                    'password' => $_ENV['ITRIO_CLAVE'],
-                    'proyecto' => 'RUTEOAPP'
-                ]
-            ]);
+        return $this->autenticada('POST', $url, ['json' => $datos]);
+    }
 
-            $status = $response->getStatusCode();
-            if ($status == 200) {
-                $data = $response->toArray();
-                return [
-                    'error' => false,
-                    'token' => $data['token'],
-                ];
-            } else {
-                return [
-                    "error" => true,
-                    "mensaje" => "Error en la autenticacion"
-                ];
-            }
-        } catch (TransportExceptionInterface $e) {
-            return [
-                "error" => true,
-                "mensaje" => "Error en la autenticacion {$e->getMessage()}"
-            ];
+    public function consumoPatch(string $url, array $datos = []): array
+    {
+        return $this->autenticada('PATCH', $url, ['json' => $datos]);
+    }
+
+    /** GET de un endpoint que devuelve archivo (ver ClienteApi::peticion()). */
+    public function consumoArchivo(string $url): array
+    {
+        return $this->autenticada('GET', $url, [], true);
+    }
+
+    private function autenticada(string $metodo, string $url, array $opciones = [], bool $archivo = false): array
+    {
+        $respuesta = $this->token();
+        if ($respuesta['error']) {
+            return $respuesta;
         }
+
+        $resultado = $this->peticion($metodo, $url, $this->conToken($opciones, $respuesta['token']), $archivo);
+        if ($resultado['status'] !== 401) {
+            return $resultado;
+        }
+
+        // Token caducado o revocado: uno nuevo y un solo reintento.
+        $respuesta = $this->token(true);
+        if ($respuesta['error']) {
+            return $respuesta;
+        }
+
+        return $this->peticion($metodo, $url, $this->conToken($opciones, $respuesta['token']), $archivo);
+    }
+
+    private function conToken(array $opciones, string $token): array
+    {
+        $opciones['headers'] = ['Authorization' => 'Bearer ' . $token] + ($opciones['headers'] ?? []);
+
+        return $opciones;
+    }
+
+    /**
+     * Token de la sesion, o uno recien pedido si no hay o si $renovar.
+     *
+     * @return array{error: bool, token?: string, status?: int, mensaje?: string}
+     */
+    private function token(bool $renovar = false): array
+    {
+        $sesion = $this->requestStack->getSession();
+        $token = $renovar ? null : $sesion->get(self::CLAVE_SESION);
+        if (is_string($token) && $token !== '') {
+            return ['error' => false, 'token' => $token];
+        }
+
+        $respuesta = $this->peticion('POST', 'seguridad/login/', ['json' => [
+            'username' => $this->usuario,
+            'password' => $this->clave,
+            'proyecto' => 'RUTEOAPP',
+        ]]);
+        if ($respuesta['error']) {
+            $sesion->remove(self::CLAVE_SESION);
+
+            return ['error' => true, 'status' => $respuesta['status'], 'mensaje' => "Error en la autenticación con Itrio: {$respuesta['mensaje']}"];
+        }
+
+        $token = $respuesta['datos']['token'] ?? '';
+        if (!is_string($token) || $token === '') {
+            return ['error' => true, 'status' => $respuesta['status'], 'mensaje' => 'Itrio no devolvió token al autenticar.'];
+        }
+
+        $sesion->set(self::CLAVE_SESION, $token);
+
+        return ['error' => false, 'token' => $token];
     }
 }

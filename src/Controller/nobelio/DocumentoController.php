@@ -1,7 +1,6 @@
 <?php
 namespace App\Controller\nobelio;
 
-use App\Utilidades\Mensajes;
 use App\Utilidades\Nobelio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -119,7 +118,7 @@ class DocumentoController extends AbstractController
 
         $respuesta = $nobelio->consumoGet('api/documentos/documento/', $parametros);
         if ($respuesta['error']) {
-            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
         } else {
             $datos = $respuesta['datos'];
             $documentos = $datos['results'] ?? [];
@@ -196,7 +195,7 @@ class DocumentoController extends AbstractController
     {
         $respuesta = $nobelio->consumoGet("api/documentos/documento/{$id}/");
         if ($respuesta['error']) {
-            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
 
             return $this->redirectToRoute('nobelio_documento_lista');
         }
@@ -208,7 +207,7 @@ class DocumentoController extends AbstractController
         $eventos = [];
         $respuestaEventos = $nobelio->consumoGetTodos('api/documentos/documento-evento/', ['documento' => $id]);
         if ($respuestaEventos['error']) {
-            Mensajes::error("Nobelio: {$respuestaEventos['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuestaEventos['mensaje']}");
         } else {
             $eventos = $respuestaEventos['datos'];
         }
@@ -219,7 +218,7 @@ class DocumentoController extends AbstractController
         $notificaciones = [];
         $respuestaNotificaciones = $nobelio->consumoGetTodos('api/documentos/documento-notificacion/', ['documento' => $id]);
         if ($respuestaNotificaciones['error']) {
-            Mensajes::error("Nobelio: {$respuestaNotificaciones['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuestaNotificaciones['mensaje']}");
         } else {
             $notificaciones = $respuestaNotificaciones['datos'];
         }
@@ -230,7 +229,7 @@ class DocumentoController extends AbstractController
         $avisos = [];
         $respuestaAvisos = $nobelio->consumoGetTodos('api/emisores/webhook-aviso/', ['documento' => $id]);
         if ($respuestaAvisos['error']) {
-            Mensajes::error("Nobelio: {$respuestaAvisos['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuestaAvisos['mensaje']}");
         } else {
             $avisos = $respuestaAvisos['datos'];
         }
@@ -277,7 +276,7 @@ class DocumentoController extends AbstractController
         // mensaje que sale.
         $respuesta = $nobelio->consumoArchivo("api/documentos/documento/{$id}/{$archivo}/");
         if ($respuesta['error']) {
-            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
 
             // Las descargas se piden desde la ficha: se vuelve a ella.
             return $this->redirectToRoute('nobelio_documento_detalle', ['id' => $id]);
@@ -311,16 +310,16 @@ class DocumentoController extends AbstractController
         $id = (string) $request->request->get('id', '');
 
         if (!$this->isCsrfTokenValid('acciones-documento', (string) $request->request->get('_token'))) {
-            Mensajes::error('La petición no es válida.');
-        } elseif ($id === '') {
-            Mensajes::error('No se indicó sobre qué documento actuar.');
+            $this->addFlash('danger', 'La petición no es válida.');
+        } elseif (!Nobelio::esUuid($id)) {
+            $this->addFlash('danger', 'No se indicó sobre qué documento actuar.');
         } else {
             // Nobelio comprueba el estado y responde 400 explicando por que no
             // se puede (ya aceptado, rechazado...); ese es el mensaje que se
             // muestra.
             $respuesta = $nobelio->consumoPost("api/documentos/documento/{$id}/{$accion}/");
             if ($respuesta['error']) {
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
                 // Devuelve el estado en que queda con la descripcion de la
                 // DIAN, que es lo que explica un rechazo.
@@ -336,9 +335,9 @@ class DocumentoController extends AbstractController
                 // Rechazado, o enviado y aun sin veredicto: la peticion fue
                 // bien, pero no es un exito.
                 if (array_key_exists('es_valido', $datos) && !$datos['es_valido']) {
-                    Mensajes::warning($mensaje);
+                    $this->addFlash('warning', $mensaje);
                 } else {
-                    Mensajes::success($mensaje);
+                    $this->addFlash('success', $mensaje);
                 }
             }
         }
@@ -365,7 +364,7 @@ class DocumentoController extends AbstractController
     public function notificar(Request $request, Nobelio $nobelio, string $id): Response
     {
         if (!$this->isCsrfTokenValid('notificar-documento', (string) $request->request->get('_token'))) {
-            Mensajes::error('La petición no es válida.');
+            $this->addFlash('danger', 'La petición no es válida.');
         } else {
             // Nobelio solo notifica lo que la DIAN acepto y exige que el
             // adquiriente tenga correo; si no, responde 400 explicando cual de
@@ -374,7 +373,7 @@ class DocumentoController extends AbstractController
             // reintentar. En ambos casos ese es el mensaje que se muestra.
             $respuesta = $nobelio->consumoPost("api/documentos/documento/{$id}/notificar/");
             if ($respuesta['error']) {
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
                 $datos = $respuesta['datos'];
                 $destinatario = $datos['destinatario'] ?? '';
@@ -386,7 +385,7 @@ class DocumentoController extends AbstractController
                     ? "Documento enviado a {$destinatario}"
                     : 'Documento enviado';
                 $mensaje .= $codigoEnvio !== '' ? " (envío {$codigoEnvio})." : '.';
-                Mensajes::success($mensaje);
+                $this->addFlash('success', $mensaje);
             }
         }
 
@@ -411,18 +410,18 @@ class DocumentoController extends AbstractController
         $id = (string) $request->request->get('id', '');
 
         if (!$this->isCsrfTokenValid('acciones-documento', (string) $request->request->get('_token'))) {
-            Mensajes::error('La petición no es válida.');
-        } elseif (!preg_match('/^[0-9a-fA-F-]{36}$/', $id)) {
+            $this->addFlash('danger', 'La petición no es válida.');
+        } elseif (!Nobelio::esUuid($id)) {
             // El id se concatena a la url del API: solo pasa con forma de UUID.
-            Mensajes::error('No se indicó sobre qué documento actuar.');
+            $this->addFlash('danger', 'No se indicó sobre qué documento actuar.');
         } else {
             $respuesta = $nobelio->consumoPost("api/documentos/documento/{$id}/respuesta-validado/");
             if ($respuesta['error']) {
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
                 $avisos = $respuesta['datos']['avisos'] ?? [];
                 $conOk = count(array_filter($avisos, fn ($aviso) => ($aviso['codigo_http'] ?? null) === 200));
-                Mensajes::success(sprintf(
+                $this->addFlash('success', sprintf(
                     'Validación respondida: %d de %d webhook%s contestó 200.',
                     $conOk,
                     count($avisos),
@@ -440,25 +439,25 @@ class DocumentoController extends AbstractController
         $id = (string) $request->request->get('id', '');
 
         if (!$this->isCsrfTokenValid('acciones-documento', (string) $request->request->get('_token'))) {
-            Mensajes::error('La petición de borrado no es válida.');
-        } elseif ($id === '') {
-            Mensajes::error('No se indicó qué documento eliminar.');
+            $this->addFlash('danger', 'La petición de borrado no es válida.');
+        } elseif (!Nobelio::esUuid($id)) {
+            $this->addFlash('danger', 'No se indicó qué documento eliminar.');
         } else {
             // Nobelio solo deja borrar lo que la DIAN no ha validado; si el
             // documento ya esta aceptado responde 400 explicando por que, y ese
             // es el mensaje que se muestra.
             $respuesta = $nobelio->consumoDelete("api/documentos/documento/{$id}/");
             if ($respuesta['error']) {
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
-                Mensajes::success('Documento eliminado.');
+                $this->addFlash('success', 'Documento eliminado.');
             }
         }
 
         return $this->redirigirALista($request);
     }
 
-    #[Route('/nobelio/documento/errores/{id}', name: 'nobelio_documento_errores')]
+    #[Route('/nobelio/documento/errores/{id}', name: 'nobelio_documento_errores', requirements: ['id' => '[0-9a-fA-F-]{36}'])]
     public function errores(Nobelio $nobelio, string $id): Response
     {
         // Se abre en ventana emergente desde la ficha del emisor, asi que un
@@ -469,7 +468,7 @@ class DocumentoController extends AbstractController
 
         $respuesta = $nobelio->consumoGet("api/documentos/documento/{$id}/");
         if ($respuesta['error']) {
-            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
         } else {
             $documento = $respuesta['datos'];
             $errores = $documento['errores'] ?? [];

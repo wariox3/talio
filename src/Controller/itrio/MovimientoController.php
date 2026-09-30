@@ -2,16 +2,14 @@
 namespace App\Controller\itrio;
 
 use App\Utilidades\Itrio;
-use App\Utilidades\Mensajes;
-use App\Utilidades\Niquel;
-use App\Utilidades\SpaceDO;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
-use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Attribute\Route;
 
 class MovimientoController extends AbstractController
@@ -19,149 +17,145 @@ class MovimientoController extends AbstractController
     #[Route('/itrio/movimiento/lista', name: 'itrio_movimiento_lista')]
     public function lista(Request $request, Itrio $itrio): Response
     {
-        $filtros = ['cadena' => '?order=id'];
+        $filtros = ['order' => 'id'];
         $form = $this->createFormBuilder()
-            ->add('factura', ChoiceType::class, ['choices' => ['SI' => 'SI', 'TODOS' => ''], 'data' => 'TODOS'])
-            ->add('pendiente', ChoiceType::class, ['choices' => ['SI' => 'SI', 'TODOS' => ''], 'data' => 'TODOS'])
+            ->add('factura', ChoiceType::class, ['choices' => ['SI' => 'SI', 'TODOS' => ''], 'data' => ''])
+            ->add('pendiente', ChoiceType::class, ['choices' => ['SI' => 'SI', 'TODOS' => ''], 'data' => ''])
             ->add('id', TextType::class, ['required' => false])
             ->add('pagina', TextType::class, ['required' => false])
-            ->add('btnFiltrar', SubmitType::class, array('label' => 'Filtrar'))
-            ->add('btnExcel', SubmitType::class, array('label' => 'Excel'))
+            ->add('btnFiltrar', SubmitType::class, ['label' => 'Filtrar'])
+            ->add('btnExcel', SubmitType::class, ['label' => 'Excel'])
             ->getForm();
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            if ($form->get('btnFiltrar')->isClicked()) {
-                $filtros = $this->filtros($form);
-                $pagina = $form->get('pagina')->getData();
-                if($pagina) {
-                    $filtros['cadena'] .= '&page='.$pagina;
-                }
-            }
+            $filtros = $this->filtros($form);
             if ($form->get('btnExcel')->isClicked()) {
-                $filtros = $this->filtros($form);
-                $respuesta = $itrio->consumoArchivoGet('contenedor/movimiento/' . $filtros['cadena']."&excel=true");
-                if($respuesta['error'] == false) {
-                    $response = new Response($respuesta["content"]);
-                    $contentType = 'application/vnd.ms-excel'; // valor por defecto
-                    if (isset($respuesta['headers']['content-type'][0])) {
-                        $contentType = $respuesta['headers']['content-type'][0];
-                    }
-                    $response->headers->set('Content-Type', $contentType);
-                    $response->headers->set('Content-Disposition', 'attachment; filename="movimientos.xlsx"');
-                    $response->headers->set('Pragma', 'no-cache');
-                    $response->headers->set('Expires', '0');
-                    return $response;
-                }
+                unset($filtros['page']);
+                $respuesta = $itrio->consumoArchivo('contenedor/movimiento/?' . http_build_query($filtros + ['excel' => 'true']));
+                if (!$respuesta['error']) {
+                    $descarga = new Response($respuesta['contenido'], Response::HTTP_OK, ['Content-Type' => $respuesta['tipo']]);
+                    $descarga->headers->set('Content-Disposition', $descarga->headers->makeDisposition(
+                        ResponseHeaderBag::DISPOSITION_ATTACHMENT, 'movimientos.xlsx'));
 
+                    return $descarga;
+                }
+                $this->addFlash('danger', $respuesta['mensaje']);
             }
         }
+
         $registros = 0;
         $movimientos = [];
-        $respuesta = $itrio->consumoGet('contenedor/movimiento/' . $filtros['cadena']);
-        if($respuesta['error']) {
-            Mensajes::error($respuesta['mensaje']);
+        $respuesta = $itrio->consumoGet('contenedor/movimiento/?' . http_build_query($filtros));
+        if ($respuesta['error']) {
+            $this->addFlash('danger', $respuesta['mensaje']);
         } else {
-            $movimientos = $respuesta['datos']['results'];
-            $registros = $respuesta['datos']['count'];
+            $movimientos = $respuesta['datos']['results'] ?? [];
+            $registros = $respuesta['datos']['count'] ?? 0;
         }
+
         return $this->render('itrio/movimiento/lista.html.twig', [
             'movimientos' => $movimientos,
             'registros' => $registros,
-            'form' => $form->createView()]);
+            'form' => $form->createView(),
+        ]);
     }
 
-    #[Route('/itrio/movimiento/detalle/{id}', name: 'itrio_movimiento_detalle')]
-    public function detalle(Request $request, SpaceDO $spaceDO, Itrio $itrio, $id): Response
+    /**
+     * Ventana emergente para asignar o generar la factura de un movimiento.
+     * Si la accion sale bien la ventana se cierra sola (cerrarVentana).
+     */
+    #[Route('/itrio/movimiento/detalle/{id}', name: 'itrio_movimiento_detalle', requirements: ['id' => '\d+'])]
+    public function detalle(Request $request, Itrio $itrio, string $id): Response
     {
-        $factura_id = null;
+        $facturaId = null;
         $informacionFacturacion = [];
         $respuesta = $itrio->consumoGet("contenedor/movimiento/{$id}/");
-        if($respuesta['error']) {
-            Mensajes::error($respuesta['mensaje']);
+        if ($respuesta['error']) {
+            $this->addFlash('danger', $respuesta['mensaje']);
         } else {
             $movimiento = $respuesta['datos'];
-            $factura_id = $movimiento['factura_id'];
-            if($movimiento['informacion_facturacion_id']) {
+            $facturaId = $movimiento['factura_id'] ?? null;
+            if (!empty($movimiento['informacion_facturacion_id'])) {
                 $respuesta = $itrio->consumoGet("contenedor/informacion_facturacion/{$movimiento['informacion_facturacion_id']}/");
-                if($respuesta['error'] == false) {
+                if ($respuesta['error']) {
+                    $this->addFlash('danger', $respuesta['mensaje']);
+                } else {
                     $informacionFacturacion = $respuesta['datos'];
                 }
             }
         }
+
         $form = $this->createFormBuilder()
-            ->add('factura_id', TextType::class, ['data' => $factura_id, 'empty_data' => null,  'required' => false ])
-            ->add('guardar', SubmitType::class, array('label' => 'Guardar'))
-            ->add('generar', SubmitType::class, array('label' => 'Generar factura'))
+            ->add('factura_id', TextType::class, ['data' => $facturaId, 'empty_data' => null, 'required' => false])
+            ->add('guardar', SubmitType::class, ['label' => 'Guardar'])
+            ->add('generar', SubmitType::class, ['label' => 'Generar factura'])
             ->getForm();
         $form->handleRequest($request);
+        $cerrarVentana = false;
         if ($form->isSubmitted() && $form->isValid()) {
+            $respuesta = null;
             if ($form->get('guardar')->isClicked()) {
-                $datos = [
+                $respuesta = $itrio->consumoPatch("contenedor/movimiento/{$id}/", [
                     'factura_id' => $form->get('factura_id')->getData(),
-                ];
-                $respuesta = $itrio->consumoPath("contenedor/movimiento/{$id}/", $datos);
-                echo "<script type='text/javascript'>window.close();</script>";
+                ]);
+            } elseif ($form->get('generar')->isClicked()) {
+                $respuesta = $itrio->consumoPost('contenedor/movimiento/crear-factura/', ['id' => $id]);
             }
-            if ($form->get('generar')->isClicked()) {
-                $datos = [
-                    'id' => $id,
-                ];
-                $respuesta = $itrio->consumoPost("contenedor/movimiento/crear-factura/", $datos);
-                if($respuesta['error']) {
-                    Mensajes::error($respuesta['mensaje']);
+            if ($respuesta !== null) {
+                if ($respuesta['error']) {
+                    $this->addFlash('danger', $respuesta['mensaje']);
                 } else {
-                    echo "<script type='text/javascript'>window.close();</script>";
+                    $cerrarVentana = true;
                 }
             }
         }
+
         return $this->render('itrio/movimiento/detalle.html.twig', [
             'informacionFacturacion' => $informacionFacturacion,
-            'form' => $form->createView()]);
+            'form' => $form->createView(),
+            'cerrarVentana' => $cerrarVentana,
+        ]);
     }
 
-    #[Route('/itrio/movimiento/usuario/{id}', name: 'itrio_movimiento_usuario')]
-    public function usuario(Request $request, SpaceDO $spaceDO, Itrio $itrio, $id): Response
+    #[Route('/itrio/movimiento/usuario/{id}', name: 'itrio_movimiento_usuario', requirements: ['id' => '\d+'])]
+    public function usuario(Itrio $itrio, string $id): Response
     {
-        $form = $this->createFormBuilder()
-            ->getForm();
-        $form->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid()) {
-
-        }
         $informacionesFacturacion = [];
         $respuesta = $itrio->consumoGet("seguridad/usuario/detalle/{$id}/");
-        if(!$respuesta['error']) {
-            $arrDatos = $respuesta['datos'];
-            $informacionesFacturacion = $arrDatos['informaciones_facturaciones'];
+        if ($respuesta['error']) {
+            $this->addFlash('danger', $respuesta['mensaje']);
+        } else {
+            $informacionesFacturacion = $respuesta['datos']['informaciones_facturaciones'] ?? [];
         }
+
         return $this->render('itrio/movimiento/usuario.html.twig', [
             'informacionesFacturacion' => $informacionesFacturacion,
-            'form' => $form->createView()]);
+        ]);
     }
 
-    private function filtros($form)
+    /**
+     * Parametros de la query de movimientos. Van por http_build_query: antes
+     * el id y la pagina se pegaban tal cual a la URL y un "&" en el campo
+     * metia parametros extra en la peticion a Itrio.
+     */
+    private function filtros(FormInterface $form): array
     {
-        $filtros = ['cadena' => '?order=id'];
-        /*$tipo = $form->get('tipo')->getData();
-        if($tipo) {
-            if($filtros['cadena']) {
-                $filtros['cadena'] .= '&tipo=' . $tipo;
-            } else {
-                $filtros['cadena'] .= '?tipo=' . $tipo;
-            }
-        }*/
-        $pendiente = $form->get('pendiente')->getData();
-        if($pendiente) {
-            $filtros['cadena'] .= '&sin_factura=true';
+        $filtros = ['order' => 'id'];
+        if ($form->get('pendiente')->getData()) {
+            $filtros['sin_factura'] = 'true';
         }
-        $factura = $form->get('factura')->getData();
-        if($factura) {
-            $filtros['cadena'] .= '&genera_factura=true';
+        if ($form->get('factura')->getData()) {
+            $filtros['genera_factura'] = 'true';
         }
-        $id = $form->get('id')->getData();
-        if($id) {
-            $filtros['cadena'] .= '&id=' . $id;
+        $id = trim((string) $form->get('id')->getData());
+        if ($id !== '') {
+            $filtros['id'] = $id;
         }
+        $pagina = (int) $form->get('pagina')->getData();
+        if ($pagina > 1) {
+            $filtros['page'] = $pagina;
+        }
+
         return $filtros;
     }
 }

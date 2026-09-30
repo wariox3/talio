@@ -20,7 +20,6 @@
         <div class="nav-sec">
             <div class="nav-head">General</div>
             <a class="nav-a {{ app.request.get('_route') == 'inicio' ? 'on' }}" href="{{ path('inicio') }}">Inicio</a>
-            <a class="nav-a {{ app.request.get('_route') == 'monitor' ? 'on' }}" href="{{ path('monitor') }}">Monitor</a>
         </div>
 
         {% set ruta = app.request.get('_route') %}
@@ -30,6 +29,7 @@
             <details class="nav-group" {{ ruta starts with 'wolframio_' ? 'open' }}>
                 <summary>Wolframio</summary>
                 <div class="nav-sub">
+                    <a class="{{ ruta == 'wolframio_monitor' ? 'on' }}" href="{{ path('wolframio_monitor') }}">Monitor</a>
                     <a class="{{ ruta == 'wolframio_cuenta_lista' ? 'on' }}" href="{{ path('wolframio_cuenta_lista') }}">Cuenta</a>
                     <a class="{{ ruta == 'wolframio_documento_enviar' ? 'on' }}" href="{{ path('wolframio_documento_enviar') }}">Documento enviar</a>
                     <a class="{{ ruta == 'wolframio_documento_error' ? 'on' }}" href="{{ path('wolframio_documento_error') }}">Documento error</a>
@@ -37,11 +37,10 @@
                 </div>
             </details>
 
-            <details class="nav-group" {{ ruta starts with 'niquel_' ? 'open' }}>
-                <summary>Níquel</summary>
+            <details class="nav-group" {{ ruta starts with 'tantalo_' ? 'open' }}>
+                <summary>Tántalo</summary>
                 <div class="nav-sub">
-                    <a class="{{ ruta == 'niquel_error_lista' ? 'on' }}" href="{{ path('niquel_error_lista') }}">Error</a>
-                    <a class="{{ ruta == 'niquel_acceso_lista' ? 'on' }}" href="{{ path('niquel_acceso_lista') }}">Acceso</a>
+                    <a class="{{ ruta == 'tantalo_monitor' ? 'on' }}" href="{{ path('tantalo_monitor') }}">Monitor</a>
                 </div>
             </details>
 
@@ -58,16 +57,35 @@
             <details class="nav-group" {{ ruta starts with 'nobelio_' ? 'open' }}>
                 <summary>Nobelio</summary>
                 <div class="nav-sub">
+                    {# Ambiente contra el que trabajan todas las pantallas de Nobelio (se guarda en la sesion). #}
+                    <form class="nav-ambiente" method="post" action="{{ path('nobelio_ambiente') }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('nobelio-ambiente') }}">
+                        <input type="hidden" name="ruta" value="{{ ruta }}">
+                        <label for="nobelio-ambiente">Ambiente</label>
+                        <select id="nobelio-ambiente" name="ambiente" onchange="this.form.submit()">
+                            {% set disponibles = nobelio.ambientesDisponibles %}
+                            {% for clave, nombre in constant('App\\Utilidades\\Nobelio::AMBIENTES') %}
+                                <option value="{{ clave }}" {{ clave == nobelio.ambiente ? 'selected' }} {{ clave not in disponibles ? 'disabled' }}>
+                                    {{ nombre }}{{ clave not in disponibles ? ' (sin configurar)' }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <noscript><button type="submit" class="ghost">Cambiar</button></noscript>
+                    </form>
                     <a class="{{ ruta == 'nobelio_emisor_lista' ? 'on' }}" href="{{ path('nobelio_emisor_lista') }}">Emisor</a>
                     <a class="{{ ruta == 'nobelio_documento_lista' ? 'on' }}" href="{{ path('nobelio_documento_lista') }}">Documento</a>
                     <a class="{{ ruta == 'nobelio_nomina_lista' ? 'on' }}" href="{{ path('nobelio_nomina_lista') }}">Nómina</a>
                 </div>
             </details>
+        </div>
+
+        <div class="nav-sec">
+            <div class="nav-head">Servicios externos</div>
 
             <details class="nav-group" {{ ruta starts with 'kiai_' ? 'open' }}>
                 <summary>Kiai</summary>
                 <div class="nav-sub">
-                    <a class="{{ ruta == 'kiai_consumo_lista' ? 'on' }}" href="{{ path('kiai_consumo_lista') }}">Consumo</a>
+                    <a class="{{ ruta == 'kiai_consumo_lista' ? 'on' }}" href="{{ path('kiai_consumo_lista') }}">Consumos</a>
                 </div>
             </details>
         </div>
@@ -92,10 +110,18 @@
     <div class="main">
         <div class="topbar">
             <div class="path">{% block ruta %}{% endblock %}</div>
-            <div class="right">{% block acciones %}{% endblock %}</div>
+            <div class="right">
+                {% if ruta starts with 'nobelio_' %}
+                    {# Siempre a la vista: produccion en rojo para no confundirla con las de prueba. #}
+                    <span class="tag {{ nobelio.ambiente == 'produccion' ? 'crit' : 'warn' }}" title="Ambiente de Nobelio">
+                        <span class="dot"></span>Nobelio: {{ nobelio.nombreAmbiente }}
+                    </span>
+                {% endif %}
+                {% block acciones %}{% endblock %}
+            </div>
         </div>
 
-        {{ notificar()|raw }}
+        {{ include('_avisos.html.twig') }}
 
         {% block content %}{% endblock %}
     </div>

@@ -2,7 +2,6 @@
 {% import '_macros.html.twig' as ui %}
 {% block ruta %}<b>Detalle del usuario</b>{% endblock %}
 {% block content %}
-    {{ form_start(form) }}
     <div class="block">
         {{ ui.cabecera('Información de facturación') }}
         <div class="table-scroll">
@@ -40,5 +39,4 @@
             </table>
         </div>
     </div>
-    {{ form_end(form) }}
 {% endblock %}

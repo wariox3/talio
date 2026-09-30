@@ -1,7 +1,6 @@
 <?php
 namespace App\Controller\nobelio;
 
-use App\Utilidades\Mensajes;
 use App\Utilidades\Nobelio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -90,7 +89,7 @@ class NominaController extends AbstractController
 
         $respuesta = $nobelio->consumoGet('api/nomina/nomina/', $parametros);
         if ($respuesta['error']) {
-            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
         } else {
             $datos = $respuesta['datos'];
             $nominas = $datos['results'] ?? [];
@@ -125,7 +124,7 @@ class NominaController extends AbstractController
     {
         $respuesta = $nobelio->consumoGet("api/nomina/nomina/{$id}/");
         if ($respuesta['error']) {
-            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
 
             return $this->redirectToRoute('nobelio_nomina_lista');
         }
@@ -139,7 +138,7 @@ class NominaController extends AbstractController
         if (!empty($nomina['empleado'])) {
             $respuestaEmpleado = $nobelio->consumoGet("api/nomina/empleado/{$nomina['empleado']}/");
             if ($respuestaEmpleado['error']) {
-                Mensajes::error("Nobelio: {$respuestaEmpleado['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuestaEmpleado['mensaje']}");
             } else {
                 $empleado = $respuestaEmpleado['datos'];
             }
@@ -150,7 +149,7 @@ class NominaController extends AbstractController
         $eventos = [];
         $respuestaEventos = $nobelio->consumoGetTodos('api/nomina/nomina-evento/', ['nomina' => $id]);
         if ($respuestaEventos['error']) {
-            Mensajes::error("Nobelio: {$respuestaEventos['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuestaEventos['mensaje']}");
         } else {
             $eventos = $respuestaEventos['datos'];
         }
@@ -181,16 +180,16 @@ class NominaController extends AbstractController
         $id = (string) $request->request->get('id', '');
 
         if (!$this->isCsrfTokenValid('acciones-nomina', (string) $request->request->get('_token'))) {
-            Mensajes::error('La petición no es válida.');
-        } elseif ($id === '') {
-            Mensajes::error('No se indicó sobre qué nómina actuar.');
+            $this->addFlash('danger', 'La petición no es válida.');
+        } elseif (!Nobelio::esUuid($id)) {
+            $this->addFlash('danger', 'No se indicó sobre qué nómina actuar.');
         } else {
             // Nobelio comprueba el estado y responde 400 explicando por que no
             // se puede ("La nómina ya está firmada", etc.); ese es el mensaje
             // que se muestra.
             $respuesta = $nobelio->consumoPost("api/nomina/nomina/{$id}/{$accion}/");
             if ($respuesta['error']) {
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
                 $datos = $respuesta['datos'];
                 $mensaje = ($datos['accion'] ?? '') === 'consultado'
@@ -211,9 +210,9 @@ class NominaController extends AbstractController
                 // Rechazada, o enviada y aun sin veredicto: la peticion fue
                 // bien, pero no es un exito.
                 if (array_key_exists('es_valido', $datos) && !$datos['es_valido']) {
-                    Mensajes::warning($mensaje);
+                    $this->addFlash('warning', $mensaje);
                 } else {
-                    Mensajes::success($mensaje);
+                    $this->addFlash('success', $mensaje);
                 }
             }
         }
@@ -237,15 +236,15 @@ class NominaController extends AbstractController
         $id = (string) $request->request->get('id', '');
 
         if (!$this->isCsrfTokenValid('acciones-nomina', (string) $request->request->get('_token'))) {
-            Mensajes::error('La petición no es válida.');
-        } elseif ($id === '') {
-            Mensajes::error('No se indicó qué nómina consultar.');
+            $this->addFlash('danger', 'La petición no es válida.');
+        } elseif (!Nobelio::esUuid($id)) {
+            $this->addFlash('danger', 'No se indicó qué nómina consultar.');
         } else {
             // Sin CUNE no hay por que preguntar y Nobelio responde 400
             // diciendolo; ese es el mensaje que se muestra.
             $respuesta = $nobelio->consumoGet("api/nomina/nomina/{$id}/consultar/");
             if ($respuesta['error']) {
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
                 $datos = $respuesta['datos'];
                 $valida = !empty($datos['es_valido']);
@@ -261,9 +260,9 @@ class NominaController extends AbstractController
                 $mensaje .= $this->resumenDeErrores($datos);
 
                 if ($valida) {
-                    Mensajes::success($mensaje);
+                    $this->addFlash('success', $mensaje);
                 } else {
-                    Mensajes::warning($mensaje);
+                    $this->addFlash('warning', $mensaje);
                 }
             }
         }
@@ -286,7 +285,7 @@ class NominaController extends AbstractController
         // emita primero y ese es el mensaje que sale.
         $respuesta = $nobelio->consumoArchivo("api/nomina/nomina/{$id}/xml/");
         if ($respuesta['error']) {
-            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
 
             return $this->redirectToRoute('nobelio_nomina_lista');
         }
@@ -310,18 +309,18 @@ class NominaController extends AbstractController
         $id = (string) $request->request->get('id', '');
 
         if (!$this->isCsrfTokenValid('acciones-nomina', (string) $request->request->get('_token'))) {
-            Mensajes::error('La petición de borrado no es válida.');
-        } elseif ($id === '') {
-            Mensajes::error('No se indicó qué nómina eliminar.');
+            $this->addFlash('danger', 'La petición de borrado no es válida.');
+        } elseif (!Nobelio::esUuid($id)) {
+            $this->addFlash('danger', 'No se indicó qué nómina eliminar.');
         } else {
             // Nobelio solo deja borrar lo que la DIAN no ha aceptado; una
             // aceptada responde 400 diciendo que se corrige con una nota de
             // ajuste, y ese es el mensaje que se muestra.
             $respuesta = $nobelio->consumoDelete("api/nomina/nomina/{$id}/");
             if ($respuesta['error']) {
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
-                Mensajes::success('Nómina eliminada.');
+                $this->addFlash('success', 'Nómina eliminada.');
             }
         }
 
@@ -344,7 +343,7 @@ class NominaController extends AbstractController
 
         $respuesta = $nobelio->consumoGet("api/nomina/nomina/{$id}/");
         if ($respuesta['error']) {
-            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
         } else {
             $nomina = $respuesta['datos'];
             $errores = $nomina['errores'] ?? [];

@@ -1,0 +1,16 @@
+{# Mensajes flash pendientes (addFlash en los controladores). Leer app.flashes
+   los vacia. El tipo "danger", "success" o "warning" es la clase del aviso;
+   cualquier otro sale con el aviso neutro. #}
+{% set flashes = app.flashes %}
+{% if flashes is not empty %}
+    <div class="avisos">
+        {% for tipo, mensajes in flashes %}
+            {% for mensaje in mensajes %}
+                <div class="aviso {{ tipo in ['danger', 'error', 'success', 'warning'] ? tipo }}">
+                    <span class="dot"></span><span>{{ mensaje }}</span>
+                    <button type="button" class="cerrar" aria-label="Cerrar aviso" onclick="this.parentNode.remove()">&times;</button>
+                </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+{% endif %}

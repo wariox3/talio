@@ -1,10 +1,30 @@
 # talio
 
-Aplicación Symfony 6.4 (PHP >= 8.1) que actúa como front-end de varios
-microservicios internos (Itrio, Níquel, Wolframio, Carbono, Tántalo) y de
-las APIs de Kiai/Softgic y DigitalOcean Spaces.
+Panel interno (Symfony 7.4, PHP >= 8.2) para operar y vigilar los servicios de
+Semántica. No tiene base de datos propia: todo lo que muestra lo pide a las APIs
+de los microservicios, salvo la auditoría de servidores web, que lee de la base
+de Lantano.
 
-## Puesta en marcha
+| Menú | Qué hace | Habla con |
+|---|---|---|
+| Servicios → Wolframio | Monitor, cuentas (suscriptor/empleador en Kiai, sets de pruebas) y documentos pendientes de enviar, con error o esperando respuesta | API de Wolframio, API de Kiai |
+| Servicios → Tántalo | Monitor de la cola de decodificación | API de Tántalo |
+| Servicios → Itrio | Movimientos y su facturación, consumos (Excel), contenedores y usuarios | API de Itrio |
+| Servicios → Nobelio | Emisores (software, resoluciones, webhooks, pruebas), documentos y nóminas electrónicas | API de Nobelio |
+| Servicios externos → Kiai | Consumos por aliado y mes (Excel) | API de Kiai |
+| Auditoría → WebServer | Accesos de los servidores web por hora, IP, API key, host y ruta | PostgreSQL de Lantano |
+
+## Requisitos
+
+- PHP **8.2 o superior** (producción usa el 8.3 de Ubuntu 24.04). Composer está fijado a la
+  plataforma PHP 8.3.0 (`config.platform.php`), así que el `composer.lock`
+  siempre es instalable en el servidor aunque en desarrollo haya un PHP más
+  nuevo.
+- Extensiones: `ctype`, `iconv`, `curl`, `dom`, `xml`, `simplexml`,
+  `xmlreader`, `zip`, `mbstring`, `intl` y **`pdo_pgsql`** (la usa el monitor
+  de Auditoría).
+
+## Puesta en marcha (desarrollo)
 
 ```bash
 composer install
@@ -12,28 +32,248 @@ cp .env.example .env   # y rellenar los valores
 php -S localhost:8000 -t public
 ```
 
+## Pruebas
+
+```bash
+php bin/phpunit
+```
+
+Son pruebas unitarias de `src/Utilidades/` (clientes de API y Excel). Usan
+`MockHttpClient`, así que no tocan ningún servicio real ni necesitan `.env`
+(si existe se carga, pero no se usan sus valores).
+
+## Despliegue en producción (Ubuntu 24.04, desde cero)
+
+Ubuntu 24.04 trae PHP 8.3 de serie. Talio corre con **Apache + PHP-FPM 8.3**
+(`mpm_event` + `proxy_fcgi`), sin `mod_php`. Todo como root salvo donde dice
+`sudo -u www-data`.
+
+### 1. Paquetes
+
+```bash
+apt update && apt upgrade -y
+apt install -y apache2 git unzip curl \
+  php8.3-fpm php8.3-cli php8.3-common php8.3-xml php8.3-zip php8.3-mbstring \
+  php8.3-intl php8.3-curl php8.3-pgsql php8.3-opcache
+
+# Composer (instalador oficial, verificando la firma)
+EXPECTED="$(curl -s https://composer.github.io/installer.sig)"
+php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+[ "$EXPECTED" = "$(php -r "echo hash_file('sha384', 'composer-setup.php');")" ] \
+  && php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+rm -f composer-setup.php
+```
+
+### 2. PHP
+
+```bash
+cat > /etc/php/8.3/fpm/conf.d/99-talio.ini <<'EOF'
+date.timezone = America/Bogota
+expose_php = Off
+memory_limit = 256M
+opcache.memory_consumption = 128
+opcache.max_accelerated_files = 20000
+EOF
+cp /etc/php/8.3/fpm/conf.d/99-talio.ini /etc/php/8.3/cli/conf.d/99-talio.ini
+systemctl enable --now php8.3-fpm && systemctl restart php8.3-fpm
+```
+
+### 3. Apache
+
+```bash
+a2dismod php8.3 mpm_prefork 2>/dev/null   # por si algún paquete trajo mod_php
+a2enmod mpm_event proxy_fcgi setenvif rewrite ssl headers
+a2enconf php8.3-fpm                       # en este servidor todo va por FPM
+a2dissite 000-default
+```
+
+`/etc/apache2/sites-available/talio.conf`:
+
+```apache
+<VirtualHost *:80>
+    ServerName talio.semantica.com.co
+    ServerAlias www.talio.semantica.com.co
+    Redirect permanent / https://talio.semantica.com.co/
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName talio.semantica.com.co
+    ServerAlias www.talio.semantica.com.co
+    DocumentRoot /var/www/html/talio/public
+
+    <Directory /var/www/html/talio/public>
+        Options FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    <FilesMatch \.php$>
+        SetHandler "proxy:unix:/run/php/php8.3-fpm.sock|fcgi://localhost"
+    </FilesMatch>
+
+    SSLEngine on
+    SSLCertificateFile      /etc/ssl/certs/semantica/semantica2026.crt
+    SSLCertificateKeyFile   /etc/ssl/certs/semantica/semantica2026.key
+    SSLCertificateChainFile /etc/ssl/certs/semantica/semantica2026.ca_bundle
+
+    Header always set Strict-Transport-Security "max-age=31536000"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+
+    ErrorLog  ${APACHE_LOG_DIR}/talio_error.log
+    CustomLog ${APACHE_LOG_DIR}/talio_access.log combined
+</VirtualHost>
+```
+
+El certificado es el mismo comodín de Semántica que en el servidor anterior:
+copiar `/etc/ssl/certs/semantica/` con `scp` (la `.key` con permisos `600`
+y dueño root). Alternativa: `apt install certbot python3-certbot-apache &&
+certbot --apache -d talio.semantica.com.co` y quitar las tres líneas `SSL*`.
+
+```bash
+a2ensite talio
+apache2ctl configtest && systemctl reload apache2
+```
+
+### 4. Código
+
+```bash
+cd /var/www/html
+git clone https://github.com/wariox3/talio.git   # repo privado: token o deploy key
+chown -R www-data:www-data /var/www/html/talio
+install -d -o www-data -g www-data /var/www/.cache   # caché de Composer de www-data
+```
+
+`.env` (se copia de `.env.example` y se rellena; ver "Variables de entorno"):
+
+```bash
+cd /var/www/html/talio
+sudo -u www-data cp .env.example .env
+sudo -u www-data nano .env      # APP_ENV=prod y todos los valores
+chmod 640 .env
+php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'   # APP_SECRET nuevo
+```
+
+### 5. Instalar y arrancar
+
+```bash
+cd /var/www/html/talio
+sudo -u www-data composer install --no-dev --optimize-autoloader
+sudo -u www-data php bin/console cache:clear
+sudo -u www-data php bin/console about | grep -iE 'environment|php'   # prod, 8.3
+sudo -u www-data php bin/console debug:container --env-vars           # que no falte ninguna
+```
+
+### 6. Red
+
+```bash
+ufw allow OpenSSH && ufw allow 'Apache Full' && ufw enable
+```
+
+Fuera del servidor:
+
+- **DNS:** `talio.semantica.com.co` (y `www.`) apuntando a la IP nueva.
+- **Base de Lantano:** permitir la IP nueva en el firewall y en el
+  `pg_hba.conf` del PostgreSQL, o Auditoría → WebServer no conecta.
+- **APIs:** si Wolframio, Tántalo, Itrio, Nobelio o Kiai filtran por IP,
+  agregar la nueva.
+
+### 7. Comprobar
+
+1. `https://talio.semantica.com.co` muestra el login en español.
+2. Entrar y abrir: monitor de Wolframio y de Tántalo, Auditoría → WebServer,
+   una lista de Itrio, Nobelio en cada ambiente y un Excel de Kiai.
+3. Errores: `var/log/prod.log` y `/var/log/apache2/talio_error.log`.
+
+### En cada despliegue
+
+```bash
+cd /var/www/html/talio
+sudo -u www-data git pull origin main
+sudo -u www-data composer install --no-dev --optimize-autoloader
+sudo -u www-data php bin/console cache:clear
+```
+
+`composer install`, nunca `composer update`: instala exactamente lo del
+`composer.lock` probado en desarrollo. Siempre como `www-data`, nunca como
+root, para que `var/` y `vendor/` no queden con dueño root.
+
+Para volver atrás: `sudo -u www-data git checkout <commit anterior>` y repetir
+el `composer install` y el `cache:clear`.
+
+## Arquitectura
+
+```
+src/
+  Controller/<servicio>/   Un directorio por entrada del menú; rutas /<servicio>/...
+  Utilidades/
+    ClienteApi.php         Base de los clientes HTTP (ver abajo)
+    Wolframio.php  Tantalo.php  Itrio.php  Nobelio.php  Softgic.php (Kiai)
+    BdWebServer.php        Consultas a la tabla acceso de Lantano (PDO pgsql)
+    Excel.php              Genera un XLSX y lo devuelve como descarga
+templates/<servicio>/      Vistas; base.html.twig (con menú) y base_sin_menu.html.twig (ventanas emergentes)
+```
+
+### Clientes de API
+
+Todos heredan de `ClienteApi` y reciben su URL base y credenciales por
+inyección (`#[Autowire(env: ...)]`), no leyendo `$_ENV`. Toda petición:
+
+- tiene **tiempo límite**: 10 s sin recibir nada y 30 s en total. Antes no
+  tenía, y un servicio caído dejaba la página colgada 60 s por cada llamada.
+- **nunca lanza excepción** y devuelve siempre el mismo arreglo:
+
+| Resultado | Arreglo |
+|---|---|
+| Éxito | `['error' => false, 'status' => 200, 'datos' => [...]]` |
+| Error HTTP | `['error' => true, 'status' => 4xx/5xx, 'mensaje' => '...']` |
+| Sin respuesta (caído, DNS, tiempo agotado) | `['error' => true, 'status' => 0, 'mensaje' => '...']` |
+| Éxito que no es JSON | Error, con `mensaje` "... devolvió una respuesta que no es JSON." |
+| Archivo (`consumoArchivo()`) | `['error' => false, 'contenido', 'tipo', 'nombre']` |
+
+El `mensaje` sale del cuerpo del error (`mensaje`, `detail` o `error`; Nobelio
+y Kiai tienen su propio formato) o, si no trae, del código HTTP.
+
+| Cliente | Autenticación |
+|---|---|
+| Wolframio, Tántalo | Ninguna. (Antes se les mandaba por error el token de Itrio.) |
+| Itrio | JWT. Se pide con `ITRIO_USUARIO`/`ITRIO_CLAVE` la primera vez y se guarda en la sesión (`itrio_token`). Va en **todas** las peticiones; si Itrio responde 401 se renueva y se reintenta una vez. |
+| Nobelio | `Authorization: Api-Key` con el `NOBELIO_TOKEN_<AMBIENTE>` del ambiente elegido. |
+| Kiai (`Softgic`) | Básica con `KIAI_TOKEN` (`usuario:clave`). Un cuerpo con `ExceptionType` es error aunque el status sea 200. |
+
+### Avisos al usuario
+
+Los controladores usan `$this->addFlash('success'|'warning'|'danger', ...)` y
+`templates/_avisos.html.twig` los pinta con `app.flashes`. Toda acción que
+llama a una API informa el resultado: si falla, sale el mensaje del servicio.
+
+### Seguridad
+
+- Un único usuario en memoria (`LOGIN_USERNAME`/`LOGIN_PASSWORD`); todo exige
+  `ROLE_ADMIN` salvo `/login`.
+- El login comprueba su token CSRF y se bloquea 15 minutos tras 5 intentos
+  fallidos por usuario e IP (`login_throttling`, `symfony/rate-limiter`).
+- La interfaz está en español (`config/packages/translation.yaml`,
+  `default_locale: es`): los mensajes de Symfony, como los errores del login,
+  salen de sus traducciones `.es.xlf`. Las propias van en `translations/`.
+- Las acciones que modifican algo son POST con token CSRF: las de Nobelio
+  con `isCsrfTokenValid()`, las demás con el token del formulario de Symfony.
+  Nada se ejecuta por una URL con parámetros GET.
+- Los ids que se concatenan a la URL de una API se validan (UUID en Nobelio,
+  enteros en Itrio) para que no se pueda construir otra ruta.
+
 ## Variables de entorno
 
-Todas las variables viven en `.env`, que **no se versiona** (está en
-`.gitignore`). La plantilla versionada es `.env.example`: si agregas o quitas
-una variable del código, actualízala ahí también.
+Todas viven en `.env`, que **no se versiona** (está en `.gitignore`). La
+plantilla versionada es `.env.example`: si agregas o quitas una variable del
+código, actualízala ahí también.
 
-### Cómo se consumen
-
-Hay dos mecanismos distintos en este proyecto, y conviene tenerlos claros
-porque fallan de forma muy distinta:
-
-| Mecanismo | Dónde | Si falta la variable |
-|---|---|---|
-| `%env(VAR)%` en YAML | `config/packages/security.yaml` | Symfony aborta al arrancar con un error claro |
-| `$_ENV['VAR']` en PHP | `src/Utilidades/*.php` | *Undefined array key* en tiempo de ejecución, solo al tocar esa ruta |
-
-Por eso `php bin/console debug:container --env-vars` **solo reporta
-`LOGIN_USERNAME` y `LOGIN_PASSWORD`**: las demás se leen directo de `$_ENV` y
-el contenedor no las conoce. No confíes en ese comando para validar el `.env`
-completo.
-
-### Referencia
+Todas se leen con `%env()%` o `#[Autowire(env: ...)]`, así que el contenedor
+las conoce y `php bin/console debug:container --env-vars` sirve para ver cuáles
+faltan. Si falta una, falla la primera página que use ese servicio, con un
+error claro que nombra la variable. Excepción: las de Nobelio son opcionales
+por ambiente (`default::`), así que ese comando no las lista; los ambientes
+sin configurar salen deshabilitados en el selector del menú.
 
 | Variable | Usada en | Descripción |
 |---|---|---|
@@ -42,21 +282,45 @@ completo.
 | `LOGIN_USERNAME` | `config/packages/security.yaml` | Usuario del provider in-memory. |
 | `LOGIN_PASSWORD` | `config/packages/security.yaml` | Clave del provider. El hasher es `plaintext`. |
 | `BASE_ITRIO` | `Utilidades/Itrio.php` | URL base de la API de Itrio. |
-| `ITRIO_USUARIO` | `Utilidades/Itrio.php` | Usuario de `Itrio::autenticar()`. |
-| `ITRIO_CLAVE` | `Utilidades/Itrio.php` | Clave de `Itrio::autenticar()`. |
-| `BASE_NIQUEL` | `Utilidades/Niquel.php` | URL base de la API de Níquel. |
+| `ITRIO_USUARIO` | `Utilidades/Itrio.php` | Usuario del login de Itrio (proyecto RUTEOAPP). |
+| `ITRIO_CLAVE` | `Utilidades/Itrio.php` | Clave del login de Itrio. |
 | `BASE_WOLFRAMIO` | `Utilidades/Wolframio.php` | URL base de la API de Wolframio. |
-| `BASE_CARBONO` | `Utilidades/Carbono.php` | URL base de la API de Carbono. |
-| `BASE_TANTALO` | `Utilidades/Tantalo.php`, `Carbono.php` | URL base de la API de Tántalo. |
-| `BASE_NOBELIO` | `Utilidades/Nobelio.php` | URL base de la API de Nobelio (facturación electrónica DIAN). |
-| `NOBELIO_TOKEN` | `Utilidades/Nobelio.php` | API Key de Nobelio, `<prefijo>.<secreto>`. Ver nota abajo. |
-| `KIAI_TOKEN` | `Utilidades/Softgic.php` | Va como `CURLOPT_USERPWD`, formato `usuario:clave`. |
-| `DO_REGION` | `Utilidades/SpaceDO.php` | Región de Spaces. Arma el endpoint `https://{DO_REGION}.digitaloceanspaces.com`. |
-| `DO_CLAVE_ACCESO` | `Utilidades/SpaceDO.php` | Access key de Spaces. |
-| `DO_CLAVE_SECRETA` | `Utilidades/SpaceDO.php` | Secret key de Spaces. |
-| `DO_BUCKET` | `Utilidades/SpaceDO.php` | Nombre del bucket. |
+| `BASE_TANTALO` | `Utilidades/Tantalo.php` | URL base de la API de Tántalo. |
+| `BASE_NOBELIO_PRODUCCION`, `_PRUEBA`, `_DESARROLLO` | `Utilidades/Nobelio.php` | URL base de la API de Nobelio en cada ambiente. Ver "Ambientes de Nobelio". |
+| `NOBELIO_TOKEN_PRODUCCION`, `_PRUEBA`, `_DESARROLLO` | `Utilidades/Nobelio.php` | API Key de Nobelio de cada ambiente, `<prefijo>.<secreto>`. |
+| `KIAI_TOKEN` | `Utilidades/Softgic.php` | Autenticación básica de Kiai, formato `usuario:clave`. |
+| `DATABASE_BDLANTANO_URL` | `Utilidades/BdWebServer.php` | PostgreSQL de Lantano: `postgresql://usuario:clave@host:5432/base`. |
 
-**Sobre las credenciales de Nobelio.** Nobelio (Django + DRF) tiene dos
+Las `BASE_*` **deben terminar en `/`**: las rutas del código van sin `/`
+inicial y se concatenan a ellas.
+
+### Nobelio
+
+#### Ambientes de Nobelio
+
+Hay tres instancias de Nobelio: **producción**, **prueba** y **desarrollo**.
+Cada una tiene su URL y su API Key en el `.env`
+(`BASE_NOBELIO_<AMBIENTE>` y `NOBELIO_TOKEN_<AMBIENTE>`).
+
+- **Elegir:** con el selector "Ambiente" del grupo Nobelio del menú
+  (`POST /nobelio/ambiente`, con token CSRF). Al cambiar se vuelve a la lista
+  de la sección: un detalle abierto es de otro ambiente y allí no existe.
+- **Dónde se guarda:** en la sesión del usuario (`nobelio_ambiente`), así que
+  vale para todas las pantallas de Nobelio hasta que se cambie o se cierre la
+  sesión. Cada usuario tiene la suya.
+- **Por defecto:** producción, o el primero configurado si producción no lo
+  está.
+- **Sin configurar:** un ambiente al que le falta la URL o la llave sale
+  deshabilitado en el selector. Si no hay ninguno, las pantallas de Nobelio
+  muestran el error en vez de llamar a la API.
+- **A la vista:** todas las páginas de Nobelio muestran en la cabecera
+  "Nobelio: <ambiente>", en rojo si es producción.
+
+El código está en `Nobelio::ambiente()`, `ambientesDisponibles()` y
+`cambiarAmbiente()`. La clase se expone a Twig como la variable global
+`nobelio` (`config/packages/twig.yaml`) para el selector y la etiqueta.
+
+**Credenciales.** Nobelio (Django + DRF) tiene dos
 mecanismos de autenticación, y Talio usa el primero:
 
 | Mecanismo | Cabecera | Alcance |
@@ -64,7 +328,7 @@ mecanismos de autenticación, y Talio usa el primero:
 | API Key | `Authorization: Api-Key <prefijo>.<secreto>` | Los emisores y documentos de **una sola cuenta** |
 | JWT de usuario | `Authorization: Bearer <access>` | Según el usuario: los emisores asignados, o todo si es staff |
 
-La API Key va tal cual en cada petición (`Nobelio::peticion()`), **no caduca** y
+La API Key va tal cual en cada petición (`Nobelio::cabeceras()`), **no caduca** y
 no se guarda nada en sesión: no hay login ni renovación que manejar. Se genera
 en Nobelio y solo se ve completa al crearla.
 
@@ -79,7 +343,7 @@ Inventario tomado de los `urls.py` y del `schema.yml` de Nobelio el 2026-09-16. 
 desactualizado**: la fuente de verdad son
 `/home/desarrollo/proyectos/nobelio/apps/*/urls.py`, los `@action` de sus
 ViewSets y su `schema.yml`. Las rutas se pasan a `Nobelio::consumoGet()` y compañía sin barra
-inicial, porque `BASE_NOBELIO` ya termina en `/`.
+inicial, porque las `BASE_NOBELIO_*` ya terminan en `/`.
 
 Cada recurso registrado en un router de DRF expone el juego REST completo:
 `GET` (lista), `POST` (alta) y `GET`/`PUT`/`PATCH`/`DELETE` sobre `{id}/`.
@@ -115,29 +379,19 @@ Cada recurso registrado en un router de DRF expone el juego REST completo:
 | `api/documentos/documento/{id}/xml/` · `pdf/` · `attached/` | **Descargas** (`FileResponse` / `HttpResponse`). ⚠️ Usar `consumoArchivo()`, **nunca `consumoGet()`**. Ver nota abajo. |
 | `api/documentos/documento/{id}/notificar/` | `POST` multipart (`pdf` y `adjuntos` opcionales) · arma el zip con el AttachedDocument y **lo envía por correo** al adquiriente (Zinc). Devuelve `destinatario`, `codigo_envio`, `notificado`… Si falla el correo responde 502 y el documento no queda notificado. Con `?descargar=1` no envía: devuelve el zip. |
 
-**Alcance de `Nobelio`.** La clase expone `consumoGet()`, `consumoGetTodos()` (recorre las páginas),
-`consumoPost()`, `consumoPatch()`, `consumoDelete()` y `consumoArchivo()`. `PUT` se añade
-cuando haga falta: `peticion()` ya acepta cualquier método, así que un verbo
-nuevo es una línea.
 
-**Las descargas van por `consumoArchivo()`.** `xml/` y `pdf/` devuelven archivo,
-y el camino normal de la clase pasa por `decodificar()`, que hace `json_decode`.
-Sobre los bytes de un PDF eso da `null` → `datos` vacío → y como el HTTP fue
-200, `error` queda en `false`: un éxito silencioso, sin archivo y sin aviso. Por
-eso `consumoArchivo()` no decodifica y devuelve otras claves:
+**Alcance de `Nobelio`.** La clase expone `consumoGet()`, `consumoGetTodos()`
+(recorre las páginas), `consumoPost()`, `consumoPatch()`, `consumoDelete()` y
+`consumoArchivo()`. `PUT` se añade cuando haga falta: es una línea que llama a
+`llamar('PUT', ...)`. `Nobelio::esUuid()` valida los ids que llegan de un
+formulario antes de ponerlos en la URL.
 
-| Clave | Contenido |
-|---|---|
-| `contenido` | Los bytes crudos (**no** `datos`). |
-| `tipo` | El `Content-Type` que anuncia Nobelio. |
-| `nombre` | El nombre del `Content-Disposition` (`FE1.xml`), o `''` si no viene. |
-
-El error sí sigue siendo JSON —los endpoints binarios fallan con el mismo cuerpo
-que el resto del API—, así que `error`/`mensaje` funcionan igual que siempre.
-Ejemplo de uso en `DocumentoController::descargar()`.
-
-Las `BASE_*` **deben terminar en `/`**, porque el código concatena sin
-separador: `$_ENV['BASE_X'] . $url`.
+**Las descargas van por `consumoArchivo()`.** `xml/`, `pdf/` y `attached/`
+devuelven archivo, no JSON: por `consumoGet()` salen como error ("no es JSON").
+`consumoArchivo()` devuelve `contenido` (los bytes), `tipo` (el
+`Content-Type`) y `nombre` (el del `Content-Disposition`, p. ej. `FE1.xml`, o
+`''`). El error sí es JSON, así que `error`/`mensaje` funcionan igual. Ejemplo
+en `nobelio/DocumentoController::descargar()`.
 
 ## Sesión
 
@@ -162,8 +416,12 @@ quitar uno sin el otro deja los archivos acumulándose sin caducar.
 
 ## Pendientes conocidos
 
-- **`Carbono::consumoGet()`** (`src/Utilidades/Carbono.php:58`) usa
-  `BASE_TANTALO`, mientras que `Carbono::consumoPost()` (línea 18) usa
-  `BASE_CARBONO`. Verificar si es intencional.
 - **`APP_SECRET`** quedó commiteado en el historial (`5fad149`, `99cf641`).
-  Si el proyecto ya está en producción, conviene rotarlo.
+  El `.env` local ya no usa esos valores, y el servidor nuevo genera uno
+  propio (paso 4 del despliegue), así que basta con no reutilizar el de un
+  servidor anterior.
+- **La clave del login está en texto plano** en el `.env` (hasher
+  `plaintext`). Es una decisión consciente: se mantiene así. Si algún día se
+  quiere hashear: cambiar el hasher a `auto` en `security.yaml`, generar el
+  hash con `php bin/console security:hash-password` y poner ese hash en
+  `LOGIN_PASSWORD` **en el mismo despliegue** (si no, nadie puede entrar).

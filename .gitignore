@@ -16,3 +16,8 @@
 /.idea/
 /.idea/*
 /.env.dev
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###

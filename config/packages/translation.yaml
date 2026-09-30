@@ -1,0 +1,9 @@
+framework:
+    # Toda la interfaz es en espanol. Con esto los mensajes de Symfony (login,
+    # validaciones de formularios) salen de sus traducciones .es.xlf.
+    default_locale: es
+    enabled_locales: ['es']
+    translator:
+        default_path: '%kernel.project_dir%/translations'
+        fallbacks: ['es']
+        providers:

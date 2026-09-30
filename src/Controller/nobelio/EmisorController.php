@@ -1,7 +1,6 @@
 <?php
 namespace App\Controller\nobelio;
 
-use App\Utilidades\Mensajes;
 use App\Utilidades\Nobelio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -63,7 +62,7 @@ class EmisorController extends AbstractController
 
         $respuesta = $nobelio->consumoGet('api/emisores/emisor/', $parametros);
         if ($respuesta['error']) {
-            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
         } else {
             // DRF pagina con PageNumberPagination: {count, next, previous, results}.
             $datos = $respuesta['datos'];
@@ -88,7 +87,7 @@ class EmisorController extends AbstractController
     {
         $respuesta = $nobelio->consumoGet("api/emisores/emisor/{$id}/");
         if ($respuesta['error']) {
-            Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             return $this->redirectToRoute('nobelio_emisor_lista');
         }
 
@@ -97,7 +96,7 @@ class EmisorController extends AbstractController
         $certificados = [];
         $listaCertificados = $nobelio->consumoGet('api/emisores/certificado/', ['emisor' => $id]);
         if ($listaCertificados['error']) {
-            Mensajes::error("Nobelio: {$listaCertificados['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$listaCertificados['mensaje']}");
         } else {
             $certificados = $listaCertificados['datos']['results'] ?? [];
         }
@@ -105,7 +104,7 @@ class EmisorController extends AbstractController
         $software = [];
         $listaSoftware = $nobelio->consumoGet('api/emisores/software/', ['emisor' => $id]);
         if ($listaSoftware['error']) {
-            Mensajes::error("Nobelio: {$listaSoftware['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$listaSoftware['mensaje']}");
         } else {
             $software = $listaSoftware['datos']['results'] ?? [];
         }
@@ -113,7 +112,7 @@ class EmisorController extends AbstractController
         $resoluciones = [];
         $listaResoluciones = $nobelio->consumoGet('api/emisores/resolucion/', ['emisor' => $id]);
         if ($listaResoluciones['error']) {
-            Mensajes::error("Nobelio: {$listaResoluciones['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$listaResoluciones['mensaje']}");
         } else {
             $resoluciones = $listaResoluciones['datos']['results'] ?? [];
         }
@@ -121,7 +120,7 @@ class EmisorController extends AbstractController
         $webhooks = [];
         $listaWebhooks = $nobelio->consumoGet('api/emisores/webhook/', ['emisor' => $id]);
         if ($listaWebhooks['error']) {
-            Mensajes::error("Nobelio: {$listaWebhooks['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$listaWebhooks['mensaje']}");
         } else {
             $webhooks = $listaWebhooks['datos']['results'] ?? [];
         }
@@ -154,9 +153,9 @@ class EmisorController extends AbstractController
             $respuesta = $nobelio->consumoPost('api/emisores/webhook/', ['emisor' => $id] + $this->datosWebhook($form));
             if ($respuesta['error']) {
                 // Sin redirect: asi el form conserva lo digitado para corregir.
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
-                Mensajes::success(sprintf(
+                $this->addFlash('success', sprintf(
                     'Webhook %s registrado. Recargue el detalle del emisor para verlo.',
                     $respuesta['datos']['id'] ?? '',
                 ));
@@ -168,7 +167,7 @@ class EmisorController extends AbstractController
         $emisor = [];
         $respuestaEmisor = $nobelio->consumoGet("api/emisores/emisor/{$id}/");
         if ($respuestaEmisor['error']) {
-            Mensajes::error("Nobelio: {$respuestaEmisor['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuestaEmisor['mensaje']}");
         } else {
             $emisor = $respuestaEmisor['datos'];
         }
@@ -195,7 +194,7 @@ class EmisorController extends AbstractController
         $webhook = [];
         $respuestaWebhook = $nobelio->consumoGet("api/emisores/webhook/{$id}/");
         if ($respuestaWebhook['error']) {
-            Mensajes::error("Nobelio: {$respuestaWebhook['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuestaWebhook['mensaje']}");
         } else {
             $webhook = $respuestaWebhook['datos'];
         }
@@ -206,9 +205,9 @@ class EmisorController extends AbstractController
         if ($webhook && $form->isSubmitted() && $form->isValid()) {
             $respuesta = $nobelio->consumoPatch("api/emisores/webhook/{$id}/", $this->datosWebhook($form));
             if ($respuesta['error']) {
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
-                Mensajes::success('Webhook actualizado. Recargue el detalle del emisor para ver los cambios.');
+                $this->addFlash('success', 'Webhook actualizado. Recargue el detalle del emisor para ver los cambios.');
 
                 return $this->redirectToRoute('nobelio_emisor_webhook_editar', ['id' => $id]);
             }
@@ -276,15 +275,15 @@ class EmisorController extends AbstractController
         $webhook = (string) $request->request->get('webhook', '');
 
         if (!$this->isCsrfTokenValid('webhooks-emisor', (string) $request->request->get('_token'))) {
-            Mensajes::error('La petición de borrado no es válida.');
+            $this->addFlash('danger', 'La petición de borrado no es válida.');
         } elseif (!ctype_digit($webhook)) {
-            Mensajes::error('No se indicó qué webhook eliminar.');
+            $this->addFlash('danger', 'No se indicó qué webhook eliminar.');
         } else {
             $respuesta = $nobelio->consumoDelete("api/emisores/webhook/{$webhook}/");
             if ($respuesta['error']) {
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
-                Mensajes::success('Webhook eliminado.');
+                $this->addFlash('success', 'Webhook eliminado.');
             }
         }
 
@@ -321,9 +320,9 @@ class EmisorController extends AbstractController
             ]);
             if ($respuesta['error']) {
                 // Sin redirect: asi el form conserva lo digitado para corregir.
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
-                Mensajes::success(sprintf(
+                $this->addFlash('success', sprintf(
                     'Software %s registrado. Recargue el detalle del emisor para verlo.',
                     $respuesta['datos']['id'] ?? '',
                 ));
@@ -335,7 +334,7 @@ class EmisorController extends AbstractController
         $emisor = [];
         $respuestaEmisor = $nobelio->consumoGet("api/emisores/emisor/{$id}/");
         if ($respuestaEmisor['error']) {
-            Mensajes::error("Nobelio: {$respuestaEmisor['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuestaEmisor['mensaje']}");
         } else {
             $emisor = $respuestaEmisor['datos'];
         }
@@ -375,10 +374,10 @@ class EmisorController extends AbstractController
             // esta fuera del rango", etc.); ese es el mensaje que se muestra.
             $respuesta = $nobelio->consumoPost("api/emisores/resolucion/{$id}/crear-documento-prueba/", $datos);
             if ($respuesta['error']) {
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
                 $creado = $respuesta['datos'];
-                Mensajes::success(sprintf(
+                $this->addFlash('success', sprintf(
                     "Documento %s creado en estado '%s'. Queda en borrador: se emite desde Documentos.",
                     $creado['numero'] ?? '',
                     $creado['estado'] ?? '',
@@ -396,7 +395,7 @@ class EmisorController extends AbstractController
         $resolucion = [];
         $respuestaResolucion = $nobelio->consumoGet("api/emisores/resolucion/{$id}/");
         if ($respuestaResolucion['error']) {
-            Mensajes::error("Nobelio: {$respuestaResolucion['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuestaResolucion['mensaje']}");
         } else {
             $resolucion = $respuestaResolucion['datos'];
         }
@@ -433,14 +432,14 @@ class EmisorController extends AbstractController
 
             $respuesta = $nobelio->consumoPost("api/emisores/software/{$id}/crear-nomina-prueba/", $datos);
             if ($respuesta['error']) {
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
                 $creada = $respuesta['datos'];
                 // El periodo se dice porque no se elige: Nobelio continua la
                 // serie hacia atras para no repetir trabajador y periodo, que
                 // es lo que la DIAN rechaza con la regla 90.
                 $periodo = $creada['periodo'] ?? [];
-                Mensajes::success(sprintf(
+                $this->addFlash('success', sprintf(
                     "Nómina %s creada en estado '%s'%s. Queda en borrador: se emite desde Nómina.",
                     $creada['numero'] ?? '',
                     $creada['estado'] ?? '',
@@ -464,11 +463,11 @@ class EmisorController extends AbstractController
         if ($formNotaAjuste->isSubmitted() && $formNotaAjuste->isValid()) {
             $respuesta = $nobelio->consumoPost("api/emisores/software/{$id}/crear-nota-ajuste-prueba/", []);
             if ($respuesta['error']) {
-                Mensajes::error("Nobelio: {$respuesta['mensaje']}");
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
                 // El esquema de Nobelio no documenta la respuesta, asi que el
                 // mensaje no depende de sus campos.
-                Mensajes::success('Notas de ajuste creadas en borrador: se emiten desde Nómina.');
+                $this->addFlash('success', 'Notas de ajuste creadas en borrador: se emiten desde Nómina.');
             }
 
             return $this->redirectToRoute('nobelio_software_nomina_prueba', ['id' => $id]);
@@ -477,7 +476,7 @@ class EmisorController extends AbstractController
         $software = [];
         $respuestaSoftware = $nobelio->consumoGet("api/emisores/software/{$id}/");
         if ($respuestaSoftware['error']) {
-            Mensajes::error("Nobelio: {$respuestaSoftware['mensaje']}");
+            $this->addFlash('danger', "Nobelio: {$respuestaSoftware['mensaje']}");
         } else {
             $software = $respuestaSoftware['datos'];
         }

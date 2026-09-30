@@ -1,5 +1,8 @@
 twig:
     file_name_pattern: '*.twig'
+    globals:
+        # Ambiente de Nobelio elegido, para el selector del menu y la etiqueta de la cabecera.
+        nobelio: '@App\Utilidades\Nobelio'
 
 when@test:
     twig:

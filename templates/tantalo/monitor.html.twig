@@ -1,0 +1,26 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+
+{% block title %}Monitor Tántalo · Talio{% endblock %}
+{% block ruta %}Tántalo <span>/</span> <b>Monitor</b>{% endblock %}
+
+{% block acciones %}
+    {% if arrServicios.colaDecodificar %}
+        <span class="tag ok"><span class="dot"></span>Todas las colas activas</span>
+    {% else %}
+        <span class="tag crit"><span class="dot"></span>1 cola detenida</span>
+    {% endif %}
+    <span class="stamp">{{ "now"|date('H:i:s') }}</span>
+{% endblock %}
+
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Servicios') }}
+        <div class="states">
+            <div class="st">
+                <b>Tántalo</b>
+                <span class="val">{{ ui.estadoCritico(arrServicios.colaDecodificar, 'Cola decodificar', 'Cola decodificar detenida') }}</span>
+            </div>
+        </div>
+    </div>
+{% endblock %}

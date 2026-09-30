@@ -19,9 +19,10 @@
             </div>
         {% endblock %}
 
-        {{ notificar()|raw }}
+        {{ include('_avisos.html.twig') }}
 
         {% block content %}{% endblock %}
+        {% if cerrarVentana ?? false %}<script>window.close();</script>{% endif %}
     </div>
 </div>
 

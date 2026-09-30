@@ -1,9 +1,0 @@
-{% extends 'base_sin_menu.html.twig' %}
-{% block ruta %}<b>Detalle del error</b>{% endblock %}
-{% block content %}
-    {{ form_start(form) }}
-    <div class="block">
-        {{ error.traza|raw }}
-    </div>
-    {{ form_end(form) }}
-{% endblock %}

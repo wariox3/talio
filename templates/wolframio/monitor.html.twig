@@ -1,13 +1,12 @@
 {% extends 'base.html.twig' %}
 {% import '_macros.html.twig' as ui %}
 
-{% block title %}Monitor · Talio{% endblock %}
-{% block ruta %}<b>Monitor</b>{% endblock %}
+{% block title %}Monitor Wolframio · Talio{% endblock %}
+{% block ruta %}Wolframio <span>/</span> <b>Monitor</b>{% endblock %}
 
 {% block acciones %}
     {% set detenidos = (arrServiciosWolframio.colaEmitir ? 0 : 1)
-        + (arrServiciosWolframio.colaRespuesta ? 0 : 1)
-        + (arrServiciosTantalo.colaDecodificar ? 0 : 1) %}
+        + (arrServiciosWolframio.colaRespuesta ? 0 : 1) %}
     {% if detenidos > 0 %}
         <span class="tag crit"><span class="dot"></span>{{ detenidos }} cola{{ detenidos > 1 ? 's' }} detenida{{ detenidos > 1 ? 's' }}</span>
     {% else %}
@@ -27,20 +26,6 @@
             <div class="st">
                 <b>Wolframio</b>
                 <span class="val">{{ ui.estadoCritico(arrServiciosWolframio.colaRespuesta, 'Cola respuesta', 'Cola respuesta detenida') }}</span>
-            </div>
-            <div class="st">
-                <b>Tántalo</b>
-                <span class="val">{{ ui.estadoCritico(arrServiciosTantalo.colaDecodificar, 'Cola decodificar', 'Cola decodificar detenida') }}</span>
-            </div>
-            <div class="st">
-                <b>Níquel</b>
-                <span class="val">
-                    {% if arrErrores.prod > 0 %}
-                        <span class="tag warn"><span class="dot"></span>{{ arrErrores.prod }} errores en producción</span>
-                    {% else %}
-                        <span class="tag ok"><span class="dot"></span>Sin errores en producción</span>
-                    {% endif %}
-                </span>
             </div>
         </div>
     </div>
@@ -100,8 +85,8 @@
         {{ ui.cabecera('Documentos por hora', 'Últimas 24 h') }}
         <div class="chart-wrap">
             <svg data-grafica
-                 data-labels='{{ labels|json_encode|raw }}'
-                 data-valores='{{ data|json_encode|raw }}'
+                 data-labels="{{ labels|json_encode }}"
+                 data-valores="{{ data|json_encode }}"
                  data-unidad="doc"></svg>
             <div class="chart-tip"></div>
         </div>
@@ -168,33 +153,6 @@
                     </tr>
                 {% else %}
                     <tr><td colspan="3">Sin documentos en el periodo.</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="block">
-        {{ ui.cabecera('Carbono · pendientes') }}
-        <div class="table-scroll">
-            <table class="data">
-                <thead>
-                <tr><th>Etapa del negocio</th><th class="num">Cantidad</th></tr>
-                </thead>
-                <tbody>
-                {% for negocio in negocios %}
-                    <tr>
-                        <td>{{ negocio.negocioEtapa }}</td>
-                        <td class="num">{{ negocio.cantidad }}</td>
-                    </tr>
-                {% else %}
-                    <tr><td colspan="2">Sin negocios pendientes.</td></tr>
-                {% endfor %}
-                {% for contacto in contactos %}
-                    <tr>
-                        <td>Contactos pendientes</td>
-                        <td class="num">{{ contacto.cantidad }}</td>
-                    </tr>
                 {% endfor %}
                 </tbody>
             </table>

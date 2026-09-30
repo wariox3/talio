@@ -22,11 +22,20 @@ security:
       lazy: true
       provider: app_user_provider
 
-      # Login
+      # Login. La plantilla manda _csrf_token con el id 'authenticate'; sin
+      # enable_csrf el token viajaba pero no se comprobaba.
       form_login:
         login_path: login
         check_path: login
         default_target_path: inicio
+        enable_csrf: true
+
+      # Tras 5 intentos fallidos en 15 minutos (por usuario + IP) el login se
+      # bloquea hasta que pase la ventana. Usa symfony/rate-limiter y guarda
+      # los contadores en la cache de la app (var/cache).
+      login_throttling:
+        max_attempts: 5
+        interval: '15 minutes'
 
       # Logout
       logout:

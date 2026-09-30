@@ -4,6 +4,7 @@ namespace App\Controller\wolframio;
 use App\Utilidades\Wolframio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -14,145 +15,124 @@ class DocumentoController extends AbstractController
     public function enviar(Request $request, Wolframio $wolframio): Response
     {
         $form = $this->createFormBuilder()
-            ->add('btnEnviar', SubmitType::class, array('label' => 'Enviar'))
+            ->add('btnEnviar', SubmitType::class, ['label' => 'Enviar'])
             ->getForm();
         $form->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid()) {
-            if ($form->get('btnEnviar')->isClicked()) {
-                $arrSeleccionados = $request->get('ChkSeleccionar');
-                if($arrSeleccionados) {
-                    foreach ($arrSeleccionados as $codigo) {
-                        $datos = [
-                            "documentoId" => $codigo
-                        ];
-                        $respuesta = $wolframio->consumoPost("api/documento/enviar", $datos);
-                    }
-                }
-            }
+        if ($form->isSubmitted() && $form->isValid() && $form->get('btnEnviar')->isClicked()) {
+            $this->procesarSeleccionados($request, $wolframio, 'api/documento/enviar', [], 'enviados');
+
+            return $this->redirectToRoute('wolframio_documento_enviar');
         }
-        $documentos = [];
-        $datos = [
-            'estadoEnviado' => false
-        ];
-        $respuesta = $wolframio->consumoPost('api/documento/lista', $datos);
-        if(!$respuesta['error']) {
-            $arrDatos = $respuesta['datos'];
-            $documentos = $arrDatos['documentos'];
-        }
-        return $this->render('wolframio/documento/enviar.html.twig', [
-            'documentos' => $documentos,
-            'form' => $form->createView()]);
+
+        return $this->lista($wolframio, $form, 'wolframio/documento/enviar.html.twig', [
+            'estadoEnviado' => false,
+        ]);
     }
 
     #[Route('/wolframio/documento/error', name: 'wolframio_documento_error')]
     public function error(Request $request, Wolframio $wolframio): Response
     {
         $form = $this->createFormBuilder()
-            ->add('btnActivar', SubmitType::class, array('label' => 'Activar'))
-            ->add('btnActivarEnviar', SubmitType::class, array('label' => 'Activar y enviar'))
+            ->add('btnActivar', SubmitType::class, ['label' => 'Activar'])
+            ->add('btnActivarEnviar', SubmitType::class, ['label' => 'Activar y enviar'])
             ->getForm();
         $form->handleRequest($request);
         if ($form->isSubmitted() && $form->isValid()) {
-            if ($form->get('btnActivar')->isClicked()) {
-                $arrSeleccionados = $request->get('ChkSeleccionar');
-                if($arrSeleccionados) {
-                    foreach ($arrSeleccionados as $codigo) {
-                        $datos = [
-                            "documentoId" => $codigo,
-                            "emitir" => false
-                        ];
-                        $respuesta = $wolframio->consumoPost("api/documento/activar_reenvio", $datos);
-                    }
-                }
-            }
-            if ($form->get('btnActivarEnviar')->isClicked()) {
-                $arrSeleccionados = $request->get('ChkSeleccionar');
-                if($arrSeleccionados) {
-                    foreach ($arrSeleccionados as $codigo) {
-                        $datos = [
-                            "documentoId" => $codigo,
-                            "emitir" => true
-                        ];
-                        $respuesta = $wolframio->consumoPost("api/documento/activar_reenvio", $datos);
-                    }
-                }
+            $emitir = $form->get('btnActivarEnviar')->isClicked();
+            if ($emitir || $form->get('btnActivar')->isClicked()) {
+                $this->procesarSeleccionados($request, $wolframio, 'api/documento/activar_reenvio', ['emitir' => $emitir],
+                    $emitir ? 'activados y enviados' : 'activados');
+
+                return $this->redirectToRoute('wolframio_documento_error');
             }
         }
-        $documentos = [];
-        $datos = [
+
+        return $this->lista($wolframio, $form, 'wolframio/documento/error.html.twig', [
             'estadoEnviado' => true,
             'estadoError' => true,
-        ];
-        $respuesta = $wolframio->consumoPost('api/documento/lista', $datos);
-        if(!$respuesta['error']) {
-            $arrDatos = $respuesta['datos'];
-            $documentos = $arrDatos['documentos'];
-        }
-        return $this->render('wolframio/documento/error.html.twig', [
-            'documentos' => $documentos,
-            'form' => $form->createView()]);
+        ]);
     }
 
     #[Route('/wolframio/documento/respuesta', name: 'wolframio_documento_respuesta')]
     public function respuesta(Request $request, Wolframio $wolframio): Response
     {
         $form = $this->createFormBuilder()
-            ->add('btnRespuesta', SubmitType::class, array('label' => 'Activar'))
+            ->add('btnRespuesta', SubmitType::class, ['label' => 'Activar'])
             ->getForm();
         $form->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid()) {
-            if ($form->get('btnRespuesta')->isClicked()) {
-                $arrSeleccionados = $request->get('ChkSeleccionar');
-                if($arrSeleccionados) {
-                    foreach ($arrSeleccionados as $codigo) {
-                        $datos = [
-                            "documentoId" => $codigo
-                        ];
-                        $respuesta = $wolframio->consumoPost("api/documento/cliente/respuesta", $datos);
-                    }
-                }
-            }
+        if ($form->isSubmitted() && $form->isValid() && $form->get('btnRespuesta')->isClicked()) {
+            $this->procesarSeleccionados($request, $wolframio, 'api/documento/cliente/respuesta', [], 'activados');
+
+            return $this->redirectToRoute('wolframio_documento_respuesta');
         }
-        $documentos = [];
-        $datos = [
+
+        return $this->lista($wolframio, $form, 'wolframio/documento/respuesta.html.twig', [
             'estadoEnviado' => true,
             'estadoError' => false,
             'estadoValidado' => true,
-            'estadoRespuestaValidadoCliente' => false
-        ];
-        $respuesta = $wolframio->consumoPost('api/documento/lista', $datos);
-        if(!$respuesta['error']) {
-            $arrDatos = $respuesta['datos'];
-            $documentos = $arrDatos['documentos'];
-        }
-        return $this->render('wolframio/documento/respuesta.html.twig', [
-            'documentos' => $documentos,
-            'form' => $form->createView()]);
+            'estadoRespuestaValidadoCliente' => false,
+        ]);
     }
 
     #[Route('/wolframio/documento/detalle/{id}', name: 'wolframio_documento_detalle')]
-    public function detalle(Request $request, Wolframio $wolframio, $id): Response
+    public function detalle(Wolframio $wolframio, string $id): Response
     {
-        $form = $this->createFormBuilder()
-            ->getForm();
-        $form->handleRequest($request);
-        if ($form->isSubmitted() && $form->isValid()) {
-
-        }
         $documento = [];
-        $errores = [];
-        $datos = [
-            'documentoId' => $id
-        ];
-        $respuesta = $wolframio->consumoPost('api/documento/detalle', $datos);
-        if(!$respuesta['error']) {
-            $arrDatos = $respuesta['datos'];
-            $documento = $arrDatos['documento'];
-            $errores = $documento['errores'];
+        $respuesta = $wolframio->consumoPost('api/documento/detalle', ['documentoId' => $id]);
+        if ($respuesta['error']) {
+            $this->addFlash('danger', $respuesta['mensaje']);
+        } else {
+            $documento = $respuesta['datos']['documento'] ?? [];
         }
+
         return $this->render('wolframio/documento/detalle.html.twig', [
             'documento' => $documento,
-            'errores' => $errores,
-            'form' => $form->createView()]);
+            'errores' => $documento['errores'] ?? [],
+        ]);
+    }
+
+    /**
+     * Llama $endpoint por cada documento marcado (ChkSeleccionar[]) y deja un
+     * aviso con cuantos salieron bien y el error de cada uno que fallo. Antes
+     * el resultado se descartaba y un fallo no se veia.
+     */
+    private function procesarSeleccionados(Request $request, Wolframio $wolframio, string $endpoint, array $datos, string $hecho): void
+    {
+        $seleccionados = $request->request->all('ChkSeleccionar');
+        if (!$seleccionados) {
+            $this->addFlash('warning', 'No se seleccionó ningún documento.');
+
+            return;
+        }
+
+        $correctos = 0;
+        foreach ($seleccionados as $documentoId) {
+            $respuesta = $wolframio->consumoPost($endpoint, ['documentoId' => $documentoId] + $datos);
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Documento {$documentoId}: {$respuesta['mensaje']}");
+            } else {
+                $correctos++;
+            }
+        }
+
+        if ($correctos > 0) {
+            $this->addFlash('success', "{$correctos} de " . count($seleccionados) . " documentos {$hecho}.");
+        }
+    }
+
+    private function lista(Wolframio $wolframio, FormInterface $form, string $plantilla, array $filtros): Response
+    {
+        $documentos = [];
+        $respuesta = $wolframio->consumoPost('api/documento/lista', $filtros);
+        if ($respuesta['error']) {
+            $this->addFlash('danger', $respuesta['mensaje']);
+        } else {
+            $documentos = $respuesta['datos']['documentos'] ?? [];
+        }
+
+        return $this->render($plantilla, [
+            'documentos' => $documentos,
+            'form' => $form->createView(),
+        ]);
     }
 }

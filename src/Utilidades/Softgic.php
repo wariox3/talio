@@ -2,137 +2,86 @@
 
 namespace App\Utilidades;
 
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-class Softgic
+/**
+ * Cliente de la API de Kiai/Softgic (apps.kiai.co), con autenticacion basica.
+ *
+ * Kiai informa sus errores con {"ExceptionType", "ExceptionMessage"} y a veces
+ * lo hace con status 200, asi que eso tambien cuenta como error.
+ */
+class Softgic extends ClienteApi
 {
+    private const URL_BASE = 'https://apps.kiai.co/api/';
 
-    public function __construct()
-    {
-
+    public function __construct(
+        HttpClientInterface $httpClient,
+        #[Autowire(env: 'KIAI_TOKEN')] private readonly string $credenciales,
+    ) {
+        parent::__construct($httpClient, self::URL_BASE, 'Kiai');
     }
 
-    public function consultaSuscriptor($suscriptor): array
+    public function consultaSuscriptor(string $suscriptor): array
     {
-        $respuesta = $this->consumirGet("ConValidacionPrevia/ResumenSuscriptor/{$suscriptor}", []);
-        if($respuesta['error'] == false) {
-            $datos = $respuesta['datos'];
-            $arrRespuesta = [
-                'error' => false,
-                'suscriptor' => $datos['Suscriptor'],
-                'resoluciones' => $datos['ResolucionesFacturas']['ResolucionesFacturacion']
-            ];
-        } else {
-            $arrRespuesta = [
-                'error' => true
-            ];
+        $respuesta = $this->consumoGet('ConValidacionPrevia/ResumenSuscriptor/' . rawurlencode($suscriptor));
+        if ($respuesta['error']) {
+            return $respuesta;
         }
-        return $arrRespuesta;
+
+        $datos = $respuesta['datos'];
+
+        return [
+            'error' => false,
+            'suscriptor' => $datos['Suscriptor'] ?? [],
+            'resoluciones' => $datos['ResolucionesFacturas']['ResolucionesFacturacion'] ?? [],
+        ];
     }
 
-    public function consultaEmpleador($empleador): array
+    public function consultaEmpleador(string $empleador): array
     {
-        $respuesta = $this->consumirGet("Empleadores/ObtenerPorId/{$empleador}", []);
-        if($respuesta['error'] == false) {
-            $datos = $respuesta['datos'];
-            $arrRespuesta = [
-                'error' => false,
-                'empleador' => $datos['Data']
-            ];
-        } else {
-            $arrRespuesta = [
-                'error' => true
-            ];
+        $respuesta = $this->consumoGet('Empleadores/ObtenerPorId/' . rawurlencode($empleador));
+        if ($respuesta['error']) {
+            return $respuesta;
         }
-        return $arrRespuesta;
+
+        return ['error' => false, 'empleador' => $respuesta['datos']['Data'] ?? []];
     }
 
-    public function consultaConsumo($aliado, $anio, $mes): array
+    public function consultaConsumo(string $aliado, int $anio, int $mes): array
     {
-        $respuesta = $this->consumirGet("ConValidacionPrevia/ConsultarConsumosAliado/{$aliado}/{$anio}/{$mes}", []);
-        if($respuesta['error'] == false) {
-            $datos = $respuesta['datos'];
-            $arrRespuesta = [
-                'error' => false,
-                'consumos' => $datos
-            ];
-        } else {
-            $arrRespuesta = [
-                'error' => true
-            ];
+        $respuesta = $this->consumoGet(sprintf('ConValidacionPrevia/ConsultarConsumosAliado/%s/%d/%02d', rawurlencode($aliado), $anio, $mes));
+        if ($respuesta['error']) {
+            return $respuesta;
         }
-        return $arrRespuesta;
+
+        return ['error' => false, 'consumos' => $respuesta['datos']];
     }
 
-    private function consumirPost($url, $arDatos)
+    private function consumoGet(string $url): array
     {
-        $url = "https://apps.kiai.co/api/{$url}";
-        $curl = curl_init($url);
-        curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "POST");
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_USERPWD, $_ENV['KIAI_TOKEN']);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
-        $datosJSON = json_encode($arDatos);
-        curl_setopt($curl, CURLOPT_POSTFIELDS, $datosJSON);
-        $respuestaCruda = curl_exec($curl);
-        $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        curl_close($curl);
-        $respuesta = json_decode($respuestaCruda, true);
-        if ($status == 500) {
-            $mensaje = is_string($respuesta) ? $respuesta : "Status 500";
-            return [
-                "error" => true,
-                "mensaje" => $mensaje
-            ];
-        } else {
-            if (isset($respuesta['ExceptionType'])) {
-                return [
-                    "error" => true,
-                    "mensaje" => $respuesta['ExceptionMessage']
-                ];
-            } else {
-                return [
-                    "error" => false,
-                    "datos" => $respuesta
-                ];
+        $respuesta = $this->peticion('GET', $url);
+        if (!$respuesta['error'] && isset($respuesta['datos']['ExceptionType'])) {
+            return ['error' => true, 'status' => $respuesta['status'], 'mensaje' => $this->mensajeDeError($respuesta['datos'], $respuesta['status'])];
+        }
+
+        return $respuesta;
+    }
+
+    protected function cabeceras(): array
+    {
+        // KIAI_TOKEN es "usuario:clave", lo que curl recibia en CURLOPT_USERPWD.
+        return ['Authorization' => 'Basic ' . base64_encode($this->credenciales)];
+    }
+
+    protected function mensajeDeError(array $cuerpo, int $status): string
+    {
+        foreach (['ExceptionMessage', 'Message'] as $clave) {
+            if (isset($cuerpo[$clave]) && is_string($cuerpo[$clave]) && trim($cuerpo[$clave]) !== '') {
+                return trim($cuerpo[$clave]);
             }
         }
-    }
 
-    private function consumirGet($url, $arDatos)
-    {
-        $url = "https://apps.kiai.co/api/{$url}";
-        $curl = curl_init($url);
-        curl_setopt($curl, CURLOPT_CUSTOMREQUEST, "GET");
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_USERPWD, $_ENV['KIAI_TOKEN']);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
-        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($curl, CURLOPT_TIMEOUT, 30);
-        $datosJSON = json_encode($arDatos);
-        curl_setopt($curl, CURLOPT_POSTFIELDS, $datosJSON);
-
-        $respuestaCruda = curl_exec($curl);
-        $status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        curl_close($curl);
-        $respuesta = json_decode($respuestaCruda, true);
-        if ($status == 500) {
-            $mensaje = is_string($respuesta) ? $respuesta : "Status 500";
-            return [
-                "error" => true,
-                "mensaje" => $mensaje
-            ];
-        } else {
-            if (isset($respuesta['ExceptionType'])) {
-                return [
-                    "error" => true,
-                    "mensaje" => $respuesta['ExceptionMessage']
-                ];
-            } else {
-                return [
-                    "error" => false,
-                    "datos" => $respuesta
-                ];
-            }
-        }
+        return parent::mensajeDeError($cuerpo, $status);
     }
 }

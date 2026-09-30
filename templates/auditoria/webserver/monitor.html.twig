@@ -104,8 +104,8 @@
         {% else %}
             <div class="chart-wrap">
                 <svg data-grafica
-                     data-labels='{{ labels|json_encode|raw }}'
-                     data-valores='{{ data|json_encode|raw }}'
+                     data-labels="{{ labels|json_encode }}"
+                     data-valores="{{ data|json_encode }}"
                      data-unidad="acc"></svg>
                 <div class="chart-tip"></div>
             </div>

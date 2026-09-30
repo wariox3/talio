@@ -2,6 +2,13 @@
 
 namespace App\Utilidades;
 
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+
+/**
+ * Consultas de solo lectura sobre la tabla acceso de la base de Lantano
+ * (PostgreSQL), donde se guardan los access.log de los servidores web. La
+ * conexion se abre en la primera consulta, no al construir el servicio.
+ */
 class BdWebServer
 {
     private const ZONA_HORARIA = 'America/Bogota';
@@ -47,10 +54,19 @@ class BdWebServer
 
     private ?\PDO $conexion = null;
 
+    public function __construct(
+        #[Autowire(env: 'DATABASE_BDLANTANO_URL')] private readonly string $urlBaseDatos,
+    ) {
+    }
+
     private function conexion(): \PDO
     {
         if ($this->conexion === null) {
-            $url = parse_url($_ENV['DATABASE_BDLANTANO_URL']);
+            $url = parse_url($this->urlBaseDatos);
+            if (!is_array($url) || !isset($url['host'], $url['user'], $url['path'])) {
+                // PDOException para que cada consulta lo devuelva como error y no rompa la pagina.
+                throw new \PDOException('DATABASE_BDLANTANO_URL no es una URL válida: postgresql://usuario:clave@host:5432/base');
+            }
             $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s',
                 $url['host'], $url['port'] ?? 5432, ltrim($url['path'], '/'));
             $this->conexion = new \PDO($dsn, urldecode($url['user']), urldecode($url['pass'] ?? ''), [
