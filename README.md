@@ -67,73 +67,81 @@ rm -f composer-setup.php
 ### 2. PHP
 
 ```bash
-cat > /etc/php/8.3/fpm/conf.d/99-talio.ini <<'EOF'
+cat > /etc/php/8.3/fpm/conf.d/99-semantica.ini <<'EOF'
 date.timezone = America/Bogota
 expose_php = Off
 memory_limit = 256M
 opcache.memory_consumption = 128
 opcache.max_accelerated_files = 20000
 EOF
-cp /etc/php/8.3/fpm/conf.d/99-talio.ini /etc/php/8.3/cli/conf.d/99-talio.ini
+cp /etc/php/8.3/fpm/conf.d/99-semantica.ini /etc/php/8.3/cli/conf.d/99-semantica.ini
 systemctl enable --now php8.3-fpm && systemctl restart php8.3-fpm
 ```
 
-### 3. Apache
+### 3. Apache (común a todos los proyectos del servidor)
+
+El servidor va a alojar varios proyectos, así que Apache se configura una vez
+para todos y cada proyecto se declara con **una línea**:
+
+- `conf-available/semantica.conf`: seguridad, TLS y cabeceras para todos los
+  sitios.
+- `conf-available/semantica-sitios.conf`: la plantilla `SitioPHP`
+  (`mod_macro`) con todo lo que lleva un sitio: HTTP→HTTPS, SSL, PHP-FPM de la
+  versión que se elija, HSTS y logs propios.
+- `sites-available/000-rechazar.conf`: el sitio por defecto, que **rechaza**
+  todo lo que no sea un dominio configurado. Sin él, el `000-default` de
+  Ubuntu serviría `/var/www/html` entero y cualquiera podría pedir
+  `http://<IP>/talio/.env`.
+
+Todo por PHP-FPM (`mpm_event`), sin `mod_php`: así cada proyecto puede usar su
+versión de PHP.
 
 ```bash
-a2dismod php8.3 mpm_prefork 2>/dev/null   # por si algún paquete trajo mod_php
-a2enmod mpm_event proxy_fcgi setenvif rewrite ssl headers
-a2enconf php8.3-fpm                       # en este servidor todo va por FPM
+a2dismod php8.3 mpm_prefork 2>/dev/null     # por si algún paquete trajo mod_php
+a2enmod mpm_event proxy_fcgi setenvif rewrite ssl headers macro
 a2dissite 000-default
 ```
 
-`/etc/apache2/sites-available/talio.conf`:
+Los archivos están en el repositorio, en `despliegue/apache/`: se copian, no
+se pegan (pegar heredocs desde la terminal rompe el `EOF`). Se clona primero
+el proyecto (paso 4) y luego:
 
-```apache
-<VirtualHost *:80>
-    ServerName talio.semantica.com.co
-    ServerAlias www.talio.semantica.com.co
-    Redirect permanent / https://talio.semantica.com.co/
-</VirtualHost>
-
-<VirtualHost *:443>
-    ServerName talio.semantica.com.co
-    ServerAlias www.talio.semantica.com.co
-    DocumentRoot /var/www/html/talio/public
-
-    <Directory /var/www/html/talio/public>
-        Options FollowSymLinks
-        AllowOverride All
-        Require all granted
-    </Directory>
-
-    <FilesMatch \.php$>
-        SetHandler "proxy:unix:/run/php/php8.3-fpm.sock|fcgi://localhost"
-    </FilesMatch>
-
-    SSLEngine on
-    SSLCertificateFile      /etc/ssl/certs/semantica/semantica2026.crt
-    SSLCertificateKeyFile   /etc/ssl/certs/semantica/semantica2026.key
-    SSLCertificateChainFile /etc/ssl/certs/semantica/semantica2026.ca_bundle
-
-    Header always set Strict-Transport-Security "max-age=31536000"
-    Header always set X-Content-Type-Options "nosniff"
-    Header always set X-Frame-Options "SAMEORIGIN"
-
-    ErrorLog  ${APACHE_LOG_DIR}/talio_error.log
-    CustomLog ${APACHE_LOG_DIR}/talio_access.log combined
-</VirtualHost>
+```bash
+cp /var/www/html/talio/despliegue/apache/conf-available/*.conf /etc/apache2/conf-available/
+cp /var/www/html/talio/despliegue/apache/sites-available/*.conf /etc/apache2/sites-available/
+apt install -y ssl-cert
+install -d /var/www/rechazar
+a2enconf semantica semantica-sitios
+a2ensite 000-rechazar
 ```
 
-El certificado es el mismo comodín de Semántica que en el servidor anterior:
-copiar `/etc/ssl/certs/semantica/` con `scp` (la `.key` con permisos `600`
-y dueño root). Alternativa: `apt install certbot python3-certbot-apache &&
-certbot --apache -d talio.semantica.com.co` y quitar las tres líneas `SSL*`.
+Certificado: el comodín de Semántica, copiado del servidor anterior con
+`scp` a `/etc/ssl/certs/semantica/` (la `.key` con permisos `600` y dueño
+root).
+
+**Talio**: `despliegue/apache/sites-available/talio.conf`, ya copiado arriba, es una sola línea `Use SitioPHP ...`.
 
 ```bash
 a2ensite talio
 apache2ctl configtest && systemctl reload apache2
+apache2ctl -S                                # lista los sitios y cuál es el default
 ```
+
+**Otro proyecto** = otro archivo con su línea `Use` y `a2ensite`:
+
+```apache
+Use SitioPHP otro.semantica.com.co /var/www/html/otro/public 8.3 /etc/ssl/certs/semantica/semantica2026
+```
+
+Si un proyecto necesita otra versión de PHP (p. ej. 8.1): instalarla desde el
+PPA de Ondřej Surý (`add-apt-repository ppa:ondrej/php`,
+`apt install php8.1-fpm ...`) y poner `8.1` en su línea `Use`. Conviven sin
+problema porque cada versión tiene su propio socket de FPM.
+
+Esta configuración se probó con Apache 2.4.58 (el de Ubuntu 24.04): por IP o
+dominio ajeno responde 403, HTTP redirige a HTTPS, `.env` y `*.sql` dan 403,
+no lista carpetas, los `.php` van a FPM (nunca se sirve el código fuente) y
+rechaza TLS 1.1.
 
 ### 4. Código
 
@@ -172,7 +180,8 @@ ufw allow OpenSSH && ufw allow 'Apache Full' && ufw enable
 
 Fuera del servidor:
 
-- **DNS:** `talio.semantica.com.co` (y `www.`) apuntando a la IP nueva.
+- **DNS:** `talio.semantica.com.co` (y `www.`) apuntando a la IP nueva, y
+  lo mismo para cada proyecto que se agregue.
 - **Base de Lantano:** permitir la IP nueva en el firewall y en el
   `pg_hba.conf` del PostgreSQL, o Auditoría → WebServer no conecta.
 - **APIs:** si Wolframio, Tántalo, Itrio, Nobelio o Kiai filtran por IP,
