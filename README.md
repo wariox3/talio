@@ -196,12 +196,14 @@ Fuera del servidor:
 
 ### En cada despliegue
 
+Como root:
+
 ```bash
-cd /var/www/html/talio
-sudo -u www-data git pull origin main
-sudo -u www-data composer install --no-dev --optimize-autoloader
-sudo -u www-data php bin/console cache:clear
+/var/www/html/talio/despliegue/actualizar.sh
 ```
+
+Hace `git pull`, `composer install --no-dev` y `cache:clear`, todo como
+`www-data`, y se detiene en el primer paso que falle.
 
 `composer install`, nunca `composer update`: instala exactamente lo del
 `composer.lock` probado en desarrollo. Siempre como `www-data`, nunca como
