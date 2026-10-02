@@ -86,6 +86,17 @@
             </details>
         </div>
 
+        <div class="nav-sec">
+            <div class="nav-head">Utilidades</div>
+
+            <details class="nav-group" {{ ruta starts with 'utilidades_backblaze_' ? 'open' }}>
+                <summary>Backblaze</summary>
+                <div class="nav-sub">
+                    <a class="{{ ruta == 'utilidades_backblaze_backups' ? 'on' }}" href="{{ path('utilidades_backblaze_backups') }}">Backups</a>
+                </div>
+            </details>
+        </div>
+
         <div class="side-foot">
             {{ app.user ? app.user.userIdentifier : 'Sin sesión' }}
             <small><a href="{{ path('logout') }}">Salir</a></small>
