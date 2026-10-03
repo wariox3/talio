@@ -50,7 +50,6 @@
                     <th class="num">Total a pagar</th>
                     <th>Validación DIAN</th>
                     <th>CUFE/CUDE</th>
-                    <th>Archivos</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -81,22 +80,10 @@
                         <td class="id" title="{{ documento.cufe_cude }}">
                             {{- documento.cufe_cude ? documento.cufe_cude|slice(0, 12) ~ '…' -}}
                         </td>
-                        {# El XML recibido siempre esta; el documento extraido
-                           solo si llego envuelto en un AttachedDocument, y el
-                           PDF solo si el proveedor lo mando. #}
-                        <td class="acciones">
-                            <a href="{{ path('nobelio_recepcion_descargar', { 'archivo': 'xml', 'id': documento.id }) }}">XML</a>
-                            {% if documento.tiene_xml_factura %}
-                                <a href="{{ path('nobelio_recepcion_descargar', { 'archivo': 'xml-factura', 'id': documento.id }) }}">Documento</a>
-                            {% endif %}
-                            {% if documento.tiene_pdf %}
-                                <a href="{{ path('nobelio_recepcion_descargar', { 'archivo': 'pdf', 'id': documento.id }) }}">PDF</a>
-                            {% endif %}
-                        </td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="13">
+                        <td colspan="12">
                             {% if total == 0 %}
                                 No hay documentos recibidos que mostrar.
                             {% else %}
