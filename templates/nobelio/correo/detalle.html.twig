@@ -8,6 +8,12 @@
 {% endblock %}
 {% block acciones %}
     {{ include('nobelio/correo/_estados.html.twig', { estado: correo.estado }) }}
+    {# Borrado de administracion: en cualquier estado, con sus documentos y
+       todos sus archivos. Solo el staff o una llave de alcance global; con
+       otra llave Nobelio responde 403 y sale ese mensaje. El form va al final
+       del contenido y el boton lo apunta con form=. #}
+    <button type="submit" form="eliminar-admin-correo"
+            onclick="return confirm('¿Eliminar el correo {{ correo.id }} sin importar su estado?\n\nSe borran también {{ correo.documentos|default([])|length }} documento(s) recibido(s) con sus XML y PDF, y el MIME en R2. No se puede deshacer.')">Eliminar (admin)</button>
 {% endblock %}
 {% block content %}
     <div class="block">
@@ -114,4 +120,7 @@
             </table>
         </div>
     </div>
+    <form id="eliminar-admin-correo" method="post" action="{{ path('nobelio_correo_eliminar_admin', { 'id': correo.id }) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('eliminar-admin-correo') }}">
+    </form>
 {% endblock %}

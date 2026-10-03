@@ -65,12 +65,13 @@
                         <td title="{{ correo.error_detalle }}">{{ include('nobelio/correo/_estados.html.twig', { estado: correo.estado }) }}</td>
                         <td class="num">{{ correo.intentos }}</td>
                         <td class="num">{{ correo.documentos|default([])|length }}</td>
-                        {# Nobelio solo deja borrar los correos sin emisor: los
-                           de un emisor son informacion fiscal suya. El boton
+                        {# Nobelio deja borrar los correos pendientes —aun no se
+                           han procesado, asi que no tienen documentos— y los
+                           sin emisor, en cualquier estado. El boton
                            vive dentro del form de filtros, asi que apunta con
                            form= al de acciones, que va fuera. #}
                         <td class="acciones">
-                            {% if not correo.emisor %}
+                            {% if correo.estado == 'pendiente' or not correo.emisor %}
                                 <button type="submit" class="link" form="acciones-correo"
                                         name="id" value="{{ correo.id }}"
                                         onclick="return confirm('¿Eliminar el correo {{ correo.id }}? También se borra el MIME guardado en R2.')">Eliminar</button>

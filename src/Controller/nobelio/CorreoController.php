@@ -117,9 +117,9 @@ class CorreoController extends AbstractController
     }
 
     /**
-     * Borra el correo y su MIME en R2. Nobelio solo deja borrar los que no
-     * tienen emisor —los de un emisor son informacion fiscal suya— y responde
-     * 400 diciendolo; ese es el mensaje que se muestra. Igual que el detalle,
+     * Borra el correo y su MIME en R2. Nobelio deja borrar los pendientes
+     * y los que no tienen emisor; a los demas responde 400 diciendolo y ese es
+     * el mensaje que se muestra. Igual que el detalle,
      * el id es un entero y se concatena a la url del API.
      */
     #[Route('/nobelio/correo/eliminar', name: 'nobelio_correo_eliminar', methods: ['POST'])]
@@ -139,6 +139,40 @@ class CorreoController extends AbstractController
                 $this->addFlash('success', 'Correo eliminado.');
             }
         }
+
+        return $this->redirectToRoute('nobelio_correo_lista');
+    }
+
+    /**
+     * Borra el correo sea cual sea su estado, con los documentos que salieron
+     * de el (de cualquier emisor), sus archivos en B2 y el MIME en R2. Solo lo
+     * deja el staff o una llave de alcance global; a los demas Nobelio les
+     * responde 403 y ese es el mensaje que sale. Se pide desde la ficha: si
+     * falla se vuelve a ella, y si va bien a la lista, porque ya no existe.
+     */
+    #[Route('/nobelio/correo/eliminar-admin/{id}', name: 'nobelio_correo_eliminar_admin', methods: ['POST'], requirements: ['id' => '\d+'])]
+    public function eliminarAdmin(Request $request, Nobelio $nobelio, string $id): Response
+    {
+        if (!$this->isCsrfTokenValid('eliminar-admin-correo', (string) $request->request->get('_token'))) {
+            $this->addFlash('danger', 'La petición de borrado no es válida.');
+
+            return $this->redirectToRoute('nobelio_correo_detalle', ['id' => $id]);
+        }
+
+        // Si B2 o R2 fallan, Nobelio deja las filas como estaban y responde
+        // 502; repetir termina el trabajo.
+        $respuesta = $nobelio->consumoDelete("api/recepcion/correo/{$id}/eliminar-admin/");
+        if ($respuesta['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+
+            return $this->redirectToRoute('nobelio_correo_detalle', ['id' => $id]);
+        }
+
+        $datos = $respuesta['datos'] ?? [];
+        $documentos = (int) ($datos['documentos'] ?? 0);
+        $archivos = (int) ($datos['archivos'] ?? 0);
+        $this->addFlash('success', "Correo {$id} eliminado, con {$documentos} documento"
+            . ($documentos === 1 ? '' : 's') . " y {$archivos} archivo" . ($archivos === 1 ? '' : 's') . '.');
 
         return $this->redirectToRoute('nobelio_correo_lista');
     }
