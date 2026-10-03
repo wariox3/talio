@@ -3,9 +3,6 @@
 namespace App\Utilidades;
 
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\HttpFoundation\Exception\SessionNotFoundException;
-use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -14,89 +11,17 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Nobelio autentica con API Key, no con JWT: la llave va tal cual en cada
  * peticion, no caduca y no hay nada que guardar en sesion ni que renovar.
  *
- * Hay tres instancias de Nobelio (produccion, prueba y desarrollo), cada una
- * con su URL y su API Key en el .env (BASE_NOBELIO_<AMBIENTE> y
- * NOBELIO_TOKEN_<AMBIENTE>). El usuario elige contra cual trabaja desde el
- * menu; la eleccion se guarda en su sesion y vale para todas las peticiones
- * hasta que la cambie. Un ambiente sin sus dos variables no se puede elegir.
+ * La URL y la llave salen del .env (BASE_NOBELIO y NOBELIO_TOKEN): cada
+ * instalacion de Talio apunta a una sola instancia de Nobelio.
  */
 class Nobelio extends ClienteApi
 {
-    /** Ambientes en el orden del selector: clave => nombre visible. */
-    public const AMBIENTES = [
-        'produccion' => 'Producción',
-        'prueba' => 'Prueba',
-        'desarrollo' => 'Desarrollo',
-    ];
-
-    private const CLAVE_SESION = 'nobelio_ambiente';
-
-    /** @var array<string, array{url: string, llave: string}> */
-    private readonly array $configuracion;
-
     public function __construct(
         HttpClientInterface $httpClient,
-        private readonly RequestStack $requestStack,
-        #[Autowire(env: 'default::BASE_NOBELIO_PRODUCCION')] ?string $urlProduccion,
-        #[Autowire(env: 'default::NOBELIO_TOKEN_PRODUCCION')] ?string $llaveProduccion,
-        #[Autowire(env: 'default::BASE_NOBELIO_PRUEBA')] ?string $urlPrueba,
-        #[Autowire(env: 'default::NOBELIO_TOKEN_PRUEBA')] ?string $llavePrueba,
-        #[Autowire(env: 'default::BASE_NOBELIO_DESARROLLO')] ?string $urlDesarrollo,
-        #[Autowire(env: 'default::NOBELIO_TOKEN_DESARROLLO')] ?string $llaveDesarrollo,
+        #[Autowire(env: 'BASE_NOBELIO')] string $urlBase,
+        #[Autowire(env: 'NOBELIO_TOKEN')] private readonly string $llave,
     ) {
-        // La URL base depende del ambiente elegido: se arma en rutaCompleta().
-        parent::__construct($httpClient, '', 'Nobelio');
-
-        $this->configuracion = [
-            'produccion' => ['url' => (string) $urlProduccion, 'llave' => (string) $llaveProduccion],
-            'prueba' => ['url' => (string) $urlPrueba, 'llave' => (string) $llavePrueba],
-            'desarrollo' => ['url' => (string) $urlDesarrollo, 'llave' => (string) $llaveDesarrollo],
-        ];
-    }
-
-    /**
-     * Ambientes que tienen URL y llave en el .env, en el orden del selector.
-     *
-     * @return list<string>
-     */
-    public function ambientesDisponibles(): array
-    {
-        return array_keys(array_filter(
-            $this->configuracion,
-            fn (array $ambiente) => $ambiente['url'] !== '' && $ambiente['llave'] !== '',
-        ));
-    }
-
-    /**
-     * Ambiente con el que se trabaja: el elegido en la sesion si sigue
-     * disponible, o el primero disponible (produccion si esta configurado).
-     * null si no hay ninguno configurado.
-     */
-    public function ambiente(): ?string
-    {
-        $disponibles = $this->ambientesDisponibles();
-        $elegido = $this->sesion()?->get(self::CLAVE_SESION);
-
-        return in_array($elegido, $disponibles, true) ? $elegido : ($disponibles[0] ?? null);
-    }
-
-    public function nombreAmbiente(): string
-    {
-        $ambiente = $this->ambiente();
-
-        return $ambiente !== null ? self::AMBIENTES[$ambiente] : 'Sin configurar';
-    }
-
-    /** Cambia el ambiente de la sesion. false si no existe o no esta configurado. */
-    public function cambiarAmbiente(string $ambiente): bool
-    {
-        if (!in_array($ambiente, $this->ambientesDisponibles(), true)) {
-            return false;
-        }
-
-        $this->sesion()?->set(self::CLAVE_SESION, $ambiente);
-
-        return true;
+        parent::__construct($httpClient, $urlBase, 'Nobelio');
     }
 
     public function consumoGet(string $url, array $parametros = []): array
@@ -173,13 +98,9 @@ class Nobelio extends ClienteApi
 
     private function llamar(string $metodo, string $url, array $opciones = [], bool $archivo = false): array
     {
-        if ($this->ambiente() === null) {
-            return ['error' => true, 'status' => 0, 'mensaje' => 'No hay ningún ambiente de Nobelio configurado: faltan BASE_NOBELIO_<AMBIENTE> y NOBELIO_TOKEN_<AMBIENTE> en el .env'];
-        }
-
         $respuesta = $this->peticion($metodo, $url, $opciones, $archivo);
         if ($respuesta['status'] === 401) {
-            $respuesta['mensaje'] = 'Nobelio (' . $this->nombreAmbiente() . ') rechazó la API Key de NOBELIO_TOKEN_' . strtoupper($this->ambiente());
+            $respuesta['mensaje'] = 'Nobelio rechazó la API Key de NOBELIO_TOKEN';
         }
 
         return $respuesta;
@@ -188,17 +109,7 @@ class Nobelio extends ClienteApi
     protected function cabeceras(): array
     {
         // El esquema "Api-Key" es el que espera djangorestframework-api-key.
-        return ['Authorization' => 'Api-Key ' . $this->configuracion[$this->ambiente()]['llave']];
-    }
-
-    /** La sesion del usuario, o null fuera de una peticion web (consola, pruebas). */
-    private function sesion(): ?SessionInterface
-    {
-        try {
-            return $this->requestStack->getSession();
-        } catch (SessionNotFoundException) {
-            return null;
-        }
+        return ['Authorization' => 'Api-Key ' . $this->llave];
     }
 
     /**
@@ -213,7 +124,7 @@ class Nobelio extends ClienteApi
             $ruta .= '/';
         }
 
-        return $this->configuracion[$this->ambiente()]['url'] . $ruta . ($query !== null ? '?' . $query : '');
+        return $this->urlBase . $ruta . ($query !== null ? '?' . $query : '');
     }
 
     /**

@@ -191,7 +191,7 @@ Fuera del servidor:
 
 1. `https://talio.semantica.com.co` muestra el login en español.
 2. Entrar y abrir: monitor de Wolframio y de Tántalo, Auditoría → WebServer,
-   una lista de Itrio, Nobelio en cada ambiente y un Excel de Kiai.
+   una lista de Itrio, Nobelio y un Excel de Kiai.
 3. Errores: `var/log/prod.log` y `/var/log/apache2/talio_error.log`.
 
 ### En cada despliegue
@@ -249,7 +249,7 @@ y Kiai tienen su propio formato) o, si no trae, del código HTTP.
 |---|---|
 | Wolframio, Tántalo | Ninguna. (Antes se les mandaba por error el token de Itrio.) |
 | Itrio | JWT. Se pide con `ITRIO_USUARIO`/`ITRIO_CLAVE` la primera vez y se guarda en la sesión (`itrio_token`). Va en **todas** las peticiones; si Itrio responde 401 se renueva y se reintenta una vez. |
-| Nobelio | `Authorization: Api-Key` con el `NOBELIO_TOKEN_<AMBIENTE>` del ambiente elegido. |
+| Nobelio | `Authorization: Api-Key` con `NOBELIO_TOKEN`. |
 | Kiai (`Softgic`) | Básica con `KIAI_TOKEN` (`usuario:clave`). Un cuerpo con `ExceptionType` es error aunque el status sea 200. |
 
 ### Avisos al usuario
@@ -282,9 +282,7 @@ código, actualízala ahí también.
 Todas se leen con `%env()%` o `#[Autowire(env: ...)]`, así que el contenedor
 las conoce y `php bin/console debug:container --env-vars` sirve para ver cuáles
 faltan. Si falta una, falla la primera página que use ese servicio, con un
-error claro que nombra la variable. Excepción: las de Nobelio son opcionales
-por ambiente (`default::`), así que ese comando no las lista; los ambientes
-sin configurar salen deshabilitados en el selector del menú.
+error claro que nombra la variable.
 
 | Variable | Usada en | Descripción |
 |---|---|---|
@@ -297,8 +295,8 @@ sin configurar salen deshabilitados en el selector del menú.
 | `ITRIO_CLAVE` | `Utilidades/Itrio.php` | Clave del login de Itrio. |
 | `BASE_WOLFRAMIO` | `Utilidades/Wolframio.php` | URL base de la API de Wolframio. |
 | `BASE_TANTALO` | `Utilidades/Tantalo.php` | URL base de la API de Tántalo. |
-| `BASE_NOBELIO_PRODUCCION`, `_PRUEBA`, `_DESARROLLO` | `Utilidades/Nobelio.php` | URL base de la API de Nobelio en cada ambiente. Ver "Ambientes de Nobelio". |
-| `NOBELIO_TOKEN_PRODUCCION`, `_PRUEBA`, `_DESARROLLO` | `Utilidades/Nobelio.php` | API Key de Nobelio de cada ambiente, `<prefijo>.<secreto>`. |
+| `BASE_NOBELIO` | `Utilidades/Nobelio.php` | URL base de la API de Nobelio. |
+| `NOBELIO_TOKEN` | `Utilidades/Nobelio.php` | API Key de Nobelio, `<prefijo>.<secreto>`. |
 | `KIAI_TOKEN` | `Utilidades/Softgic.php` | Autenticación básica de Kiai, formato `usuario:clave`. |
 | `DATABASE_BDLANTANO_URL` | `Utilidades/BdWebServer.php` | PostgreSQL de Lantano: `postgresql://usuario:clave@host:5432/base`. |
 
@@ -307,33 +305,11 @@ inicial y se concatenan a ellas.
 
 ### Nobelio
 
-#### Ambientes de Nobelio
+#### Instancia de Nobelio
 
-Hay tres instancias de Nobelio: **producción**, **prueba** y **desarrollo**.
-Cada una tiene su URL y su API Key en el `.env`
-(`BASE_NOBELIO_<AMBIENTE>` y `NOBELIO_TOKEN_<AMBIENTE>`).
-
-- **Elegir:** con el selector "Nobelio" de la cabecera, presente en todas
-  las pantallas de Nobelio (`POST /nobelio/ambiente`, con token CSRF). Al
-  cambiar se vuelve a la lista de la sección: un detalle abierto es de otro
-  ambiente y allí no existe. Las ventanas emergentes (errores, webhook,
-  pruebas) muestran el ambiente pero no dejan cambiarlo: actúan sobre algo de
-  la pantalla que las abrió.
-- **Dónde se guarda:** en la sesión del usuario (`nobelio_ambiente`), así que
-  vale para todas las pantallas de Nobelio hasta que se cambie o se cierre la
-  sesión. Cada usuario tiene la suya.
-- **Por defecto:** producción, o el primero configurado si producción no lo
-  está.
-- **Sin configurar:** un ambiente al que le falta la URL o la llave sale
-  deshabilitado en el selector. Si no hay ninguno, las pantallas de Nobelio
-  muestran el error en vez de llamar a la API.
-- **A la vista:** el selector va en rojo si es producción y en ámbar si es
-  prueba o desarrollo.
-
-El código está en `Nobelio::ambiente()`, `ambientesDisponibles()` y
-`cambiarAmbiente()`. La clase se expone a Twig como la variable global
-`nobelio` (`config/packages/twig.yaml`); el selector está en
-`templates/nobelio/_ambiente.html.twig`.
+Talio trabaja contra **una sola** instancia de Nobelio, la de `BASE_NOBELIO`
+con la llave `NOBELIO_TOKEN`. Para usar otra (producción, prueba o
+desarrollo) se cambian las dos variables en el `.env` y se limpia la caché.
 
 **Credenciales.** Nobelio (Django + DRF) tiene dos
 mecanismos de autenticación, y Talio usa el primero:
@@ -358,7 +334,7 @@ Inventario tomado de los `urls.py` y del `schema.yml` de Nobelio el 2026-09-16. 
 desactualizado**: la fuente de verdad son
 `/home/desarrollo/proyectos/nobelio/apps/*/urls.py`, los `@action` de sus
 ViewSets y su `schema.yml`. Las rutas se pasan a `Nobelio::consumoGet()` y compañía sin barra
-inicial, porque las `BASE_NOBELIO_*` ya terminan en `/`.
+inicial, porque `BASE_NOBELIO` ya termina en `/`.
 
 Cada recurso registrado en un router de DRF expone el juego REST completo:
 `GET` (lista), `POST` (alta) y `GET`/`PUT`/`PATCH`/`DELETE` sobre `{id}/`.

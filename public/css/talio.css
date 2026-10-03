@@ -258,14 +258,6 @@ pre {
 .topbar .path a { color: var(--muted); }
 .topbar .right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
 
-/* Selector de ambiente en la cabecera (Nobelio): mismo color que su .tag. */
-.topbar .ambiente { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; }
-.topbar .ambiente label { font-weight: 600; }
-.topbar .ambiente select { font-size: .78rem; padding-top: 2px; padding-bottom: 2px; color: inherit; }
-.topbar .ambiente.crit { color: var(--crit); }
-.topbar .ambiente.warn { color: var(--warn); }
-.topbar .ambiente.crit .dot { background: var(--crit); }
-.topbar .ambiente.warn .dot { background: var(--warn); }
 
 .stamp {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
