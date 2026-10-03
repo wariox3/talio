@@ -66,58 +66,78 @@
             <dt>Confirmación de reenvío</dt>
             <dd class="wrap">{{ correo.confirmacion_reenvio }}</dd>
         </dl>
+    </div>
+
+    <div class="block tabs">
+        <div class="tabs-head" role="tablist">
+            <button type="button" class="tab is-active" role="tab" aria-selected="true" data-panel="documentos">
+                Documentos <span class="stamp">{{ documentos|length }}</span>
+            </button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-panel="adjuntos">
+                Adjuntos <span class="stamp">{{ adjuntos|length }}</span>
+            </button>
+        </div>
 
         {# Las facturas y notas que salieron del correo al procesarlo. Nobelio
            solo trae las de emisores del alcance de la llave, y el emisor de cada
            una es el del NIT receptor del XML, que puede no ser el del buzon. #}
-        {{ ui.cabecera('Documentos', documentos|length) }}
-        {% set tipos = constant('App\\Controller\\nobelio\\RecepcionController::TIPOS') %}
-        {% if documentos %}
-            <p><a href="{{ path('nobelio_recepcion_lista', { 'correo': correo.id }) }}">Ver en Recepción</a></p>
-        {% endif %}
-        <div class="table-scroll">
-            <table class="data">
-                <thead>
-                <tr>
-                    <th>Tipo</th>
-                    <th>Número</th>
-                    <th>Emisión</th>
-                    <th class="num">NIT proveedor</th>
-                    <th>Proveedor</th>
-                    <th class="num">Total a pagar</th>
-                    <th class="num">Emisor</th>
-                    <th>Validación DIAN</th>
-                    <th>CUFE/CUDE</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for documento in documentos %}
+        <div class="tab-panel" id="documentos" role="tabpanel">
+            {% set tipos = constant('App\\Controller\\nobelio\\RecepcionController::TIPOS') %}
+            {% if documentos %}
+                <p><a href="{{ path('nobelio_recepcion_lista', { 'correo': correo.id }) }}">Ver en Recepción</a></p>
+            {% endif %}
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
                     <tr>
-                        <td>{{ tipos[documento.documento_tipo]|default(documento.documento_tipo) }}</td>
-                        <td class="id">
-                            <a href="{{ path('nobelio_recepcion_detalle', { 'id': documento.id }) }}">{{ documento.numero }}</a>
-                        </td>
-                        <td class="fecha">{{ documento.fecha_emision }}</td>
-                        <td class="num">{{ documento.proveedor_numero_identificacion }}</td>
-                        <td>{{ documento.proveedor_razon_social }}</td>
-                        <td class="num">{{ documento.total_a_pagar is empty ? '' : documento.total_a_pagar|number_format(0, ',', '.') }}</td>
-                        <td class="num">
-                            <a href="{{ path('nobelio_emisor_detalle', { 'id': documento.emisor }) }}">{{ documento.emisor }}</a>
-                        </td>
-                        <td>{{ include('nobelio/recepcion/_validacion.html.twig', { codigo: documento.validacion_codigo }) }}</td>
-                        {# 96 caracteres de SHA-384: el principio y el completo en
-                           el title, como el CUNE en la nomina. #}
-                        <td class="id" title="{{ documento.cufe_cude }}">
-                            {{- documento.cufe_cude ? documento.cufe_cude|slice(0, 12) ~ '…' -}}
-                        </td>
+                        <th>Tipo</th>
+                        <th>Número</th>
+                        <th>Emisión</th>
+                        <th class="num">NIT proveedor</th>
+                        <th>Proveedor</th>
+                        <th class="num">Total a pagar</th>
+                        <th class="num">Emisor</th>
+                        <th>Validación DIAN</th>
+                        <th>CUFE/CUDE</th>
                     </tr>
-                {% else %}
-                    <tr>
-                        <td colspan="9">El correo no tiene documentos.</td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                    {% for documento in documentos %}
+                        <tr>
+                            <td>{{ tipos[documento.documento_tipo]|default(documento.documento_tipo) }}</td>
+                            <td class="id">
+                                <a href="{{ path('nobelio_recepcion_detalle', { 'id': documento.id }) }}">{{ documento.numero }}</a>
+                            </td>
+                            <td class="fecha">{{ documento.fecha_emision }}</td>
+                            <td class="num">{{ documento.proveedor_numero_identificacion }}</td>
+                            <td>{{ documento.proveedor_razon_social }}</td>
+                            <td class="num">{{ documento.total_a_pagar is empty ? '' : documento.total_a_pagar|number_format(0, ',', '.') }}</td>
+                            <td class="num">
+                                <a href="{{ path('nobelio_emisor_detalle', { 'id': documento.emisor }) }}">{{ documento.emisor }}</a>
+                            </td>
+                            <td>{{ include('nobelio/recepcion/_validacion.html.twig', { codigo: documento.validacion_codigo }) }}</td>
+                            {# 96 caracteres de SHA-384: el principio y el completo en
+                               el title, como el CUNE en la nomina. #}
+                            <td class="id" title="{{ documento.cufe_cude }}">
+                                {{- documento.cufe_cude ? documento.cufe_cude|slice(0, 12) ~ '…' -}}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="9">El correo no tiene documentos.</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {# Todo lo que trajo el correo, ya fuera de sus ZIP: el XML y el PDF de
+           cada documento, el documento extraido del AttachedDocument y
+           cualquier otro adjunto. Los de un documento de otro emisor solo los
+           trae Nobelio si la llave alcanza ese emisor. #}
+        <div class="tab-panel" id="adjuntos" role="tabpanel" hidden>
+            {{ include('nobelio/recepcion/_adjuntos.html.twig', { adjuntos: adjuntos, conDocumento: true }) }}
         </div>
     </div>
     <form id="eliminar-admin-correo" method="post" action="{{ path('nobelio_correo_eliminar_admin', { 'id': correo.id }) }}">

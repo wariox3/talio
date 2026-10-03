@@ -110,9 +110,20 @@ class CorreoController extends AbstractController
             return $this->redirectToRoute('nobelio_correo_lista');
         }
 
+        // Los adjuntos tienen su propio endpoint, sin paginar. Si falla, la
+        // ficha se pinta igual: es una pestaña de mas, no el correo.
+        $adjuntos = [];
+        $respuestaAdjuntos = $nobelio->consumoGet("api/recepcion/correo/{$id}/adjuntos/");
+        if ($respuestaAdjuntos['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuestaAdjuntos['mensaje']}");
+        } else {
+            $adjuntos = $respuestaAdjuntos['datos'];
+        }
+
         return $this->render('nobelio/correo/detalle.html.twig', [
             'correo' => $respuesta['datos'],
             'documentos' => $respuesta['datos']['documentos'] ?? [],
+            'adjuntos' => $adjuntos,
         ]);
     }
 

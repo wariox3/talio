@@ -121,9 +121,61 @@ class RecepcionController extends AbstractController
             return $this->redirectToRoute('nobelio_recepcion_lista');
         }
 
+        // Los adjuntos del documento salen del listado general filtrado: son
+        // tres como mucho (XML, XML del documento y PDF), pero el listado
+        // pagina y se recorre entero. Si falla, la ficha se pinta igual.
+        $adjuntos = [];
+        $respuestaAdjuntos = $nobelio->consumoGetTodos('api/recepcion/adjunto/', ['documento' => $id]);
+        if ($respuestaAdjuntos['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuestaAdjuntos['mensaje']}");
+        } else {
+            $adjuntos = $respuestaAdjuntos['datos'];
+        }
+
         return $this->render('nobelio/recepcion/detalle.html.twig', [
             'documento' => $respuesta['datos'],
+            'adjuntos' => $adjuntos,
         ]);
+    }
+
+    /**
+     * Baja un adjunto con el nombre que le puso el proveedor. Nobelio lo manda
+     * siempre como descarga, nunca para mostrar: un HTML o un SVG de un tercero
+     * no debe abrirse en el navegador, y aqui se reemite igual (attachment).
+     * Los adjuntos se piden desde la ficha del correo o del documento: si
+     * falla se vuelve a la pagina de la que vino.
+     */
+    #[Route('/nobelio/recepcion/adjunto/descargar/{id}', name: 'nobelio_recepcion_adjunto_descargar', requirements: ['id' => '[0-9a-fA-F-]{36}'])]
+    public function descargarAdjunto(Request $request, Nobelio $nobelio, string $id): Response
+    {
+        $respuesta = $nobelio->consumoArchivo("api/recepcion/adjunto/{$id}/descargar/");
+        if ($respuesta['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+
+            // Solo se vuelve al Referer si es de Talio; si no, a la lista.
+            $origen = (string) $request->headers->get('referer', '');
+            if (str_starts_with($origen, $request->getSchemeAndHttpHost() . '/')) {
+                return $this->redirect($origen);
+            }
+
+            return $this->redirectToRoute('nobelio_recepcion_lista');
+        }
+
+        $descarga = new Response($respuesta['contenido'], Response::HTTP_OK, [
+            'Content-Type' => $respuesta['tipo'],
+            // Que el navegador no adivine otro tipo y lo ejecute.
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+        // El nombre lo puso el proveedor y puede traer tildes o '%':
+        // makeDisposition() exige un respaldo ASCII sin '%', '/' ni barras, o
+        // lanza una excepcion.
+        $nombre = str_replace(['/', '\\'], '_', $respuesta['nombre']) ?: "adjunto-{$id}";
+        $respaldo = preg_replace('/[^\x20-\x7e]|[%"]/', '_', $nombre);
+        $descarga->headers->set('Content-Disposition', $descarga->headers->makeDisposition(
+            ResponseHeaderBag::DISPOSITION_ATTACHMENT, $nombre, $respaldo,
+        ));
+
+        return $descarga;
     }
 
     /**

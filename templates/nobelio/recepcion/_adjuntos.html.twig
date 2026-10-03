@@ -1,0 +1,64 @@
+{# Tabla de adjuntos de recepcion: todo lo que trajo el correo, ya fuera de sus
+   ZIP, incluido el documento extraido del AttachedDocument (xml_documento).
+   El nombre es el que puso el proveedor y es el enlace de descarga.
+   Uso: {{ include('nobelio/recepcion/_adjuntos.html.twig', { adjuntos: adjuntos, conDocumento: true }) }}
+   conDocumento: columna con el documento al que pertenece (en el correo; en
+   la ficha del documento sobra). #}
+{%- set roles = {
+    'xml': 'XML recibido',
+    'xml_documento': 'XML del documento',
+    'pdf': 'PDF del documento',
+    'otro': 'Otro adjunto',
+} -%}
+{%- set conDocumento = conDocumento|default(false) -%}
+<div class="table-scroll">
+    <table class="data">
+        <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Rol</th>
+            {% if conDocumento %}<th>Documento</th>{% endif %}
+            <th>Tipo de contenido</th>
+            <th class="num">Tamaño</th>
+            <th>SHA-256</th>
+            <th>Creado</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for adjunto in adjuntos %}
+            <tr>
+                <td class="wrap">
+                    <a href="{{ path('nobelio_recepcion_adjunto_descargar', { 'id': adjunto.id }) }}">{{ adjunto.nombre }}</a>
+                </td>
+                <td>{{ roles[adjunto.rol]|default(adjunto.rol) }}</td>
+                {# Los sueltos (rol "otro") no son de ningun documento. #}
+                {% if conDocumento %}
+                    <td class="id">
+                        {% if adjunto.documento %}
+                            <a href="{{ path('nobelio_recepcion_detalle', { 'id': adjunto.documento }) }}">{{ adjunto.documento|slice(0, 8) }}…</a>
+                        {% endif %}
+                    </td>
+                {% endif %}
+                <td>{{ adjunto.tipo_contenido }}</td>
+                <td class="num">
+                    {%- set bytes = adjunto.tamano|default(0) -%}
+                    {%- if bytes >= 1048576 -%}
+                        {{ (bytes / 1048576)|number_format(1, ',', '.') }} MB
+                    {%- elseif bytes >= 1024 -%}
+                        {{ (bytes / 1024)|number_format(1, ',', '.') }} KB
+                    {%- else -%}
+                        {{ bytes }} B
+                    {%- endif -%}
+                </td>
+                <td class="id" title="{{ adjunto.sha256 }}">{{ adjunto.sha256 ? adjunto.sha256|slice(0, 12) ~ '…' }}</td>
+                {# El false deja la hora en la zona que trae el API. #}
+                <td class="fecha">{{ adjunto.creado_en ? adjunto.creado_en|date('Y-m-d H:i', false) }}</td>
+            </tr>
+        {% else %}
+            <tr>
+                <td colspan="{{ conDocumento ? 7 : 6 }}">No hay adjuntos.</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>

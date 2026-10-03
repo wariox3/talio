@@ -107,30 +107,19 @@
             <dt>Fecha de validación</dt>
             <dd>{{ documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) }}</dd>
         </dl>
+    </div>
 
-        {{ ui.cabecera('Archivos') }}
-        <dl class="ficha">
-            <dt>XML recibido</dt>
-            <dd><a href="{{ path('nobelio_recepcion_descargar', { 'archivo': 'xml', 'id': documento.id }) }}">Descargar</a></dd>
-            <dt>XML del documento</dt>
-            <dd>
-                {% if documento.tiene_xml_factura %}
-                    <a href="{{ path('nobelio_recepcion_descargar', { 'archivo': 'xml-factura', 'id': documento.id }) }}">Descargar</a>
-                {% else %}
-                    Llegó suelto: es el mismo XML recibido
-                {% endif %}
-            </dd>
-
-            <dt>PDF</dt>
-            <dd>
-                {% if documento.tiene_pdf %}
-                    <a href="{{ path('nobelio_recepcion_descargar', { 'archivo': 'pdf', 'id': documento.id }) }}">Descargar</a>
-                {% else %}
-                    El proveedor no lo mandó
-                {% endif %}
-            </dd>
-            <dt></dt>
-            <dd></dd>
-        </dl>
+    {# Los archivos del documento: el XML recibido, el documento extraido del
+       AttachedDocument (si llego envuelto) y el PDF (si el proveedor lo
+       mando). Los demas adjuntos del correo estan en la ficha del correo. #}
+    <div class="block tabs">
+        <div class="tabs-head" role="tablist">
+            <button type="button" class="tab is-active" role="tab" aria-selected="true" data-panel="adjuntos">
+                Adjuntos <span class="stamp">{{ adjuntos|length }}</span>
+            </button>
+        </div>
+        <div class="tab-panel" id="adjuntos" role="tabpanel">
+            {{ include('nobelio/recepcion/_adjuntos.html.twig', { adjuntos: adjuntos }) }}
+        </div>
     </div>
 {% endblock %}
