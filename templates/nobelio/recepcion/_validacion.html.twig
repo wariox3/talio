@@ -1,0 +1,8 @@
+{# Validacion DIAN de un documento recibido: el ValidationResultCode del
+   AttachedDocument, 02 es validado. Vacio si el documento llego suelto, sin
+   el acuse de la DIAN: entonces no se sabe, y no se pinta nada.
+   Uso: {{ include('nobelio/recepcion/_validacion.html.twig', { codigo: documento.validacion_codigo }) }} #}
+{%- import '_macros.html.twig' as ui -%}
+{%- if codigo -%}
+    {{ ui.estadoCritico(codigo == '02', 'Validado', 'Código ' ~ codigo) }}
+{%- endif -%}

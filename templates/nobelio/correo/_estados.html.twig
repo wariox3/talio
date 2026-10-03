@@ -1,0 +1,12 @@
+{# Etiqueta del estado de un correo de recepcion (Correo.Estado en Nobelio).
+   Uso: {{ include('nobelio/correo/_estados.html.twig', { estado: correo.estado }) }} #}
+{%- set etiquetas = {
+    'pendiente': ['Pendiente', 'idle'],
+    'procesado': ['Procesado', 'ok'],
+    'sin_documentos': ['Sin documentos', 'warn'],
+    'error': ['Error', 'crit'],
+    'empresa_desconocida': ['Empresa desconocida', 'warn'],
+    'confirmacion_reenvio': ['Confirmación de reenvío', 'warn'],
+} -%}
+{%- set etiqueta = etiquetas[estado]|default([estado, 'idle']) -%}
+<span class="tag {{ etiqueta[1] }}"><span class="dot"></span>{{ etiqueta[0] }}</span>

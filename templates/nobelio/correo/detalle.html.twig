@@ -1,0 +1,117 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Correo {{ correo.id }} · Talio{% endblock %}
+{% block ruta %}
+    Nobelio <span>/</span>
+    <a href="{{ path('nobelio_correo_lista') }}">Correo</a> <span>/</span>
+    <b>{{ correo.id }}</b>
+{% endblock %}
+{% block acciones %}
+    {{ include('nobelio/correo/_estados.html.twig', { estado: correo.estado }) }}
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Correo') }}
+        <dl class="ficha">
+            <dt>Id</dt>
+            <dd>{{ correo.id }}</dd>
+            <dt>Estado</dt>
+            <dd>{{ include('nobelio/correo/_estados.html.twig', { estado: correo.estado }) }}</dd>
+
+            {# El alias es el NIT del emisor sin DV, tal como llego; se guarda
+               aunque no corresponda a ningun emisor. #}
+            <dt>Alias</dt>
+            <dd>{{ correo.alias }}</dd>
+            <dt>Emisor</dt>
+            <dd>
+                {% if correo.emisor %}
+                    <a href="{{ path('nobelio_emisor_detalle', { 'id': correo.emisor }) }}">{{ correo.emisor }}</a>
+                {% endif %}
+            </dd>
+
+            <dt>Remitente (sobre)</dt>
+            <dd class="wrap">{{ correo.envelope_from }}</dd>
+            <dt>Destinatario (sobre)</dt>
+            <dd class="wrap">{{ correo.envelope_to }}</dd>
+
+            {# Asunto y Message-ID salen de las cabeceras del MIME: vacios
+               mientras el correo este pendiente. #}
+            <dt>Asunto</dt>
+            <dd class="wrap">{{ correo.asunto }}</dd>
+            <dt>Message-ID</dt>
+            <dd class="wrap">{{ correo.message_id }}</dd>
+
+            <dt>Recibido</dt>
+            <dd>{{ correo.recibido_en ? correo.recibido_en|date('Y-m-d H:i:s', false) }}</dd>
+            <dt>Intentos</dt>
+            <dd>{{ correo.intentos }}</dd>
+
+            {# Donde vive el MIME crudo en R2: la fuente para procesarlo y
+               reprocesarlo: <aaaa-mm-dd>/<uuid>.eml. #}
+            <dt>Clave en R2</dt>
+            <dd class="wrap">{{ correo.raw_key }}</dd>
+            <dt></dt>
+            <dd></dd>
+
+            <dt>Detalle del error</dt>
+            <dd class="wrap">{{ correo.error_detalle }}</dd>
+            {# El codigo o enlace que manda Gmail al configurar el reenvio; la
+               empresa lo necesita para confirmarlo. #}
+            <dt>Confirmación de reenvío</dt>
+            <dd class="wrap">{{ correo.confirmacion_reenvio }}</dd>
+        </dl>
+
+        {# Las facturas y notas que salieron del correo al procesarlo. Nobelio
+           solo trae las de emisores del alcance de la llave, y el emisor de cada
+           una es el del NIT receptor del XML, que puede no ser el del buzon. #}
+        {{ ui.cabecera('Documentos', documentos|length) }}
+        {% set tipos = constant('App\\Controller\\nobelio\\RecepcionController::TIPOS') %}
+        {% if documentos %}
+            <p><a href="{{ path('nobelio_recepcion_lista', { 'correo': correo.id }) }}">Ver en Recepción</a></p>
+        {% endif %}
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Número</th>
+                    <th>Emisión</th>
+                    <th class="num">NIT proveedor</th>
+                    <th>Proveedor</th>
+                    <th class="num">Total a pagar</th>
+                    <th class="num">Emisor</th>
+                    <th>Validación DIAN</th>
+                    <th>CUFE/CUDE</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for documento in documentos %}
+                    <tr>
+                        <td>{{ tipos[documento.documento_tipo]|default(documento.documento_tipo) }}</td>
+                        <td class="id">
+                            <a href="{{ path('nobelio_recepcion_detalle', { 'id': documento.id }) }}">{{ documento.numero }}</a>
+                        </td>
+                        <td class="fecha">{{ documento.fecha_emision }}</td>
+                        <td class="num">{{ documento.proveedor_numero_identificacion }}</td>
+                        <td>{{ documento.proveedor_razon_social }}</td>
+                        <td class="num">{{ documento.total_a_pagar is empty ? '' : documento.total_a_pagar|number_format(0, ',', '.') }}</td>
+                        <td class="num">
+                            <a href="{{ path('nobelio_emisor_detalle', { 'id': documento.emisor }) }}">{{ documento.emisor }}</a>
+                        </td>
+                        <td>{{ include('nobelio/recepcion/_validacion.html.twig', { codigo: documento.validacion_codigo }) }}</td>
+                        {# 96 caracteres de SHA-384: el principio y el completo en
+                           el title, como el CUNE en la nomina. #}
+                        <td class="id" title="{{ documento.cufe_cude }}">
+                            {{- documento.cufe_cude ? documento.cufe_cude|slice(0, 12) ~ '…' -}}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="9">El correo no tiene documentos.</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

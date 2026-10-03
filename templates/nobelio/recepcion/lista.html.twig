@@ -1,0 +1,113 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Recepción · Talio{% endblock %}
+{% block ruta %}Nobelio <span>/</span> <b>Recepción</b>{% endblock %}
+{% block acciones %}
+    <span class="stamp">{{ total }} documento{{ total == 1 ? '' : 's' }}</span>
+{% endblock %}
+{% block content %}
+    {% set tipos = constant('App\\Controller\\nobelio\\RecepcionController::TIPOS') %}
+    {{ form_start(form) }}
+    <input type="hidden" name="pagina" value="{{ pagina }}">
+    <div class="block">
+        <div class="filters">
+            {{ ui.campo('Tipo', form.documento_tipo) }}
+            {{ ui.campo('NIT proveedor (sin DV)', form.proveedor) }}
+            {{ ui.campo('Emisor (id)', form.emisor) }}
+            {{ ui.campo('Correo (id)', form.correo) }}
+            {# Sobre la fecha de emision, ambos inclusive. #}
+            {{ ui.campo('Emitido desde', form.desde) }}
+            {{ ui.campo('Emitido hasta', form.hasta) }}
+            {# El SearchFilter de Nobelio mira el numero, el CUFE/CUDE y el NIT
+               y la razon social del proveedor. #}
+            {{ ui.campo('Número, CUFE o proveedor', form.search) }}
+            <div class="f-right">
+                {{ form_widget(form.btnFiltrar) }}
+                {# Siempre renderizados: si se dejan sin renderizar, form_end()
+                   llama a form_rest() y los vuelca sueltos al final del form. #}
+                {{ form_widget(form.btnAnterior, { 'attr': hayAnterior
+                    ? {'class': 'ghost'}
+                    : {'class': 'ghost', 'disabled': 'disabled'} }) }}
+                {{ form_widget(form.btnSiguiente, { 'attr': haySiguiente
+                    ? {'class': 'ghost'}
+                    : {'class': 'ghost', 'disabled': 'disabled'} }) }}
+                <span class="f-count">Página {{ pagina }}</span>
+            </div>
+        </div>
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Tipo</th>
+                    <th>Número</th>
+                    <th>Emisión</th>
+                    <th class="num">NIT proveedor</th>
+                    <th>Proveedor</th>
+                    <th class="num">Emisor</th>
+                    <th class="num">Correo</th>
+                    <th>Moneda</th>
+                    <th class="num">Total a pagar</th>
+                    <th>Validación DIAN</th>
+                    <th>CUFE/CUDE</th>
+                    <th>Archivos</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for documento in documentos %}
+                    <tr>
+                        <td class="id">
+                            <a href="{{ path('nobelio_recepcion_detalle', { 'id': documento.id }) }}">{{ documento.id|slice(0, 8) }}…</a>
+                        </td>
+                        <td>{{ tipos[documento.documento_tipo]|default(documento.documento_tipo) }}</td>
+                        <td class="id">{{ documento.numero }}</td>
+                        <td class="fecha">{{ documento.fecha_emision }}</td>
+                        <td class="num">
+                            {{- documento.proveedor_numero_identificacion -}}
+                            {%- if documento.proveedor_digito_verificacion %}-{{ documento.proveedor_digito_verificacion }}{% endif -%}
+                        </td>
+                        <td>{{ documento.proveedor_razon_social }}</td>
+                        <td class="num">
+                            <a href="{{ path('nobelio_emisor_detalle', { 'id': documento.emisor }) }}">{{ documento.emisor }}</a>
+                        </td>
+                        <td class="num">
+                            <a href="{{ path('nobelio_correo_detalle', { 'id': documento.correo }) }}">{{ documento.correo }}</a>
+                        </td>
+                        <td>{{ documento.moneda }}</td>
+                        <td class="num">{{ documento.total_a_pagar is empty ? '' : documento.total_a_pagar|number_format(2, ',', '.') }}</td>
+                        <td>{{ include('nobelio/recepcion/_validacion.html.twig', { codigo: documento.validacion_codigo }) }}</td>
+                        {# 96 caracteres de SHA-384: el principio y el completo
+                           en el title, como el CUNE en la nomina. #}
+                        <td class="id" title="{{ documento.cufe_cude }}">
+                            {{- documento.cufe_cude ? documento.cufe_cude|slice(0, 12) ~ '…' -}}
+                        </td>
+                        {# El XML recibido siempre esta; el documento extraido
+                           solo si llego envuelto en un AttachedDocument, y el
+                           PDF solo si el proveedor lo mando. #}
+                        <td class="acciones">
+                            <a href="{{ path('nobelio_recepcion_descargar', { 'archivo': 'xml', 'id': documento.id }) }}">XML</a>
+                            {% if documento.tiene_xml_factura %}
+                                <a href="{{ path('nobelio_recepcion_descargar', { 'archivo': 'xml-factura', 'id': documento.id }) }}">Documento</a>
+                            {% endif %}
+                            {% if documento.tiene_pdf %}
+                                <a href="{{ path('nobelio_recepcion_descargar', { 'archivo': 'pdf', 'id': documento.id }) }}">PDF</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="13">
+                            {% if total == 0 %}
+                                No hay documentos recibidos que mostrar.
+                            {% else %}
+                                Esta página no tiene resultados.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{ form_end(form) }}
+{% endblock %}

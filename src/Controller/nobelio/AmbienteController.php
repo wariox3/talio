@@ -17,6 +17,8 @@ class AmbienteController extends AbstractController
     private const LISTAS = [
         'nobelio_documento_' => 'nobelio_documento_lista',
         'nobelio_nomina_' => 'nobelio_nomina_lista',
+        'nobelio_correo_' => 'nobelio_correo_lista',
+        'nobelio_recepcion_' => 'nobelio_recepcion_lista',
     ];
 
     #[Route('/nobelio/ambiente', name: 'nobelio_ambiente', methods: ['POST'])]

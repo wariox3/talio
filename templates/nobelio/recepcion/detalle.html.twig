@@ -1,0 +1,136 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Recibido {{ documento.numero }} · Talio{% endblock %}
+{% block ruta %}
+    Nobelio <span>/</span>
+    <a href="{{ path('nobelio_recepcion_lista') }}">Recepción</a> <span>/</span>
+    <b>{{ documento.numero }}</b>
+{% endblock %}
+{% block acciones %}
+    {{ include('nobelio/recepcion/_validacion.html.twig', { codigo: documento.validacion_codigo }) }}
+    {# Son descargas, no acciones: van por GET. El XML recibido siempre esta;
+       el documento extraido solo si llego envuelto en un AttachedDocument, y
+       el PDF solo si el proveedor lo mando. #}
+    <button type="button" class="ghost" onclick="location.href='{{ path('nobelio_recepcion_descargar', { 'archivo': 'xml', 'id': documento.id }) }}'">XML recibido</button>
+    {% if documento.tiene_xml_factura %}
+        <button type="button" class="ghost" onclick="location.href='{{ path('nobelio_recepcion_descargar', { 'archivo': 'xml-factura', 'id': documento.id }) }}'">XML documento</button>
+    {% endif %}
+    {% if documento.tiene_pdf %}
+        <button type="button" class="ghost" onclick="location.href='{{ path('nobelio_recepcion_descargar', { 'archivo': 'pdf', 'id': documento.id }) }}'">PDF</button>
+    {% endif %}
+{% endblock %}
+{% block content %}
+    {% set tipos = constant('App\\Controller\\nobelio\\RecepcionController::TIPOS') %}
+    <div class="block">
+        {{ ui.cabecera('Documento recibido') }}
+        <dl class="ficha">
+            <dt>Id</dt>
+            <dd>{{ documento.id }}</dd>
+            <dt>Número</dt>
+            <dd>{{ documento.numero }}</dd>
+
+            <dt>Tipo</dt>
+            <dd>{{ tipos[documento.documento_tipo]|default(documento.documento_tipo) }}</dd>
+            {# InvoiceTypeCode, CreditNoteTypeCode o DebitNoteTypeCode tal como
+               vino en el XML. #}
+            <dt>Código DIAN del tipo</dt>
+            <dd>{{ documento.tipo_codigo_dian }}</dd>
+
+            <dt>Fecha de emisión</dt>
+            <dd>{{ documento.fecha_emision }}</dd>
+            <dt>Hora de emisión</dt>
+            <dd>{{ documento.hora_emision }}</dd>
+
+            {# CUFE en facturas, CUDE en notas. #}
+            <dt>CUFE/CUDE</dt>
+            <dd class="wrap">{{ documento.cufe_cude }}</dd>
+            <dt>Moneda</dt>
+            <dd>{{ documento.moneda }}</dd>
+
+            <dt>Creado</dt>
+            <dd>{{ documento.creado_en ? documento.creado_en|date('Y-m-d H:i', false) }}</dd>
+            <dt>Correo</dt>
+            <dd>
+                <a href="{{ path('nobelio_correo_detalle', { 'id': documento.correo }) }}">{{ documento.correo }}</a>
+            </dd>
+        </dl>
+
+        {# Quien factura es un tercero que no esta en la plataforma; quien recibe
+           es el NIT receptor del XML, y el emisor es el de ese NIT, que puede
+           no ser el del buzon al que llego el correo. #}
+        {{ ui.cabecera('Partes') }}
+        <dl class="ficha">
+            <dt>NIT proveedor</dt>
+            <dd>
+                {{- documento.proveedor_numero_identificacion -}}
+                {%- if documento.proveedor_digito_verificacion %}-{{ documento.proveedor_digito_verificacion }}{% endif -%}
+            </dd>
+            <dt>Razón social del proveedor</dt>
+            <dd>{{ documento.proveedor_razon_social }}</dd>
+
+            <dt>NIT receptor</dt>
+            <dd>{{ documento.receptor_numero_identificacion }}</dd>
+            <dt>Emisor</dt>
+            <dd>
+                <a href="{{ path('nobelio_emisor_detalle', { 'id': documento.emisor }) }}">{{ documento.emisor }}</a>
+            </dd>
+        </dl>
+
+        {{ ui.cabecera('Valores') }}
+        <dl class="ficha">
+            {# cbc:LineExtensionAmount. #}
+            <dt>Valor bruto</dt>
+            <dd>{{ documento.valor_bruto is empty ? '' : documento.valor_bruto|number_format(2, ',', '.') }}</dd>
+            {# Suma de los cbc:TaxAmount de los cac:TaxTotal. #}
+            <dt>Total impuestos</dt>
+            <dd>{{ documento.total_impuestos is empty ? '' : documento.total_impuestos|number_format(2, ',', '.') }}</dd>
+
+            {# cbc:PayableAmount. #}
+            <dt>Total a pagar</dt>
+            <dd>{{ documento.total_a_pagar is empty ? '' : documento.total_a_pagar|number_format(2, ',', '.') }}</dd>
+            <dt></dt>
+            <dd></dd>
+        </dl>
+
+        {# Solo si vino el AttachedDocument con el acuse de la DIAN. #}
+        {{ ui.cabecera('Validación DIAN') }}
+        <dl class="ficha">
+            <dt>Resultado</dt>
+            <dd>
+                {% if documento.validacion_codigo %}
+                    {{ include('nobelio/recepcion/_validacion.html.twig', { codigo: documento.validacion_codigo }) }}
+                {% else %}
+                    Sin acuse de la DIAN (llegó suelto)
+                {% endif %}
+            </dd>
+            {# El false deja la hora en la zona que trae el API. #}
+            <dt>Fecha de validación</dt>
+            <dd>{{ documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) }}</dd>
+        </dl>
+
+        {{ ui.cabecera('Archivos') }}
+        <dl class="ficha">
+            <dt>XML recibido</dt>
+            <dd><a href="{{ path('nobelio_recepcion_descargar', { 'archivo': 'xml', 'id': documento.id }) }}">Descargar</a></dd>
+            <dt>XML del documento</dt>
+            <dd>
+                {% if documento.tiene_xml_factura %}
+                    <a href="{{ path('nobelio_recepcion_descargar', { 'archivo': 'xml-factura', 'id': documento.id }) }}">Descargar</a>
+                {% else %}
+                    Llegó suelto: es el mismo XML recibido
+                {% endif %}
+            </dd>
+
+            <dt>PDF</dt>
+            <dd>
+                {% if documento.tiene_pdf %}
+                    <a href="{{ path('nobelio_recepcion_descargar', { 'archivo': 'pdf', 'id': documento.id }) }}">Descargar</a>
+                {% else %}
+                    El proveedor no lo mandó
+                {% endif %}
+            </dd>
+            <dt></dt>
+            <dd></dd>
+        </dl>
+    </div>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Correo · Talio{% endblock %}
+{% block ruta %}Nobelio <span>/</span> <b>Correo</b>{% endblock %}
+{% block acciones %}
+    <span class="stamp">{{ total }} correo{{ total == 1 ? '' : 's' }}</span>
+{% endblock %}
+{% block content %}
+    {{ form_start(form) }}
+    <input type="hidden" name="pagina" value="{{ pagina }}">
+    <div class="block">
+        <div class="filters">
+            {{ ui.campo('Estado', form.estado) }}
+            {# El SearchFilter de Nobelio mira el remitente, el asunto y el
+               Message-ID. #}
+            {{ ui.campo('Remitente, asunto o Message-ID', form.search) }}
+            <div class="f-right">
+                {{ form_widget(form.btnFiltrar) }}
+                {# Siempre renderizados: si se dejan sin renderizar, form_end()
+                   llama a form_rest() y los vuelca sueltos al final del form. #}
+                {{ form_widget(form.btnAnterior, { 'attr': hayAnterior
+                    ? {'class': 'ghost'}
+                    : {'class': 'ghost', 'disabled': 'disabled'} }) }}
+                {{ form_widget(form.btnSiguiente, { 'attr': haySiguiente
+                    ? {'class': 'ghost'}
+                    : {'class': 'ghost', 'disabled': 'disabled'} }) }}
+                <span class="f-count">Página {{ pagina }}</span>
+            </div>
+        </div>
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th class="num">Id</th>
+                    <th>Recibido</th>
+                    <th>Alias</th>
+                    <th class="num">Emisor</th>
+                    <th>Remitente</th>
+                    <th>Asunto</th>
+                    <th>Estado</th>
+                    <th class="num">Intentos</th>
+                    <th class="num">Documentos</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for correo in correos %}
+                    <tr>
+                        <td class="num">
+                            <a href="{{ path('nobelio_correo_detalle', { 'id': correo.id }) }}">{{ correo.id }}</a>
+                        </td>
+                        {# El false deja la hora en la zona que trae el API. #}
+                        <td class="fecha">{{ correo.recibido_en ? correo.recibido_en|date('Y-m-d H:i', false) }}</td>
+                        <td class="id">{{ correo.alias }}</td>
+                        {# Vacio si el alias no es el NIT de ningun emisor: el
+                           worker lo intenta luego con el NIT receptor del XML. #}
+                        <td class="num">
+                            {% if correo.emisor %}
+                                <a href="{{ path('nobelio_emisor_detalle', { 'id': correo.emisor }) }}">{{ correo.emisor }}</a>
+                            {% endif %}
+                        </td>
+                        <td>{{ correo.envelope_from }}</td>
+                        {# El asunto se llena al procesar, no al recibir. #}
+                        <td>{{ correo.asunto }}</td>
+                        <td title="{{ correo.error_detalle }}">{{ include('nobelio/correo/_estados.html.twig', { estado: correo.estado }) }}</td>
+                        <td class="num">{{ correo.intentos }}</td>
+                        <td class="num">{{ correo.documentos|default([])|length }}</td>
+                        {# Nobelio solo deja borrar los correos sin emisor: los
+                           de un emisor son informacion fiscal suya. El boton
+                           vive dentro del form de filtros, asi que apunta con
+                           form= al de acciones, que va fuera. #}
+                        <td class="acciones">
+                            {% if not correo.emisor %}
+                                <button type="submit" class="link" form="acciones-correo"
+                                        name="id" value="{{ correo.id }}"
+                                        onclick="return confirm('¿Eliminar el correo {{ correo.id }}? También se borra el MIME guardado en R2.')">Eliminar</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="10">
+                            {% if total == 0 %}
+                                No hay correos que mostrar.
+                            {% else %}
+                                Esta página no tiene resultados.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{ form_end(form) }}
+    <form id="acciones-correo" method="post" action="{{ path('nobelio_correo_eliminar') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('acciones-correo') }}">
+    </form>
+{% endblock %}
