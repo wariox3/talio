@@ -115,7 +115,7 @@ class EmisorController extends AbstractController
         if ($listaResoluciones['error']) {
             $this->addFlash('danger', "Nobelio: {$listaResoluciones['mensaje']}");
         } else {
-            $resoluciones = $listaResoluciones['datos']['results'] ?? [];
+            $resoluciones = $this->marcarHabilitadas($nobelio, $emisor, $listaResoluciones['datos']['results'] ?? []);
         }
 
         $webhooks = [];
@@ -144,6 +144,39 @@ class EmisorController extends AbstractController
      * Nobelio y su mensaje es el que se muestra. El emisor sale del detalle
      * desde donde se abre.
      */
+    /**
+     * Le pone a cada resolucion `habilitada`: si el emisor ya esta habilitado
+     * ante la DIAN para la operacion que esa resolucion numera. Con eso el
+     * detalle deja de ofrecer documentos de prueba, que ya no hacen falta.
+     *
+     * La resolucion trae `tipo_factura` como id del catalogo, no como codigo,
+     * asi que se cruza con el catalogo: el 20 es documento equivalente y los
+     * demas (01 factura, 05 documento soporte) van con facturacion. Si el
+     * catalogo falla o el tipo no aparece, queda sin marcar y se sigue
+     * ofreciendo crear: Nobelio dira si no se puede.
+     */
+    private function marcarHabilitadas(Nobelio $nobelio, array $emisor, array $resoluciones): array
+    {
+        if (!$resoluciones) {
+            return [];
+        }
+
+        $codigos = [];
+        $catalogo = $nobelio->consumoGetTodos('api/catalogos/tipo-factura/');
+        if (!$catalogo['error']) {
+            $codigos = array_column($catalogo['datos'], 'codigo', 'id');
+        }
+
+        foreach ($resoluciones as &$resolucion) {
+            $codigo = $codigos[$resolucion['tipo_factura'] ?? ''] ?? null;
+            $campo = $codigo === '20' ? 'habilitado_documento_equivalente' : 'habilitado_facturacion';
+            $resolucion['habilitada'] = $codigo !== null && !empty($emisor[$campo]);
+        }
+        unset($resolucion);
+
+        return $resoluciones;
+    }
+
     #[Route('/nobelio/emisor/webhook-nuevo/{id}', name: 'nobelio_emisor_webhook_nuevo', requirements: ['id' => '\\d+'])]
     public function webhookNuevo(Request $request, Nobelio $nobelio, int $id): Response
     {
@@ -407,6 +440,74 @@ class EmisorController extends AbstractController
         }
 
         return $this->redirectToRoute('nobelio_emisor_detalle', ['id' => $id, '_fragment' => 'resoluciones']);
+    }
+
+    /**
+     * Ventana para editar un software: identificador, PIN y TestSetId.
+     *
+     * Va por PATCH, como webhookEditar(), y sin `emisor` ni `tipo`: Nobelio
+     * no deja cambiar ninguno de los dos. El PIN es de solo escritura en
+     * Nobelio —nunca vuelve en el GET—, asi que el campo sale vacio y solo se
+     * manda si se digita: en blanco se conserva el que hay. Con el Set de
+     * Pruebas aceptado Nobelio rechaza cualquier cambio; por eso el detalle
+     * solo ofrece editar los que estan sin habilitar.
+     */
+    #[Route('/nobelio/emisor/software-editar/{id}', name: 'nobelio_emisor_software_editar', requirements: ['id' => '\\d+'])]
+    public function softwareEditar(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $software = [];
+        $respuestaSoftware = $nobelio->consumoGet("api/emisores/software/{$id}/");
+        if ($respuestaSoftware['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuestaSoftware['mensaje']}");
+        } else {
+            $software = $respuestaSoftware['datos'];
+        }
+
+        $form = $this->createFormBuilder([
+            'identificador' => $software['identificador'] ?? null,
+            'testSetId' => $software['test_set_id'] ?? null,
+        ])
+            ->add('identificador', TextType::class, ['attr' => ['maxlength' => 100]])
+            ->add('pin', TextType::class, ['required' => false, 'attr' => ['maxlength' => 100, 'autocomplete' => 'off']])
+            ->add('testSetId', TextType::class, ['required' => false, 'attr' => ['maxlength' => 100]])
+            ->add('btnGuardar', SubmitType::class, ['label' => 'Guardar'])
+            ->getForm();
+        $form->handleRequest($request);
+
+        if ($software && $form->isSubmitted() && $form->isValid()) {
+            $datos = [
+                'identificador' => trim((string) $form->get('identificador')->getData()),
+                'test_set_id' => trim((string) $form->get('testSetId')->getData()),
+            ];
+            $pin = trim((string) $form->get('pin')->getData());
+            if ($pin !== '') {
+                $datos['pin'] = $pin;
+            }
+
+            $respuesta = $nobelio->consumoPatch("api/emisores/software/{$id}/", $datos);
+            if ($respuesta['error']) {
+                // Sin redirect: asi el form conserva lo digitado para corregir.
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $this->addFlash('success', 'Software actualizado. Recargue el detalle del emisor para ver los cambios.');
+
+                return $this->redirectToRoute('nobelio_emisor_software_editar', ['id' => $id]);
+            }
+        }
+
+        $emisor = [];
+        if (!empty($software['emisor'])) {
+            $respuestaEmisor = $nobelio->consumoGet("api/emisores/emisor/{$software['emisor']}/");
+            if (!$respuestaEmisor['error']) {
+                $emisor = $respuestaEmisor['datos'];
+            }
+        }
+
+        return $this->render('nobelio/emisor/software_editar.html.twig', [
+            'form' => $form->createView(),
+            'emisor' => $emisor,
+            'software' => $software,
+        ]);
     }
 
     /**

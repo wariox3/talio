@@ -1,0 +1,27 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Editar software · Talio{% endblock %}
+{% block ruta %}
+    Software {{ software.id|default('') }} · <b>{{ emisor.razon_social|default('') }}</b>
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Software') }}
+        {# El emisor y el tipo no se cambian: el SoftwareID de la DIAN es de un
+           NIT y de una operación. El PIN nunca vuelve de Nobelio: en blanco se
+           conserva el que hay. #}
+        {% set tiposSoftware = { 'nomina': 'Nómina', 'facturacion': 'Facturación', 'documento_equivalente': 'Documento equivalente' } %}
+        <dl class="ficha">
+            <dt>Tipo</dt>
+            <dd>{{ software.tipo_display|default(tiposSoftware[software.tipo|default('')]|default(software.tipo|default(''))) }}</dd>
+        </dl>
+        {{ form_start(form) }}
+        <div class="form-stack">
+            {{ ui.campo('Identificador', form.identificador) }}
+            {{ ui.campo('PIN (en blanco no cambia)', form.pin) }}
+            {{ ui.campo('Test set id (opcional)', form.testSetId) }}
+            <div>{{ form_widget(form.btnGuardar) }}</div>
+        </div>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

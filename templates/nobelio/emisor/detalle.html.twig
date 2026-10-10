@@ -160,14 +160,16 @@
                                 {# Desactivar deshace la habilitacion: baja el
                                    set de pruebas aceptado del software y el
                                    habilitado del emisor para esa operacion.
-                                   Eliminar solo sale sin habilitar: Nobelio
-                                   no deja borrar un software habilitado. #}
+                                   Editar y Eliminar solo salen sin habilitar:
+                                   Nobelio no deja modificar ni borrar un
+                                   software habilitado. #}
                                 {% if programa.set_pruebas_aceptado %}
                                     <button type="submit" class="link" form="software-emisor"
                                             formaction="{{ path('nobelio_emisor_software_desactivar', { 'id': emisor.id }) }}"
                                             name="software" value="{{ programa.id }}"
                                             onclick="return confirm('¿Desactivar la habilitación del software {{ programa.identificador|e('js') }}?')">Desactivar</button>
                                 {% else %}
+                                    <a href="javascript:abrirVentana('{{ path('nobelio_emisor_software_editar', { 'id': programa.id }) }}', 'SoftwareEditar', 430, 640)">Editar</a>
                                     <button type="submit" class="link" form="software-emisor"
                                             name="software" value="{{ programa.id }}"
                                             onclick="return confirm('¿Eliminar el software {{ programa.identificador|e('js') }}?')">Eliminar</button>
@@ -218,9 +220,13 @@
                             {# Siembra un documento de prueba sobre esta
                                resolucion. Va en ventana y no como boton
                                directo porque el consecutivo se digita: en
-                               blanco lo elige Nobelio. #}
+                               blanco lo elige Nobelio. Con el emisor ya
+                               habilitado para esa operacion no hay nada que
+                               sembrar, igual que en el software de nomina. #}
                             <td class="acciones">
-                                <a href="javascript:abrirVentana('{{ path('nobelio_resolucion_documento_prueba', { 'id': resolucion.id }) }}', 'DocumentoPrueba', 430, 640)">Crear</a>
+                                {% if not resolucion.habilitada %}
+                                    <a href="javascript:abrirVentana('{{ path('nobelio_resolucion_documento_prueba', { 'id': resolucion.id }) }}', 'DocumentoPrueba', 430, 640)">Crear</a>
+                                {% endif %}
                                 <a href="javascript:abrirVentana('{{ path('nobelio_emisor_resolucion_editar', { 'id': resolucion.id }) }}', 'ResolucionEditar', 430, 720)">Editar</a>
                                 <button type="submit" class="link" form="resoluciones-emisor"
                                         name="resolucion" value="{{ resolucion.id }}"
