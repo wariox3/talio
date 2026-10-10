@@ -1,0 +1,10 @@
+{# Estado de un evento RADIAN ante la DIAN (EstadoEvento en Nobelio).
+   Uso: {{ include('nobelio/recepcion/_estado_evento.html.twig', { estado: evento.estado }) }} #}
+{%- set etiquetas = {
+    'pendiente': ['Pendiente', 'idle'],
+    'registrado': ['Registrado', 'ok'],
+    'rechazado': ['Rechazado', 'crit'],
+    'error': ['Error al enviar', 'warn'],
+} -%}
+{%- set etiqueta = etiquetas[estado]|default([estado, 'idle']) -%}
+<span class="tag {{ etiqueta[1] }}"><span class="dot"></span>{{ etiqueta[0] }}</span>

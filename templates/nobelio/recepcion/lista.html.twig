@@ -4,14 +4,19 @@
 {% block ruta %}Nobelio <span>/</span> <b>Recepción</b>{% endblock %}
 {% block acciones %}
     <span class="stamp">{{ total }} documento{{ total == 1 ? '' : 's' }}</span>
+    {# Para el ZIP o XML que llego por otro medio que el buzon. #}
+    <button type="button" onclick="abrirVentana('{{ path('nobelio_recepcion_cargar') }}', 'CargarDocumento', 560, 760)">Cargar ZIP</button>
 {% endblock %}
 {% block content %}
     {% set tipos = constant('App\\Controller\\nobelio\\RecepcionController::TIPOS') %}
+    {% set formasPago = constant('App\\Controller\\nobelio\\RecepcionController::FORMAS_PAGO') %}
     {{ form_start(form) }}
     <input type="hidden" name="pagina" value="{{ pagina }}">
     <div class="block">
         <div class="filters">
             {{ ui.campo('Tipo', form.documento_tipo) }}
+            {# El ultimo evento que la DIAN registro sobre la factura. #}
+            {{ ui.campo('Estado RADIAN', form.radian_estado) }}
             {{ ui.campo('NIT proveedor (sin DV)', form.proveedor) }}
             {{ ui.campo('Emisor (id)', form.emisor) }}
             {{ ui.campo('Correo (id)', form.correo) }}
@@ -47,9 +52,12 @@
                     <th class="num">Emisor</th>
                     <th class="num">Correo</th>
                     <th>Moneda</th>
+                    <th>Forma de pago</th>
                     <th class="num">Total a pagar</th>
                     <th>Validación DIAN</th>
+                    <th>RADIAN</th>
                     <th>CUFE/CUDE</th>
+                    <th>Acciones</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -73,17 +81,38 @@
                             <a href="{{ path('nobelio_correo_detalle', { 'id': documento.correo }) }}">{{ documento.correo }}</a>
                         </td>
                         <td>{{ documento.moneda }}</td>
+                        <td>{{ documento.forma_pago|default('') ? formasPago[documento.forma_pago]|default(documento.forma_pago) }}</td>
                         <td class="num">{{ documento.total_a_pagar is empty ? '' : documento.total_a_pagar|number_format(2, ',', '.') }}</td>
                         <td>{{ include('nobelio/recepcion/_validacion.html.twig', { codigo: documento.validacion_codigo }) }}</td>
+                        <td>{{ include('nobelio/recepcion/_radian.html.twig', { estado: documento.radian_estado|default('') }) }}</td>
                         {# 96 caracteres de SHA-384: el principio y el completo
                            en el title, como el CUNE en la nomina. #}
                         <td class="id" title="{{ documento.cufe_cude }}">
                             {{- documento.cufe_cude ? documento.cufe_cude|slice(0, 12) ~ '…' -}}
                         </td>
+                        {# Sin eventos, lo que sigue es el acuse de recibo: abre la
+                           ventana del evento con el 030 elegido. Solo en facturas
+                           de venta y no de contado: RADIAN no admite eventos sobre
+                           ellas (LGC62). #}
+                        <td class="acciones">
+                            {% if documento.radian_estado|default('') == 'sin_eventos' and documento.documento_tipo == 'factura_venta' and documento.forma_pago|default('') != '1' %}
+                                <a href="javascript:abrirVentana('{{ path('nobelio_recepcion_evento_nuevo', { 'id': documento.id, 'codigo': '030' }) }}', 'EventoNuevo', 560, 640)">Acuse 030</a>
+                            {% endif %}
+                            {# Sin eventos registrados. Un pendiente o rechazado no cambia
+                               radian_estado y tambien impide borrar: Nobelio lo
+                               comprueba y responde diciendolo. El boton vive dentro
+                               del form de filtros, asi que apunta con form= al de
+                               eliminar, que va fuera: los formularios no se anidan. #}
+                            {% if documento.radian_estado|default('') == 'sin_eventos' %}
+                                <button type="submit" class="link" form="eliminar-documento"
+                                        formaction="{{ path('nobelio_recepcion_eliminar', { 'id': documento.id }) }}"
+                                        onclick="return confirm('¿Eliminar el documento {{ documento.numero }} con sus archivos? No se puede deshacer.')">Eliminar</button>
+                            {% endif %}
+                        </td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="12">
+                        <td colspan="15">
                             {% if total == 0 %}
                                 No hay documentos recibidos que mostrar.
                             {% else %}
@@ -97,4 +126,9 @@
         </div>
     </div>
     {{ form_end(form) }}
+    {# Al eliminar desde aqui, un error vuelve a la lista y no a la ficha. #}
+    <form id="eliminar-documento" method="post">
+        <input type="hidden" name="_token" value="{{ csrf_token('eliminar-documento') }}">
+        <input type="hidden" name="volver" value="lista">
+    </form>
 {% endblock %}

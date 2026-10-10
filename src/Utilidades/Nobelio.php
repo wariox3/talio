@@ -3,6 +3,8 @@
 namespace App\Utilidades;
 
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Mime\Part\DataPart;
+use Symfony\Component\Mime\Part\Multipart\FormDataPart;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
@@ -73,6 +75,32 @@ class Nobelio extends ClienteApi
     public function consumoDelete(string $url): array
     {
         return $this->llamar('DELETE', $url);
+    }
+
+    /**
+     * POST multipart/form-data, para los endpoints que reciben un archivo
+     * (recepcion/documento/cargar/).
+     *
+     * $campos son los valores de texto y $archivos, campo => ['ruta', 'nombre'];
+     * el nombre es el que vera Nobelio, que valida por su extension (el
+     * archivo subido llega a PHP con un nombre temporal sin ella).
+     */
+    public function consumoMultipart(string $url, array $campos, array $archivos): array
+    {
+        $partes = array_map('strval', $campos);
+        foreach ($archivos as $campo => [$ruta, $nombre]) {
+            $partes[$campo] = DataPart::fromPath($ruta, $nombre);
+        }
+        $formulario = new FormDataPart($partes);
+
+        // Como texto y no con bodyToIterable(): un cuerpo iterable viaja con
+        // Transfer-Encoding: chunked, sin Content-Length, y Django (WSGI) lo
+        // recibe vacio —"emisor: Este campo es requerido"—. El archivo ya
+        // viene acotado a 10 MB.
+        return $this->llamar('POST', $url, [
+            'headers' => $formulario->getPreparedHeaders()->toArray(),
+            'body' => $formulario->bodyToString(),
+        ]);
     }
 
     /**

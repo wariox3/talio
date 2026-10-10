@@ -18,6 +18,16 @@
     {% if documento.tiene_pdf %}
         <button type="button" class="ghost" onclick="location.href='{{ path('nobelio_recepcion_descargar', { 'archivo': 'pdf', 'id': documento.id }) }}'">PDF</button>
     {% endif %}
+    {# Consulta el CUFE en la DIAN en el momento. El form va al final del
+       contenido y el boton lo apunta con form=. #}
+    <button type="submit" form="verificar-documento" class="ghost"
+            onclick="return confirm('¿Consultar en la DIAN el documento {{ documento.numero }}?')">Verificar</button>
+    {# Solo sin eventos en ningun estado (tambien pendientes o rechazados):
+       Nobelio lo vuelve a comprobar. El form va al final del contenido. #}
+    {% if eventos is empty %}
+        <button type="submit" form="eliminar-documento" class="ghost"
+                onclick="return confirm('¿Eliminar el documento {{ documento.numero }} con sus archivos? No se puede deshacer.')">Eliminar</button>
+    {% endif %}
 {% endblock %}
 {% block content %}
     {% set tipos = constant('App\\Controller\\nobelio\\RecepcionController::TIPOS') %}
@@ -46,6 +56,14 @@
             <dd class="wrap">{{ documento.cufe_cude }}</dd>
             <dt>Moneda</dt>
             <dd>{{ documento.moneda }}</dd>
+
+            {# cac:PaymentMeans/cbc:ID. RADIAN solo admite eventos sobre
+               facturas a credito. #}
+            {% set formasPago = constant('App\\Controller\\nobelio\\RecepcionController::FORMAS_PAGO') %}
+            <dt>Forma de pago</dt>
+            <dd>{{ documento.forma_pago|default('') ? formasPago[documento.forma_pago]|default(documento.forma_pago) }}</dd>
+            <dt></dt>
+            <dd></dd>
 
             <dt>Creado</dt>
             <dd>{{ documento.creado_en ? documento.creado_en|date('Y-m-d H:i', false) }}</dd>
@@ -107,6 +125,31 @@
             <dt>Fecha de validación</dt>
             <dd>{{ documento.fecha_validacion ? documento.fecha_validacion|date('Y-m-d H:i', false) }}</dd>
         </dl>
+
+        {# La verificacion es la consulta del CUFE que Nobelio le hace a la
+           DIAN al recibir el documento: sin "valido" no se le pueden registrar
+           eventos. El estado RADIAN resume el ultimo evento registrado; el
+           detalle esta en la pestaña de eventos. #}
+        {{ ui.cabecera('RADIAN') }}
+        <dl class="ficha">
+            <dt>Estado RADIAN</dt>
+            <dd>{{ include('nobelio/recepcion/_radian.html.twig', { estado: documento.radian_estado|default('') }) }}</dd>
+            <dt>Verificación DIAN</dt>
+            <dd>
+                {%- if documento.verificacion_estado|default('') -%}
+                    {%- set verificaciones = constant('App\\Controller\\nobelio\\RecepcionController::ESTADOS_VERIFICACION') -%}
+                    {{ ui.estadoCritico(documento.verificacion_estado == 'valido', 'Válido', verificaciones[documento.verificacion_estado]|default(documento.verificacion_estado)) }}
+                {%- endif -%}
+            </dd>
+
+            <dt>Respuesta de la verificación</dt>
+            <dd class="wrap">
+                {{- documento.verificacion_codigo|default('') -}}
+                {%- if documento.verificacion_descripcion|default('') %} · {{ documento.verificacion_descripcion }}{% endif -%}
+            </dd>
+            <dt>Verificado</dt>
+            <dd>{{ documento.verificado_en|default('') ? documento.verificado_en|date('Y-m-d H:i', false) }}</dd>
+        </dl>
     </div>
 
     {# Los archivos del documento: el XML recibido, el documento extraido del
@@ -117,9 +160,106 @@
             <button type="button" class="tab is-active" role="tab" aria-selected="true" data-panel="adjuntos">
                 Adjuntos <span class="stamp">{{ adjuntos|length }}</span>
             </button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-panel="eventos">
+                Eventos RADIAN <span class="stamp">{{ eventos|length }}</span>
+            </button>
         </div>
         <div class="tab-panel" id="adjuntos" role="tabpanel">
             {{ include('nobelio/recepcion/_adjuntos.html.twig', { adjuntos: adjuntos }) }}
         </div>
+
+        <div class="tab-panel" id="eventos" role="tabpanel" hidden>
+            {# Los eventos que el emisor registro como adquiriente, lo mas
+               reciente primero. Nobelio los envia en segundo plano: pendiente
+               es que sigue en la cola; rechazado es definitivo (para intentarlo
+               otra vez se pide otro evento) y error, que no se pudo enviar y se
+               reenvia con el mismo XML. Fecha, hora y CUDE salen al firmar. #}
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Evento</th>
+                        <th>Estado</th>
+                        <th>Firmado</th>
+                        <th>Persona que recibe</th>
+                        <th>Concepto reclamo</th>
+                        <th>Respuesta DIAN</th>
+                        <th class="num">Intentos</th>
+                        <th>Enviado</th>
+                        <th>Usuario</th>
+                        <th>CUDE</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for evento in eventos %}
+                        <tr>
+                            <td class="id">{{ evento.numero }}</td>
+                            <td>{{ evento.codigo }} · {{ evento.descripcion }}</td>
+                            <td>{{ include('nobelio/recepcion/_estado_evento.html.twig', { estado: evento.estado }) }}</td>
+                            <td class="fecha">{{ evento.fecha ? evento.fecha ~ ' ' ~ evento.hora|default('')|slice(0, 8) }}</td>
+                            <td class="wrap">
+                                {%- if evento.persona_numero_identificacion -%}
+                                    {{ evento.persona_nombres }} {{ evento.persona_apellidos }}
+                                    <div class="id">{{ evento.persona_numero_identificacion }}</div>
+                                    {%- if evento.persona_cargo or evento.persona_area -%}
+                                        <div>{{ [evento.persona_cargo, evento.persona_area]|filter(v => v)|join(' · ') }}</div>
+                                    {%- endif -%}
+                                {%- endif -%}
+                            </td>
+                            <td>{{ evento.concepto_reclamo|default('') }}</td>
+                            <td class="wrap">
+                                {{- evento.respuesta_codigo -}}
+                                {%- if evento.respuesta_descripcion %}{{ evento.respuesta_codigo ? ' · ' }}{{ evento.respuesta_descripcion }}{% endif -%}
+                            </td>
+                            <td class="num">{{ evento.intentos }}</td>
+                            <td class="fecha">{{ evento.enviado_en ? evento.enviado_en|date('Y-m-d H:i:s', false) }}</td>
+                            {# Vacio en el acuse automatico. #}
+                            <td>{{ evento.usuario|default('Automático') }}</td>
+                            <td class="id" title="{{ evento.cude }}">{{ evento.cude ? evento.cude|slice(0, 12) ~ '…' }}</td>
+                            <td class="acciones">
+                                {% if evento.tiene_xml %}
+                                    <a href="{{ path('nobelio_recepcion_evento_descargar', { 'archivo': 'xml', 'id': evento.id }) }}">XML</a>
+                                {% endif %}
+                                {% if evento.tiene_respuesta %}
+                                    <a href="{{ path('nobelio_recepcion_evento_descargar', { 'archivo': 'respuesta', 'id': evento.id }) }}">Respuesta</a>
+                                {% endif %}
+                                {% if evento.estado == 'error' %}
+                                    <form method="post" action="{{ path('nobelio_recepcion_evento_enviar', { 'id': evento.id }) }}" style="display:inline"
+                                          onsubmit="return confirm('¿Reenviar a la DIAN el evento {{ evento.numero }}?')">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('enviar-evento') }}">
+                                        <input type="hidden" name="documento" value="{{ documento.id }}">
+                                        <button type="submit" class="ghost">Reenviar</button>
+                                    </form>
+                                {% endif %}
+                                {# Solo los rechazados: la DIAN no los registro. Uno
+                                   registrado esta en RADIAN y uno pendiente o en
+                                   error puede estar en camino. #}
+                                {% if evento.estado == 'rechazado' %}
+                                    <form method="post" action="{{ path('nobelio_recepcion_evento_eliminar', { 'id': evento.id }) }}" style="display:inline"
+                                          onsubmit="return confirm('¿Eliminar el evento rechazado {{ evento.numero }} con su respuesta de la DIAN? No se puede deshacer.')">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('eliminar-evento') }}">
+                                        <input type="hidden" name="documento" value="{{ documento.id }}">
+                                        <button type="submit" class="ghost">Eliminar</button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="12">Este documento no tiene eventos RADIAN.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
+    <form id="verificar-documento" method="post" action="{{ path('nobelio_recepcion_verificar', { 'id': documento.id }) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('verificar-documento') }}">
+    </form>
+    {% if eventos is empty %}
+        <form id="eliminar-documento" method="post" action="{{ path('nobelio_recepcion_eliminar', { 'id': documento.id }) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('eliminar-documento') }}">
+        </form>
+    {% endif %}
 {% endblock %}

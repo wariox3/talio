@@ -1,0 +1,78 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Cargar documentos · Talio{% endblock %}
+{% block ruta %}Recepción · <b>Cargar documentos</b>{% endblock %}
+{% block content %}
+    {% set tipos = constant('App\\Controller\\nobelio\\RecepcionController::TIPOS') %}
+    <div class="block">
+        {{ ui.cabecera('Archivo') }}
+        {# El ZIP del proveedor (AttachedDocument y PDF) o el XML suelto, hasta
+           10 MB. Cada documento tiene que ser del emisor elegido: su NIT
+           receptor. form_start pone el enctype multipart por el FileType. #}
+        {{ form_start(form) }}
+        <div class="form-stack">
+            {{ ui.campo('Emisor', form.emisor) }}
+            {{ ui.campo('ZIP o XML', form.archivo) }}
+            <div>{{ form_widget(form.btnCargar) }}</div>
+        </div>
+        {{ form_end(form) }}
+    </div>
+
+    {% if resultado %}
+        {# Creados son los nuevos; repetidos, los que ya estaban por correo o
+           por otra carga, y rechazados, los de otro NIT receptor. #}
+        <div class="block">
+            {{ ui.cabecera('Resultado') }}
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Resultado</th>
+                        <th>Tipo</th>
+                        <th>Número</th>
+                        <th>Emisión</th>
+                        <th>Proveedor</th>
+                        <th class="num">Total a pagar</th>
+                        <th>Detalle</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for documento in resultado.creados|default([]) %}
+                        <tr>
+                            <td><span class="tag ok"><span class="dot"></span>Creado</span></td>
+                            <td>{{ tipos[documento.documento_tipo]|default(documento.documento_tipo) }}</td>
+                            <td class="id">{{ documento.numero }}</td>
+                            <td class="fecha">{{ documento.fecha_emision }}</td>
+                            <td>{{ documento.proveedor_razon_social }}</td>
+                            <td class="num">{{ documento.total_a_pagar is empty ? '' : documento.total_a_pagar|number_format(2, ',', '.') }}</td>
+                            <td></td>
+                        </tr>
+                    {% endfor %}
+                    {% for documento in resultado.repetidos|default([]) %}
+                        <tr>
+                            <td><span class="tag idle"><span class="dot"></span>Repetido</span></td>
+                            <td>{{ tipos[documento.documento_tipo]|default(documento.documento_tipo) }}</td>
+                            <td class="id">{{ documento.numero }}</td>
+                            <td class="fecha">{{ documento.fecha_emision }}</td>
+                            <td>{{ documento.proveedor_razon_social }}</td>
+                            <td class="num">{{ documento.total_a_pagar is empty ? '' : documento.total_a_pagar|number_format(2, ',', '.') }}</td>
+                            <td>Ya estaba registrado</td>
+                        </tr>
+                    {% endfor %}
+                    {% for rechazo in resultado.rechazados|default([]) %}
+                        <tr>
+                            <td><span class="tag crit"><span class="dot"></span>Rechazado</span></td>
+                            <td></td>
+                            <td class="id">{{ rechazo.numero }}</td>
+                            <td></td>
+                            <td></td>
+                            <td></td>
+                            <td class="wrap">{{ rechazo.motivo }} (NIT receptor {{ rechazo.receptor_numero_identificacion }})</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

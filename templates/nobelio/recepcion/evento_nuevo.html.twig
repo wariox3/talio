@@ -1,0 +1,65 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Evento RADIAN · Talio{% endblock %}
+{% block ruta %}
+    Evento RADIAN · <b>{{ documento.numero|default('') }}</b> {{ documento.proveedor_razon_social|default('') }}
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Evento', documento.radian_estado|default('') ? constant('App\\Controller\\nobelio\\RecepcionController::ESTADOS_RADIAN')[documento.radian_estado]|default(documento.radian_estado)) }}
+        {# Van en orden: 030 acuse, 032 recibo y despues 033 aceptacion o 031
+           reclamo, que se excluyen. El 033 y el 031 tienen 3 dias habiles
+           desde el 032. Nobelio lo comprueba y dice por que no cabe. #}
+        {{ form_start(form) }}
+        <div class="form-stack">
+            {{ ui.campo('Evento', form.codigo) }}
+        </div>
+
+        {# Solo el 031, donde es obligatorio. Se muestra segun el evento elegido;
+           aunque quedara lleno, el controlador solo lo manda en el 031. #}
+        <div id="grupo-concepto" data-eventos="031">
+            <div class="form-stack" style="margin-top: 14px">
+                {{ ui.campo('Concepto del reclamo', form.concepto_reclamo) }}
+            </div>
+        </div>
+
+        {# Solo el 030 y el 032. Toda vacia, Nobelio usa la persona que recibe
+           configurada en el emisor; si se llena, van completos al menos el
+           tipo, el numero, los nombres y los apellidos. #}
+        <div id="grupo-persona" data-eventos="030 032">
+            {{ ui.cabecera('Persona que recibe (opcional: vacía usa la del emisor)') }}
+            <div class="form-stack">
+                {{ ui.campo('Tipo de identificación', form.persona_tipo_identificacion) }}
+                {{ ui.campo('Número de identificación', form.persona_numero_identificacion) }}
+                {{ ui.campo('Nombres', form.persona_nombres) }}
+                {{ ui.campo('Apellidos', form.persona_apellidos) }}
+                {{ ui.campo('Cargo', form.persona_cargo) }}
+                {{ ui.campo('Área', form.persona_area) }}
+            </div>
+        </div>
+
+        {# Queda en RADIAN y no se deshace. #}
+        <div class="form-stack" style="margin-top: 14px">
+            <div>{{ form_widget(form.btnSolicitar, { 'attr': { 'onclick': "return confirm('El evento queda registrado en RADIAN y no se puede deshacer. ¿Solicitarlo?')" } }) }}</div>
+        </div>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}
+{% block javascripts %}
+    <script>
+        // Muestra solo los campos del evento elegido: cada grupo dice en
+        // data-eventos a que codigos aplica.
+        (function () {
+            var codigo = document.getElementById('{{ form.codigo.vars.id }}');
+            var grupos = document.querySelectorAll('[data-eventos]');
+            function actualizar() {
+                grupos.forEach(function (grupo) {
+                    var aplica = grupo.dataset.eventos.split(' ').indexOf(codigo.value) !== -1;
+                    grupo.style.display = aplica ? '' : 'none';
+                });
+            }
+            codigo.addEventListener('change', actualizar);
+            actualizar();
+        })();
+    </script>
+{% endblock %}

@@ -1,0 +1,14 @@
+{# Estado RADIAN de un documento recibido (EstadoRadian en Nobelio): el ultimo
+   evento que la DIAN registro. El reclamo es el unico que no es un avance.
+   Uso: {{ include('nobelio/recepcion/_radian.html.twig', { estado: documento.radian_estado }) }} #}
+{%- set clases = {
+    'sin_eventos': 'idle',
+    'acuse': 'warn',
+    'recibo': 'warn',
+    'aceptada': 'ok',
+    'reclamada': 'crit',
+} -%}
+{%- if estado -%}
+    {%- set nombres = constant('App\\Controller\\nobelio\\RecepcionController::ESTADOS_RADIAN') -%}
+    <span class="tag {{ clases[estado]|default('idle') }}"><span class="dot"></span>{{ nombres[estado]|default(estado) }}</span>
+{%- endif -%}

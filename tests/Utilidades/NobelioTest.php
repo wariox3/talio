@@ -46,6 +46,38 @@ class NobelioTest extends TestCase
         $this->assertSame('{}', $this->peticion['opciones']['body']);
     }
 
+    public function testMultipartLlevaCamposYArchivoConSuNombre(): void
+    {
+        $ruta = tempnam(sys_get_temp_dir(), 'carga');
+        file_put_contents($ruta, 'PK-contenido');
+
+        $cuerpo = '';
+        $cabeceras = [];
+        $cliente = new MockHttpClient(function (string $metodo, string $url, array $opciones) use (&$cuerpo, &$cabeceras) {
+            $cabeceras = $opciones['normalized_headers'];
+            // Texto y no iterable: un iterable viajaria chunked, sin
+            // Content-Length, y Django lo recibiria vacio.
+            $this->assertIsString($opciones['body']);
+            $cuerpo = $opciones['body'];
+
+            return new MockResponse('{}', ['http_code' => 201]);
+        });
+
+        try {
+            (new Nobelio($cliente, 'https://nobelio.test/', 'pre.secreto'))->consumoMultipart(
+                'api/recepcion/documento/cargar/', ['emisor' => 7], ['archivo' => [$ruta, 'factura.zip']],
+            );
+        } finally {
+            unlink($ruta);
+        }
+
+        $this->assertStringStartsWith('Content-Type: multipart/form-data; boundary=', $cabeceras['content-type'][0]);
+        $this->assertStringContainsString("name=\"emisor\"\r\n\r\n7", $cuerpo);
+        $this->assertStringContainsString('name="archivo"; filename="factura.zip"', $cuerpo);
+        $this->assertStringContainsString('PK-contenido', $cuerpo);
+        $this->assertSame(['Authorization: Api-Key pre.secreto'], $cabeceras['authorization']);
+    }
+
     public function testLlaveRechazada(): void
     {
         $respuesta = $this->nobelio(new MockResponse('{"detail": "x"}', ['http_code' => 401]))->consumoGet('a');
