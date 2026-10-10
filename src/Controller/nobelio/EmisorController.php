@@ -291,6 +291,92 @@ class EmisorController extends AbstractController
     }
 
     /**
+     * Elimina una resolucion y vuelve al detalle del emisor, en su pestaña.
+     *
+     * Igual que en webhookEliminar(): el id de la resolucion se concatena a
+     * la url del API, asi que se acota antes de usarlo, y el emisor solo
+     * sirve para volver.
+     */
+    #[Route('/nobelio/emisor/resolucion-eliminar/{id}', name: 'nobelio_emisor_resolucion_eliminar', methods: ['POST'], requirements: ['id' => '\\d+'])]
+    public function resolucionEliminar(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $resolucion = (string) $request->request->get('resolucion', '');
+
+        if (!$this->isCsrfTokenValid('resoluciones-emisor', (string) $request->request->get('_token'))) {
+            $this->addFlash('danger', 'La petición de borrado no es válida.');
+        } elseif (!ctype_digit($resolucion)) {
+            $this->addFlash('danger', 'No se indicó qué resolución eliminar.');
+        } else {
+            $respuesta = $nobelio->consumoDelete("api/emisores/resolucion/{$resolucion}/");
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $this->addFlash('success', 'Resolución eliminada.');
+            }
+        }
+
+        return $this->redirectToRoute('nobelio_emisor_detalle', ['id' => $id, '_fragment' => 'resoluciones']);
+    }
+
+    /**
+     * Elimina un software y vuelve al detalle del emisor, en su pestaña.
+     *
+     * Igual que en webhookEliminar(): el id del software se concatena a la
+     * url del API, asi que se acota antes de usarlo, y el emisor solo sirve
+     * para volver.
+     */
+    #[Route('/nobelio/emisor/software-eliminar/{id}', name: 'nobelio_emisor_software_eliminar', methods: ['POST'], requirements: ['id' => '\\d+'])]
+    public function softwareEliminar(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $software = (string) $request->request->get('software', '');
+
+        if (!$this->isCsrfTokenValid('software-emisor', (string) $request->request->get('_token'))) {
+            $this->addFlash('danger', 'La petición de borrado no es válida.');
+        } elseif (!ctype_digit($software)) {
+            $this->addFlash('danger', 'No se indicó qué software eliminar.');
+        } else {
+            $respuesta = $nobelio->consumoDelete("api/emisores/software/{$software}/");
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $this->addFlash('success', 'Software eliminado.');
+            }
+        }
+
+        return $this->redirectToRoute('nobelio_emisor_detalle', ['id' => $id, '_fragment' => 'software']);
+    }
+
+    /**
+     * Desactiva la habilitacion de un software y vuelve al detalle del
+     * emisor, en su pestaña.
+     *
+     * Nobelio baja `set_pruebas_aceptado` del software y la bandera
+     * `habilitado_*` del emisor para esa operacion, y se niega si el emisor
+     * esta en produccion para ella. Comparte formulario y token con
+     * softwareEliminar(): el boton solo cambia el destino con `formaction`.
+     */
+    #[Route('/nobelio/emisor/software-desactivar/{id}', name: 'nobelio_emisor_software_desactivar', methods: ['POST'], requirements: ['id' => '\\d+'])]
+    public function softwareDesactivar(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $software = (string) $request->request->get('software', '');
+
+        if (!$this->isCsrfTokenValid('software-emisor', (string) $request->request->get('_token'))) {
+            $this->addFlash('danger', 'La petición de desactivación no es válida.');
+        } elseif (!ctype_digit($software)) {
+            $this->addFlash('danger', 'No se indicó qué software desactivar.');
+        } else {
+            $respuesta = $nobelio->consumoPost("api/emisores/software/{$software}/desactivar/");
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $this->addFlash('success', 'Software desactivado.');
+            }
+        }
+
+        return $this->redirectToRoute('nobelio_emisor_detalle', ['id' => $id, '_fragment' => 'software']);
+    }
+
+    /**
      * Ventana para registrar un software del emisor.
      *
      * Pide lo que Nobelio exige (tipo, identificador y PIN) mas el TestSetId,
@@ -398,6 +484,13 @@ class EmisorController extends AbstractController
             $this->addFlash('danger', "Nobelio: {$respuestaResolucion['mensaje']}");
         } else {
             $resolucion = $respuestaResolucion['datos'];
+        }
+
+        // El numero sale propuesto: el consecutivo actual de la resolucion,
+        // que es el siguiente a usar. Sigue siendo editable, y borrarlo deja
+        // que elija Nobelio.
+        if (!$form->isSubmitted() && isset($resolucion['consecutivo_actual'])) {
+            $form->get('consecutivo')->setData((int) $resolucion['consecutivo_actual']);
         }
 
         return $this->render('nobelio/emisor/documento_prueba.html.twig', [

@@ -157,6 +157,18 @@
                                 {% if programa.tipo|default('') == 'nomina' and not programa.set_pruebas_aceptado %}
                                     <a href="javascript:abrirVentana('{{ path('nobelio_software_nomina_prueba', { 'id': programa.id }) }}', 'NominaPrueba', 430, 640)">Crear</a>
                                 {% endif %}
+                                {# Deshace la habilitacion: baja el set de
+                                   pruebas aceptado del software y el
+                                   habilitado del emisor para esa operacion. #}
+                                {% if programa.set_pruebas_aceptado %}
+                                    <button type="submit" class="link" form="software-emisor"
+                                            formaction="{{ path('nobelio_emisor_software_desactivar', { 'id': emisor.id }) }}"
+                                            name="software" value="{{ programa.id }}"
+                                            onclick="return confirm('¿Desactivar la habilitación del software {{ programa.identificador|e('js') }}?')">Desactivar</button>
+                                {% endif %}
+                                <button type="submit" class="link" form="software-emisor"
+                                        name="software" value="{{ programa.id }}"
+                                        onclick="return confirm('¿Eliminar el software {{ programa.identificador|e('js') }}?')">Eliminar</button>
                             </td>
                         </tr>
                     {% else %}
@@ -179,6 +191,7 @@
                         <th>Prefijo</th>
                         <th class="num">Rango desde</th>
                         <th class="num">Rango hasta</th>
+                        <th class="num">Consecutivo actual</th>
                         <th>Vigente desde</th>
                         <th>Vigente hasta</th>
                         <th>Estado</th>
@@ -195,6 +208,7 @@
                             <td>{{ resolucion.prefijo }}</td>
                             <td class="num">{{ resolucion.rango_desde }}</td>
                             <td class="num">{{ resolucion.rango_hasta }}</td>
+                            <td class="num">{{ resolucion.consecutivo_actual }}</td>
                             <td class="fecha">{{ resolucion.vigente_desde }}</td>
                             <td class="fecha">{{ resolucion.vigente_hasta }}</td>
                             <td>{{ ui.estado(resolucion.activa, 'Activa', 'Inactiva') }}</td>
@@ -204,10 +218,13 @@
                                blanco lo elige Nobelio. #}
                             <td class="acciones">
                                 <a href="javascript:abrirVentana('{{ path('nobelio_resolucion_documento_prueba', { 'id': resolucion.id }) }}', 'DocumentoPrueba', 430, 640)">Crear</a>
+                                <button type="submit" class="link" form="resoluciones-emisor"
+                                        name="resolucion" value="{{ resolucion.id }}"
+                                        onclick="return confirm('¿Eliminar la resolución {{ resolucion.numero_resolucion|e('js') }} ({{ resolucion.prefijo|e('js') }})?')">Eliminar</button>
                             </td>
                         </tr>
                     {% else %}
-                        <tr><td colspan="11">Este emisor no tiene resoluciones registradas.</td></tr>
+                        <tr><td colspan="12">Este emisor no tiene resoluciones registradas.</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>
@@ -262,5 +279,11 @@
     {# Fuera de las pestañas: los botones de eliminar apuntan aquí con form=. #}
     <form id="webhooks-emisor" method="post" action="{{ path('nobelio_emisor_webhook_eliminar', { 'id': emisor.id }) }}">
         <input type="hidden" name="_token" value="{{ csrf_token('webhooks-emisor') }}">
+    </form>
+    <form id="software-emisor" method="post" action="{{ path('nobelio_emisor_software_eliminar', { 'id': emisor.id }) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('software-emisor') }}">
+    </form>
+    <form id="resoluciones-emisor"method="post" action="{{ path('nobelio_emisor_resolucion_eliminar', { 'id': emisor.id }) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('resoluciones-emisor') }}">
     </form>
 {% endblock %}
