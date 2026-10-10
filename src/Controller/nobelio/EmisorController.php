@@ -5,6 +5,7 @@ use App\Utilidades\Nobelio;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\SubmitType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -288,6 +289,96 @@ class EmisorController extends AbstractController
         }
 
         return $this->redirectToRoute('nobelio_emisor_detalle', ['id' => $id, '_fragment' => 'webhooks']);
+    }
+
+    /**
+     * Ventana para editar una resolucion: numero, fechas, rango, consecutivo
+     * y si esta activa.
+     *
+     * Va por PATCH, como webhookEditar(), y sin `emisor` ni `tipo_factura`:
+     * ninguno de los dos se cambia desde aqui. La clave tecnica es de solo
+     * escritura en Nobelio —nunca vuelve en el GET—, asi que el campo sale
+     * vacio y solo se manda si se digita: en blanco se conserva la que hay.
+     */
+    #[Route('/nobelio/emisor/resolucion-editar/{id}', name: 'nobelio_emisor_resolucion_editar', requirements: ['id' => '\\d+'])]
+    public function resolucionEditar(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $resolucion = [];
+        $respuestaResolucion = $nobelio->consumoGet("api/emisores/resolucion/{$id}/");
+        if ($respuestaResolucion['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuestaResolucion['mensaje']}");
+        } else {
+            $resolucion = $respuestaResolucion['datos'];
+        }
+
+        $form = $this->createFormBuilder([
+            'numeroResolucion' => $resolucion['numero_resolucion'] ?? null,
+            'fechaResolucion' => $resolucion['fecha_resolucion'] ?? null,
+            'prefijo' => $resolucion['prefijo'] ?? null,
+            'rangoDesde' => $resolucion['rango_desde'] ?? null,
+            'rangoHasta' => $resolucion['rango_hasta'] ?? null,
+            'consecutivoActual' => $resolucion['consecutivo_actual'] ?? null,
+            'vigenteDesde' => $resolucion['vigente_desde'] ?? null,
+            'vigenteHasta' => $resolucion['vigente_hasta'] ?? null,
+            'activa' => (bool) ($resolucion['activa'] ?? false),
+        ])
+            ->add('numeroResolucion', TextType::class, ['attr' => ['maxlength' => 50]])
+            // `input` string: las fechas van y vuelven como 'Y-m-d', que es
+            // como las manda y las espera Nobelio.
+            ->add('fechaResolucion', DateType::class, ['widget' => 'single_text', 'input' => 'string'])
+            ->add('prefijo', TextType::class, ['required' => false, 'attr' => ['maxlength' => 10]])
+            ->add('rangoDesde', IntegerType::class, ['attr' => ['min' => 0]])
+            ->add('rangoHasta', IntegerType::class, ['attr' => ['min' => 0]])
+            ->add('consecutivoActual', IntegerType::class, ['attr' => ['min' => 0]])
+            ->add('vigenteDesde', DateType::class, ['widget' => 'single_text', 'input' => 'string'])
+            ->add('vigenteHasta', DateType::class, ['widget' => 'single_text', 'input' => 'string'])
+            ->add('claveTecnica', TextType::class, ['required' => false, 'attr' => ['maxlength' => 255, 'autocomplete' => 'off']])
+            ->add('activa', CheckboxType::class, ['required' => false])
+            ->add('btnGuardar', SubmitType::class, ['label' => 'Guardar'])
+            ->getForm();
+        $form->handleRequest($request);
+
+        if ($resolucion && $form->isSubmitted() && $form->isValid()) {
+            $datos = [
+                'numero_resolucion' => trim((string) $form->get('numeroResolucion')->getData()),
+                'fecha_resolucion' => $form->get('fechaResolucion')->getData(),
+                'prefijo' => trim((string) $form->get('prefijo')->getData()),
+                'rango_desde' => $form->get('rangoDesde')->getData(),
+                'rango_hasta' => $form->get('rangoHasta')->getData(),
+                'consecutivo_actual' => $form->get('consecutivoActual')->getData(),
+                'vigente_desde' => $form->get('vigenteDesde')->getData(),
+                'vigente_hasta' => $form->get('vigenteHasta')->getData(),
+                'activa' => (bool) $form->get('activa')->getData(),
+            ];
+            $claveTecnica = trim((string) $form->get('claveTecnica')->getData());
+            if ($claveTecnica !== '') {
+                $datos['clave_tecnica'] = $claveTecnica;
+            }
+
+            $respuesta = $nobelio->consumoPatch("api/emisores/resolucion/{$id}/", $datos);
+            if ($respuesta['error']) {
+                // Sin redirect: asi el form conserva lo digitado para corregir.
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $this->addFlash('success', 'Resolución actualizada. Recargue el detalle del emisor para ver los cambios.');
+
+                return $this->redirectToRoute('nobelio_emisor_resolucion_editar', ['id' => $id]);
+            }
+        }
+
+        $emisor = [];
+        if (!empty($resolucion['emisor'])) {
+            $respuestaEmisor = $nobelio->consumoGet("api/emisores/emisor/{$resolucion['emisor']}/");
+            if (!$respuestaEmisor['error']) {
+                $emisor = $respuestaEmisor['datos'];
+            }
+        }
+
+        return $this->render('nobelio/emisor/resolucion.html.twig', [
+            'form' => $form->createView(),
+            'emisor' => $emisor,
+            'resolucion' => $resolucion,
+        ]);
     }
 
     /**

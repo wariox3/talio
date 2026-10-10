@@ -157,18 +157,21 @@
                                 {% if programa.tipo|default('') == 'nomina' and not programa.set_pruebas_aceptado %}
                                     <a href="javascript:abrirVentana('{{ path('nobelio_software_nomina_prueba', { 'id': programa.id }) }}', 'NominaPrueba', 430, 640)">Crear</a>
                                 {% endif %}
-                                {# Deshace la habilitacion: baja el set de
-                                   pruebas aceptado del software y el
-                                   habilitado del emisor para esa operacion. #}
+                                {# Desactivar deshace la habilitacion: baja el
+                                   set de pruebas aceptado del software y el
+                                   habilitado del emisor para esa operacion.
+                                   Eliminar solo sale sin habilitar: Nobelio
+                                   no deja borrar un software habilitado. #}
                                 {% if programa.set_pruebas_aceptado %}
                                     <button type="submit" class="link" form="software-emisor"
                                             formaction="{{ path('nobelio_emisor_software_desactivar', { 'id': emisor.id }) }}"
                                             name="software" value="{{ programa.id }}"
                                             onclick="return confirm('¿Desactivar la habilitación del software {{ programa.identificador|e('js') }}?')">Desactivar</button>
+                                {% else %}
+                                    <button type="submit" class="link" form="software-emisor"
+                                            name="software" value="{{ programa.id }}"
+                                            onclick="return confirm('¿Eliminar el software {{ programa.identificador|e('js') }}?')">Eliminar</button>
                                 {% endif %}
-                                <button type="submit" class="link" form="software-emisor"
-                                        name="software" value="{{ programa.id }}"
-                                        onclick="return confirm('¿Eliminar el software {{ programa.identificador|e('js') }}?')">Eliminar</button>
                             </td>
                         </tr>
                     {% else %}
@@ -218,6 +221,7 @@
                                blanco lo elige Nobelio. #}
                             <td class="acciones">
                                 <a href="javascript:abrirVentana('{{ path('nobelio_resolucion_documento_prueba', { 'id': resolucion.id }) }}', 'DocumentoPrueba', 430, 640)">Crear</a>
+                                <a href="javascript:abrirVentana('{{ path('nobelio_emisor_resolucion_editar', { 'id': resolucion.id }) }}', 'ResolucionEditar', 430, 720)">Editar</a>
                                 <button type="submit" class="link" form="resoluciones-emisor"
                                         name="resolucion" value="{{ resolucion.id }}"
                                         onclick="return confirm('¿Eliminar la resolución {{ resolucion.numero_resolucion|e('js') }} ({{ resolucion.prefijo|e('js') }})?')">Eliminar</button>

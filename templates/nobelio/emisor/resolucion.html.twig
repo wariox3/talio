@@ -1,0 +1,31 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Editar resolución · Talio{% endblock %}
+{% block ruta %}
+    Resolución {{ resolucion.id|default('') }} · <b>{{ emisor.razon_social|default('') }}</b>
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Resolución') }}
+        {# El emisor y el tipo de factura no se cambian desde aquí. La clave
+           técnica nunca vuelve de Nobelio: en blanco se conserva la que hay. #}
+        {{ form_start(form) }}
+        <div class="form-stack">
+            {{ ui.campo('Número', form.numeroResolucion) }}
+            {{ ui.campo('Fecha', form.fechaResolucion) }}
+            {{ ui.campo('Prefijo', form.prefijo) }}
+            {{ ui.campo('Rango desde', form.rangoDesde) }}
+            {{ ui.campo('Rango hasta', form.rangoHasta) }}
+            {{ ui.campo('Consecutivo actual (siguiente a usar)', form.consecutivoActual) }}
+            {{ ui.campo('Vigente desde', form.vigenteDesde) }}
+            {{ ui.campo('Vigente hasta', form.vigenteHasta) }}
+            {{ ui.campo('Clave técnica (en blanco no cambia)', form.claveTecnica) }}
+            <div class="check">
+                {{ form_widget(form.activa) }}
+                <label for="{{ form.activa.vars.id }}">Activa</label>
+            </div>
+            <div>{{ form_widget(form.btnGuardar) }}</div>
+        </div>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}
