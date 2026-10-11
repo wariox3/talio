@@ -49,5 +49,18 @@
                 </tbody>
             </table>
         </div>
+        {# Importar crea en Nobelio las que al emisor le falten; las que ya
+           tiene no las toca. Sin rangos no hay nada que importar. #}
+        {{ form_start(form) }}
+        {% if rangos %}
+            <div class="filters">
+                <div class="f-right">
+                    {{ form_widget(form.btnImportar, { 'attr': { 'onclick': "return confirm('¿Importar las resoluciones que le falten al emisor?')" } }) }}
+                </div>
+            </div>
+        {% else %}
+            {% do form.btnImportar.setRendered() %}
+        {% endif %}
+        {{ form_end(form) }}
     </div>
 {% endblock %}

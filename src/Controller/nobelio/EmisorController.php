@@ -333,15 +333,43 @@ class EmisorController extends AbstractController
      * resolucion —Nobelio responde 400—, y por eso el detalle no la ofrece en
      * esas lineas.
      *
-     * Solo previsualiza: Nobelio pregunta los rangos de numeracion
-     * (GetNumberingRange) y no guarda nada. La clave tecnica no viaja; solo
-     * se dice si la DIAN la trae. Cuando no hay rangos, `descripcion` es la
-     * que explica por que ("No registra prefijos asociados al codigo de
-     * software"), y por eso se muestra siempre.
+     * La consulta solo previsualiza: Nobelio pregunta los rangos de
+     * numeracion (GetNumberingRange) y no guarda nada. La clave tecnica no
+     * viaja; solo se dice si la DIAN la trae. Cuando no hay rangos,
+     * `descripcion` es la que explica por que ("No registra prefijos
+     * asociados al codigo de software"), y por eso se muestra siempre.
+     *
+     * Importar si guarda: Nobelio vuelve a preguntar a la DIAN y crea las
+     * resoluciones que al emisor le falten —compara prefijo y numero—, con
+     * su clave tecnica. Las que ya tiene no las toca, y el tipo de factura lo
+     * decide el software: 01 el de facturacion y 20 el de documento
+     * equivalente.
      */
     #[Route('/nobelio/software/resolucion-consulta/{id}', name: 'nobelio_software_resolucion_consulta', requirements: ['id' => '\\d+'])]
-    public function resolucionConsulta(Nobelio $nobelio, int $id): Response
+    public function resolucionConsulta(Request $request, Nobelio $nobelio, int $id): Response
     {
+        $form = $this->createFormBuilder()
+            ->add('btnImportar', SubmitType::class, ['label' => 'Importar'])
+            ->getForm();
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $respuesta = $nobelio->consumoPost('api/emisores/resolucion/importar-dian/', ['software' => $id]);
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                // Nobelio devuelve solo las que creo: lista vacia (200) quiere
+                // decir que el emisor ya las tenia todas.
+                $creadas = count($respuesta['datos']);
+                $this->addFlash('success', $creadas > 0
+                    ? "Se importaron {$creadas} resoluciones. Recargue el detalle del emisor para verlas."
+                    : 'No hay resoluciones nuevas: el emisor ya tiene todas las que devuelve la DIAN.');
+            }
+
+            // Redirect despues del POST: un F5 no vuelve a importar.
+            return $this->redirectToRoute('nobelio_software_resolucion_consulta', ['id' => $id]);
+        }
+
         $consulta = [];
         $respuesta = $nobelio->consumoGet('api/emisores/resolucion/consulta-dian/', ['software' => $id]);
         if ($respuesta['error']) {
@@ -358,6 +386,7 @@ class EmisorController extends AbstractController
         }
 
         return $this->render('nobelio/emisor/resolucion_consulta.html.twig', [
+            'form' => $form->createView(),
             'software' => $software,
             'consulta' => $consulta,
             'rangos' => $consulta['rangos'] ?? [],
@@ -583,9 +612,9 @@ class EmisorController extends AbstractController
      * emisor, en su pestaña.
      *
      * Nobelio baja `set_pruebas_aceptado` del software y la bandera
-     * `habilitado_*` del emisor para esa operacion, y se niega si el emisor
-     * esta en produccion para ella. Comparte formulario y token con
-     * softwareEliminar(): el boton solo cambia el destino con `formaction`.
+     * `habilitado_*` del emisor para esa operacion. Comparte formulario y
+     * token con softwareEliminar(): el boton solo cambia el destino con
+     * `formaction`.
      */
     #[Route('/nobelio/emisor/software-desactivar/{id}', name: 'nobelio_emisor_software_desactivar', methods: ['POST'], requirements: ['id' => '\\d+'])]
     public function softwareDesactivar(Request $request, Nobelio $nobelio, int $id): Response
