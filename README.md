@@ -355,7 +355,7 @@ Cada recurso registrado en un router de DRF expone el juego REST completo:
 | `api/emisores/software/{id}/crear-nomina-prueba/` | `POST` · siembra una nómina de prueba en borrador, con `{"consecutivo": <n>}` opcional (sin él toma el siguiente libre). **Solo sobre software de nómina.** El periodo lo continúa Nobelio. |
 | `api/emisores/software/{id}/crear-nota-ajuste-prueba/` | `POST` · clona la última nómina aceptada en notas de ajuste de prueba, en borrador. **Solo sobre software de nómina** y con el emisor en pruebas. |
 | `api/emisores/certificado/cargar/` | `POST` multipart · sube el `.p12`. |
-| `api/emisores/resolucion/consulta-dian/` · `importar-dian/` | Consulta e importa resoluciones desde la DIAN. |
+| `api/emisores/resolucion/consulta-dian/` · `importar-dian/` | Consulta (`GET ?software=<id>`) e importa (`POST {"software": <id>}`) resoluciones desde la DIAN. Van por software, no por emisor; el de nómina responde 400. |
 | `api/emisores/resolucion/{id}/crear-documento-prueba/` | `POST` · siembra un documento de prueba en borrador sobre la resolución, con `{"consecutivo": <n>}` opcional (sin él toma el siguiente libre). El tipo lo decide el `tipo_factura` de la resolución. |
 | `api/nomina/empleado/` | Empleados. |
 | `api/nomina/nomina/` | Nóminas. **No se editan** (sin `PUT`/`PATCH`). Filtra por `emisor`, `empleado`, `estado` y `tipo_xml` (`102` nómina, `103` nota de ajuste); `?search=` mira número, CUNE y documento del empleado. |

@@ -325,6 +325,46 @@ class EmisorController extends AbstractController
     }
 
     /**
+     * Ventana que consulta en la DIAN las resoluciones de un software y
+     * muestra lo que responde.
+     *
+     * La DIAN asocia los prefijos al software, no al emisor, asi que la
+     * consulta cuelga de la linea del software. El de nomina no se numera con
+     * resolucion —Nobelio responde 400—, y por eso el detalle no la ofrece en
+     * esas lineas.
+     *
+     * Solo previsualiza: Nobelio pregunta los rangos de numeracion
+     * (GetNumberingRange) y no guarda nada. La clave tecnica no viaja; solo
+     * se dice si la DIAN la trae. Cuando no hay rangos, `descripcion` es la
+     * que explica por que ("No registra prefijos asociados al codigo de
+     * software"), y por eso se muestra siempre.
+     */
+    #[Route('/nobelio/software/resolucion-consulta/{id}', name: 'nobelio_software_resolucion_consulta', requirements: ['id' => '\\d+'])]
+    public function resolucionConsulta(Nobelio $nobelio, int $id): Response
+    {
+        $consulta = [];
+        $respuesta = $nobelio->consumoGet('api/emisores/resolucion/consulta-dian/', ['software' => $id]);
+        if ($respuesta['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+        } else {
+            $consulta = $respuesta['datos'];
+        }
+
+        // Solo para encabezar la ventana: que se vea de que software son.
+        $software = [];
+        $respuestaSoftware = $nobelio->consumoGet("api/emisores/software/{$id}/");
+        if (!$respuestaSoftware['error']) {
+            $software = $respuestaSoftware['datos'];
+        }
+
+        return $this->render('nobelio/emisor/resolucion_consulta.html.twig', [
+            'software' => $software,
+            'consulta' => $consulta,
+            'rangos' => $consulta['rangos'] ?? [],
+        ]);
+    }
+
+    /**
      * Ventana para editar una resolucion: numero, fechas, rango, consecutivo
      * y si esta activa.
      *

@@ -157,6 +157,13 @@
                                 {% if programa.tipo|default('') == 'nomina' and not programa.set_pruebas_aceptado %}
                                     <a href="javascript:abrirVentana('{{ path('nobelio_software_nomina_prueba', { 'id': programa.id }) }}', 'NominaPrueba', 430, 640)">Crear</a>
                                 {% endif %}
+                                {# Pregunta a la DIAN las resoluciones de este
+                                   software y las muestra en una ventana; no
+                                   guarda nada. El de nomina no se numera con
+                                   resolucion, asi que no tiene que consultar. #}
+                                {% if programa.tipo|default('') != 'nomina' %}
+                                    <a href="javascript:abrirVentana('{{ path('nobelio_software_resolucion_consulta', { 'id': programa.id }) }}', 'ResolucionConsulta', 500, 1100)">Resoluciones</a>
+                                {% endif %}
                                 {# Desactivar deshace la habilitacion: baja el
                                    set de pruebas aceptado del software y el
                                    habilitado del emisor para esa operacion.

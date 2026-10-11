@@ -1,0 +1,53 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Resoluciones en la DIAN · Talio{% endblock %}
+{% block ruta %}
+    Resoluciones en la DIAN · Software <b>{{ software.identificador|default('') }}</b>
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Resoluciones en la DIAN', rangos|length ~ ' registros') }}
+        {# Lo que responde la DIAN, sin guardar nada. La descripcion va siempre:
+           cuando no hay rangos es la que dice por que. #}
+        {% if consulta %}
+            <dl class="ficha">
+                <dt>Código</dt>
+                <dd>{{ consulta.codigo|default('') }}</dd>
+                <dt>Descripción</dt>
+                <dd>{{ consulta.descripcion|default('') }}</dd>
+            </dl>
+        {% endif %}
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th class="num">Número</th>
+                    <th>Fecha</th>
+                    <th>Prefijo</th>
+                    <th class="num">Rango desde</th>
+                    <th class="num">Rango hasta</th>
+                    <th>Vigente desde</th>
+                    <th>Vigente hasta</th>
+                    <th>Clave técnica</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for rango in rangos %}
+                    <tr>
+                        <td class="num">{{ rango.numero_resolucion }}</td>
+                        <td class="fecha">{{ rango.fecha_resolucion }}</td>
+                        <td>{{ rango.prefijo }}</td>
+                        <td class="num">{{ rango.rango_desde }}</td>
+                        <td class="num">{{ rango.rango_hasta }}</td>
+                        <td class="fecha">{{ rango.vigente_desde }}</td>
+                        <td class="fecha">{{ rango.vigente_hasta }}</td>
+                        <td>{{ ui.estado(rango.tiene_clave_tecnica, 'Con clave', 'Sin clave') }}</td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="8">La DIAN no devolvió resoluciones para este software.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
