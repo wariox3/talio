@@ -278,6 +278,9 @@ class EmisorController extends AbstractController
             // Sin protocolo por defecto: si no se escribe https:// que lo diga
             // Nobelio, en vez de completarlo aqui con http://.
             ->add('url', UrlType::class, ['default_protocol' => null, 'attr' => ['maxlength' => 500, 'placeholder' => 'https://']])
+            // Con el que Nobelio firma los avisos; sin el no manda ninguno. Es
+            // de solo escritura —nunca vuelve en el GET—, asi que sale vacio.
+            ->add('secreto', TextType::class, ['required' => false, 'attr' => ['maxlength' => 255, 'autocomplete' => 'off']])
             ->add('estadoValidado', CheckboxType::class, ['required' => false])
             ->add('estadoNotificado', CheckboxType::class, ['required' => false])
             ->add('btnGuardar', SubmitType::class, ['label' => 'Guardar'])
@@ -285,16 +288,23 @@ class EmisorController extends AbstractController
     }
 
     /**
-     * Lo que se manda a Nobelio, igual en el alta y en la edicion.
+     * Lo que se manda a Nobelio, igual en el alta y en la edicion. El secreto
+     * solo va si se digito: mandarlo vacio lo borraria.
      */
     private function datosWebhook(FormInterface $form): array
     {
-        return [
+        $datos = [
             'nombre' => trim((string) $form->get('nombre')->getData()),
             'url' => trim((string) $form->get('url')->getData()),
             'estado_validado' => (bool) $form->get('estadoValidado')->getData(),
             'estado_notificado' => (bool) $form->get('estadoNotificado')->getData(),
         ];
+        $secreto = trim((string) $form->get('secreto')->getData());
+        if ($secreto !== '') {
+            $datos['secreto'] = $secreto;
+        }
+
+        return $datos;
     }
 
     /**

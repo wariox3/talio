@@ -47,3 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelector(`.tabs-head .tab[data-panel="${CSS.escape(id)}"]`)?.click();
 });
 
+// Menus desplegables (<details class="menu">): se cierran al hacer clic fuera
+// o con Escape, que <details> por si solo no hace.
+document.addEventListener('click', evento => {
+    document.querySelectorAll('details.menu[open]').forEach(menu => {
+        if (!menu.contains(evento.target)) {
+            menu.open = false;
+        }
+    });
+});
+document.addEventListener('keydown', evento => {
+    if (evento.key === 'Escape') {
+        document.querySelectorAll('details.menu[open]').forEach(menu => { menu.open = false; });
+    }
+});

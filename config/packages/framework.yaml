@@ -13,14 +13,14 @@ framework:
         cookie_secure: auto
         cookie_samesite: lax
         storage_factory_id: session.storage.factory.native
-        # Jornada de trabajo. Los dos hacen falta y por separado: cookie_lifetime
+        # Quince dias (1296000 s). Los dos hacen falta y por separado: cookie_lifetime
         # es lo que el navegador guarda la cookie (0 = hasta cerrarlo) y
         # gc_maxlifetime lo que el servidor conserva los datos de la sesion. Sin
         # el segundo mandaria el php.ini, que trae los 1440 s de PHP por defecto,
         # y la sesion caducaria a los 24 minutos de inactividad con la cookie aun
         # viva.
-        cookie_lifetime: 28800
-        gc_maxlifetime: 28800
+        cookie_lifetime: 1296000
+        gc_maxlifetime: 1296000
         # Directorio propio en vez del compartido del sistema
         # (/var/lib/php/sessions), para no depender del gc_maxlifetime de otras
         # apps: el cron de Debian aplica a todo el directorio el mayor valor que

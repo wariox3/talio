@@ -10,7 +10,7 @@ de Lantano.
 | Servicios → Wolframio | Monitor, cuentas (suscriptor/empleador en Kiai, sets de pruebas) y documentos pendientes de enviar, con error o esperando respuesta | API de Wolframio, API de Kiai |
 | Servicios → Tántalo | Monitor de la cola de decodificación | API de Tántalo |
 | Servicios → Itrio | Movimientos y su facturación, consumos (Excel), contenedores y usuarios | API de Itrio |
-| Servicios → Nobelio | Emisores (software, resoluciones, webhooks, pruebas), documentos y nóminas electrónicas | API de Nobelio |
+| Servicios → Nobelio | Cuentas (con sus webhooks), emisores (software, resoluciones, webhooks, pruebas), documentos y nóminas electrónicas | API de Nobelio |
 | Servicios externos → Kiai | Consumos por aliado y mes (Excel) | API de Kiai |
 | Auditoría → WebServer | Accesos de los servidores web por hora, IP, API key, host y ruta | PostgreSQL de Lantano |
 
@@ -348,6 +348,7 @@ Cada recurso registrado en un router de DRF expone el juego REST completo:
 | `api/seguridad/usuario/` | **Solo staff.** |
 | `api/seguridad/llave-api/` | **Solo staff.** Gestión de API Keys. |
 | `api/catalogos/…` | 16 catálogos de solo lectura: `tipo-factura`, `tipo-identificacion`, `tipo-organizacion`, `responsabilidad-fiscal`, `tributo`, `unidad-medida`, `forma-pago`, `medio-pago`, `moneda`, `pais`, `departamento`, `municipio` y, de nómina, `periodo-nomina`, `tipo-contrato`, `tipo-trabajador`, `subtipo-trabajador`. Aceptan `?search=`. |
+| `api/emisores/cuenta/` | Cuentas (agrupadores de emisores), CRUD completo; solo tienen `nombre`, único. **Solo staff**: una API Key responde 403. Una cuenta con emisores no se borra (400). Sus webhooks son `api/emisores/webhook/` con `cuenta` en vez de `emisor`. |
 | `api/emisores/emisor/` | Emisores (OFE). |
 | `api/emisores/emisor/validar-nit/` | `GET ?nit=<NIT>` |
 | `api/emisores/software/` · `certificado/` · `resolucion/` | Recursos del emisor. |
@@ -368,6 +369,7 @@ Cada recurso registrado en un router de DRF expone el juego REST completo:
 | `api/documentos/documento/{id}/emitir/` | `POST` sin cuerpo · lleva el documento a su estado final: `borrador` se firma y se envía; `firmado` —envío anterior fallido, p. ej. un 502— solo reenvía el mismo CUFE; `enviado` se consulta y se aplica el resultado, sin reenviar (sustituye a `actualizar-estado/`, que ya no existe). `aceptado` y `rechazado` responden 400: el rechazado se borra y se crea de nuevo. Devuelve `accion` (`enviado` o `consultado`), `estado`, `cufe_cude`, `track_id`, `fecha_validacion`, `es_valido`, `codigo_estado`, `descripcion` y `errores`. |
 | `api/documentos/documento/{id}/consultar/` | `GET` · consulta la DIAN **sin modificar** el documento, en cualquier estado. (`consultar-zip/` ya no existe.) |
 | `api/documentos/documento/{id}/xml/` · `pdf/` · `attached/` | **Descargas** (`FileResponse` / `HttpResponse`). ⚠️ Usar `consumoArchivo()`, **nunca `consumoGet()`**. Ver nota abajo. |
+| `api/documentos/documento/{id}/desmarcar-respuesta-validado/` | `POST` sin cuerpo · quita la marca `respuesta_validado` para poder avisar la validación otra vez. No envía nada ni toca los avisos ya enviados. Si el documento no estaba marcado responde 400. |
 | `api/documentos/documento/{id}/notificar/` | `POST` multipart (`pdf` y `adjuntos` opcionales) · arma el zip con el AttachedDocument y **lo envía por correo** al adquiriente (Zinc). Devuelve `destinatario`, `codigo_envio`, `notificado`… Si falla el correo responde 502 y el documento no queda notificado. Con `?descargar=1` no envía: devuelve el zip. |
 
 
@@ -386,14 +388,14 @@ en `nobelio/DocumentoController::descargar()`.
 
 ## Sesión
 
-Configurada en `config/packages/framework.yaml`. Dura **8 horas** y guarda sus
+Configurada en `config/packages/framework.yaml`. Dura **15 días** y guarda sus
 archivos en `var/sesiones/`, no en el directorio compartido del sistema
 (`/var/lib/php/sessions`).
 
 | Opción | Valor | Por qué |
 |---|---|---|
-| `cookie_lifetime` | `28800` | Lo que el navegador guarda la cookie. Es vida **absoluta**: se fija al entrar y no se renueva en cada petición. |
-| `gc_maxlifetime` | `28800` | Lo que el servidor conserva los datos. Es **inactividad**. Sin esto mandaría el `php.ini` con los 1440 s de PHP (24 min). |
+| `cookie_lifetime` | `1296000` | Lo que el navegador guarda la cookie. Es vida **absoluta**: se fija al entrar y no se renueva en cada petición. |
+| `gc_maxlifetime` | `1296000` | Lo que el servidor conserva los datos. Es **inactividad**. Sin esto mandaría el `php.ini` con los 1440 s de PHP (24 min). |
 | `save_path` | `var/sesiones` | Directorio propio: en el compartido, el `gc_maxlifetime` efectivo es el mayor de todas las apps del servidor. |
 | `gc_probability` / `gc_divisor` | `1` / `100` | El recolector de PHP, reactivado. Ver abajo. |
 

@@ -99,14 +99,6 @@
                                         name="id" value="{{ documento.id }}"
                                         {% if accion.pregunta is defined %}onclick="return confirm('¿{{ accion.pregunta }} el documento {{ documento.numero }}?')"{% endif %}>{{ accion.titulo }}</button>
                             {% endfor %}
-                            {# Aceptado y sin respuesta: los webhooks del emisor
-                               aun no han confirmado la validacion. #}
-                            {% if documento.estado_nombre == 'aceptado' and not documento.respuesta_validado|default(false) %}
-                                <button type="submit" class="link" form="acciones-documento"
-                                        formaction="{{ path('nobelio_documento_respuesta_validado') }}"
-                                        name="id" value="{{ documento.id }}"
-                                        onclick="return confirm('¿Avisar la validación del documento {{ documento.numero }} a los webhooks del emisor?')">Responder validado</button>
-                            {% endif %}
                             {# Nobelio no deja borrar lo que la DIAN ya validó,
                                asi que en un aceptado no se ofrece el boton. #}
                             {% if documento.estado_nombre != 'aceptado' %}

@@ -14,7 +14,9 @@
         {{ form_start(form) }}
         <div class="form-stack">
             {{ ui.campo('Nombre', form.nombre) }}
-            {{ ui.campo('URL (https)', form.url) }}
+            {{ ui.campo('URL', form.url) }}
+            {# Nunca vuelve de Nobelio: al editar, en blanco se conserva el que hay. #}
+            {{ ui.campo(editando ? 'Secreto (en blanco no cambia)' : 'Secreto (firma de los avisos)', form.secreto) }}
             <div class="check">
                 {{ form_widget(form.estadoValidado) }}
                 <label for="{{ form.estadoValidado.vars.id }}">Avisar la validación de la DIAN</label>

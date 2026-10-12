@@ -1,0 +1,115 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Cuenta {{ cuenta.id }} · Talio{% endblock %}
+{% block ruta %}
+    Nobelio <span>/</span>
+    <a href="{{ path('nobelio_cuenta_lista') }}">Cuentas</a> <span>/</span>
+    <b>{{ cuenta.nombre }}</b>
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Cuenta') }}
+        <dl class="ficha">
+            <dt>Id</dt>
+            <dd>{{ cuenta.id }}</dd>
+            <dt>Nombre</dt>
+            <dd>{{ cuenta.nombre }}</dd>
+        </dl>
+    </div>
+    <div class="block tabs">
+        <div class="tabs-head" role="tablist">
+            <button type="button" class="tab is-active" role="tab" aria-selected="true" data-panel="emisores">
+                Emisores <span class="stamp">{{ emisores|length }}</span>
+            </button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-panel="webhooks">
+                Webhooks <span class="stamp">{{ webhooks|length }}</span>
+            </button>
+        </div>
+
+        <div class="tab-panel" id="emisores" role="tabpanel">
+            {# Los que agrupa la cuenta. Aquí solo se ven: a qué cuenta pertenece
+               un emisor se decide en el emisor. #}
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th class="num">NIT</th>
+                        <th>Razón social</th>
+                        <th>Municipio</th>
+                        <th>Correo</th>
+                        <th>Estado</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for emisor in emisores %}
+                        <tr>
+                            <td class="id">
+                                <a href="{{ path('nobelio_emisor_detalle', { 'id': emisor.id }) }}">{{ emisor.id }}</a>
+                            </td>
+                            <td class="num">
+                                {{- emisor.numero_identificacion }}{% if emisor.digito_verificacion %}-{{ emisor.digito_verificacion }}{% endif -%}
+                            </td>
+                            <td>{{ emisor.razon_social }}</td>
+                            <td>{{ emisor.municipio_nombre|default('') }}</td>
+                            <td>{{ emisor.correo }}</td>
+                            <td>{{ ui.estado(emisor.activo, 'Activo', 'Inactivo') }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="6">Esta cuenta no tiene emisores.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-panel" id="webhooks" role="tabpanel" hidden>
+            {# Los de la cuenta: valen para todos sus emisores, también los que
+               entren después, y se suman a los que tenga cada emisor. #}
+            <div class="filters">
+                <div class="f-right">
+                    <button type="button" class="ghost" onclick="abrirVentana('{{ path('nobelio_cuenta_webhook_nuevo', { 'id': cuenta.id }) }}', 'CuentaWebhookNuevo', 480, 640)">Nuevo</button>
+                </div>
+            </div>
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Id</th>
+                        <th>Nombre</th>
+                        <th>URL</th>
+                        <th>Validación</th>
+                        <th>Notificación</th>
+                        <th>Creado</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for webhook in webhooks %}
+                        <tr>
+                            <td class="id">{{ webhook.id }}</td>
+                            <td>{{ webhook.nombre }}</td>
+                            <td>{{ webhook.url }}</td>
+                            <td>{{ ui.estado(webhook.estado_validado, 'Avisa', 'No avisa') }}</td>
+                            <td>{{ ui.estado(webhook.estado_notificado, 'Avisa', 'No avisa') }}</td>
+                            <td class="fecha">{{ webhook.creado_en ? webhook.creado_en|date('Y-m-d H:i', false) }}</td>
+                            <td class="acciones">
+                                <a href="javascript:abrirVentana('{{ path('nobelio_cuenta_webhook_editar', { 'id': webhook.id }) }}', 'CuentaWebhookEditar', 480, 640)">Editar</a>
+                                <button type="submit" class="link" form="webhooks-cuenta"
+                                        name="webhook" value="{{ webhook.id }}"
+                                        onclick="return confirm('¿Eliminar el webhook {{ webhook.nombre|e('js') }}?')">Eliminar</button>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="7">Esta cuenta no tiene webhooks registrados.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {# Fuera de las pestañas: los botones de eliminar apuntan aquí con form=. #}
+    <form id="webhooks-cuenta" method="post" action="{{ path('nobelio_cuenta_webhook_eliminar', { 'id': cuenta.id }) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('webhooks-cuenta') }}">
+    </form>
+{% endblock %}

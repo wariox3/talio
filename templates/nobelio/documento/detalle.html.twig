@@ -18,14 +18,28 @@
         <button type="button" class="ghost" onclick="location.href='{{ path('nobelio_documento_descargar', { 'archivo': 'xml', 'id': documento.id }) }}'">XML</button>
         <button type="button" class="ghost" onclick="location.href='{{ path('nobelio_documento_descargar', { 'archivo': 'attached', 'id': documento.id }) }}'">Attached</button>
     {% endif %}
-    {# Solo se notifica lo aceptado: entregarle al adquiriente un documento sin
-       validar le haria creer que tiene una factura valida. Un aceptado puede
-       volver a notificarse. El form va al final del contenido y el boton lo
-       apunta con form=. #}
-    {% if documento.estado_nombre|default('') == 'aceptado' %}
-        <button type="submit" form="notificar-documento"
-                onclick="return confirm('¿{{ documento.notificado ? 'Volver a notificar' : 'Notificar' }} el documento {{ documento.numero }} al adquiriente?')">{{ documento.notificado ? 'Renotificar' : 'Notificar' }}</button>
-    {% endif %}
+    {# Las acciones sobre el documento, en un menu: son POST, asi que cada
+       una es un boton que apunta con form= al form del final del contenido y
+       dice su destino con formaction. Con la respuesta ya marcada se ofrece
+       desmarcarla; sin marcar, darla. #}
+    <details class="menu">
+        <summary>Acciones</summary>
+        <div class="menu-items">
+            {% if documento.respuesta_validado|default(false) %}
+                <button type="submit" form="acciones-documento"
+                        formaction="{{ path('nobelio_documento_desmarcar_respuesta_validado', { 'id': documento.id }) }}"
+                        onclick="return confirm('¿Desmarcar la respuesta de validado del documento {{ documento.numero|e('js') }}?')">Desmarcar respuesta validado</button>
+            {% elseif documento.estado_nombre|default('') == 'aceptado' %}
+                {# Nobelio solo responde la validacion de un aceptado; en
+                   otro estado contestaria 400. #}
+                <button type="submit" form="acciones-documento"
+                        formaction="{{ path('nobelio_documento_respuesta_validado', { 'id': documento.id }) }}"
+                        onclick="return confirm('¿Avisar la validación del documento {{ documento.numero|e('js') }} a los webhooks del emisor?')">Respuesta validado</button>
+            {% else %}
+                <span class="menu-vacio">Sin acciones disponibles</span>
+            {% endif %}
+        </div>
+    </details>
 {% endblock %}
 {% block content %}
     <div class="block">
@@ -86,6 +100,11 @@
                envio, no que el adquiriente lo leyera. #}
             <dt>Notificado</dt>
             <dd>{{ ui.estado(documento.notificado, 'Sí', 'No') }}</dd>
+            {# Si la validacion ya se aviso a los webhooks del emisor. Se da y
+               se desmarca desde el menu de acciones. #}
+            <dt>Respuesta validado</dt>
+            <dd>{{ ui.estado(documento.respuesta_validado|default(false), 'Sí', 'No') }}</dd>
+
             {# Solo lo llevan las notas credito/debito: es el documento que corrigen. #}
             <dt>Documento de referencia</dt>
             <dd>
@@ -93,19 +112,23 @@
                     <a href="{{ path('nobelio_documento_detalle', { 'id': documento.documento_referencia }) }}">{{ documento.documento_referencia }}</a>
                 {% endif %}
             </dd>
-
-            {# Va con el de arriba: el ResponseCode que dice por que se corrige
+            {# Va con el de al lado: el ResponseCode que dice por que se corrige
                el documento referenciado. Solo lo llevan las notas, y sus codigos
                validos dependen de si es credito, debito o ajuste. #}
             <dt>Concepto de corrección</dt>
             <dd>{{ documento.concepto_correccion }}</dd>
-            <dt>Observaciones</dt>
-            <dd>{{ documento.observaciones }}</dd>
 
             <dt>Creado</dt>
             <dd>{{ documento.creado_en ? documento.creado_en|date('Y-m-d H:i', false) }}</dd>
             <dt>Actualizado</dt>
             <dd>{{ documento.actualizado_en ? documento.actualizado_en|date('Y-m-d H:i', false) }}</dd>
+
+            {# La ficha son dos parejas por fila y esta queda suelta: la pareja
+               vacia cierra la fila para que la grilla no quede a medias. #}
+            <dt>Observaciones</dt>
+            <dd>{{ documento.observaciones }}</dd>
+            <dt></dt>
+            <dd></dd>
         </dl>
 
         {{ ui.cabecera('Adquiriente') }}
@@ -417,9 +440,8 @@
             </div>
         </div>
     </div>
-    {% if documento.estado_nombre|default('') == 'aceptado' %}
-        <form id="notificar-documento" method="post" action="{{ path('nobelio_documento_notificar', { 'id': documento.id }) }}">
-            <input type="hidden" name="_token" value="{{ csrf_token('notificar-documento') }}">
-        </form>
-    {% endif %}
+    {# Fuera de las pestañas: las acciones del menu apuntan aquí con form=. #}
+    <form id="acciones-documento" method="post">
+        <input type="hidden" name="_token" value="{{ csrf_token('acciones-documento-detalle') }}">
+    </form>
 {% endblock %}

@@ -57,6 +57,7 @@
             <details class="nav-group" {{ ruta starts with 'nobelio_' ? 'open' }}>
                 <summary>Nobelio</summary>
                 <div class="nav-sub">
+                    <a class="{{ ruta starts with 'nobelio_cuenta_' ? 'on' }}" href="{{ path('nobelio_cuenta_lista') }}">Cuenta</a>
                     <a class="{{ ruta == 'nobelio_emisor_lista' ? 'on' }}" href="{{ path('nobelio_emisor_lista') }}">Emisor</a>
                     <a class="{{ ruta == 'nobelio_documento_lista' ? 'on' }}" href="{{ path('nobelio_documento_lista') }}">Documento</a>
                     <a class="{{ ruta == 'nobelio_nomina_lista' ? 'on' }}" href="{{ path('nobelio_nomina_lista') }}">Nómina</a>

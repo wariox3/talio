@@ -346,74 +346,26 @@ class DocumentoController extends AbstractController
     }
 
     /**
-     * Envia al adquiriente el documento por correo y lo marca como notificado.
-     *
-     * No cabe en accion() aunque tambien sea un POST sobre el documento: aquella
-     * construye su mensaje con el estado que devuelven las acciones del ciclo
-     * DIAN, y esta responde otra cosa —a quien fue y con que codigo de envio—.
-     *
-     * El endpoint es multipart y acepta un PDF y adjuntos, todos opcionales;
-     * aqui se llama sin ninguno, que es lo que hace viajar solo el
-     * AttachedDocument. Un POST con cuerpo JSON vacio le sirve igual. Sin
-     * ?descargar=1, que devolveria el zip en vez de enviarlo.
-     *
-     * Se pide desde la ficha del documento y vuelve a ella. El id va en la
-     * ruta, acotado a UUID, porque se concatena a la url del API.
-     */
-    #[Route('/nobelio/documento/notificar/{id}', name: 'nobelio_documento_notificar', methods: ['POST'], requirements: ['id' => '[0-9a-fA-F-]{36}'])]
-    public function notificar(Request $request, Nobelio $nobelio, string $id): Response
-    {
-        if (!$this->isCsrfTokenValid('notificar-documento', (string) $request->request->get('_token'))) {
-            $this->addFlash('danger', 'La petición no es válida.');
-        } else {
-            // Nobelio solo notifica lo que la DIAN acepto y exige que el
-            // adquiriente tenga correo; si no, responde 400 explicando cual de
-            // las dos falta. Si lo que falla es la pasarela de correo responde
-            // 502 y el documento no queda notificado, asi que se puede
-            // reintentar. En ambos casos ese es el mensaje que se muestra.
-            $respuesta = $nobelio->consumoPost("api/documentos/documento/{$id}/notificar/");
-            if ($respuesta['error']) {
-                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
-            } else {
-                $datos = $respuesta['datos'];
-                $destinatario = $datos['destinatario'] ?? '';
-                // El codigo de envio es con lo que se rastrea el correo en la
-                // pasarela; el nombre del archivo no identifica nada.
-                $codigoEnvio = $datos['codigo_envio'] ?? '';
-
-                $mensaje = $destinatario !== ''
-                    ? "Documento enviado a {$destinatario}"
-                    : 'Documento enviado';
-                $mensaje .= $codigoEnvio !== '' ? " (envío {$codigoEnvio})." : '.';
-                $this->addFlash('success', $mensaje);
-            }
-        }
-
-        return $this->redirectToRoute('nobelio_documento_detalle', ['id' => $id]);
-    }
-
-    /**
      * Avisa la validacion a los webhooks del emisor y la da por respondida.
      *
-     * Solo se ofrece en la lista para un aceptado con respuesta_validado en
-     * false. Tampoco cabe en accion(): no devuelve un estado DIAN sino los
-     * avisos que se mandaron, uno por webhook con estado_validado.
+     * Se pide desde el menu de acciones de la ficha, que solo la ofrece para
+     * un aceptado con respuesta_validado en false, y vuelve a ella. No cabe en
+     * accion(): no devuelve un estado DIAN sino los avisos que se mandaron,
+     * uno por webhook con estado_validado.
      *
      * Nobelio vuelve a comprobar que este aceptado, sin respuesta y con algun
      * webhook, y responde 400 explicando cual falta; si ningun webhook
      * contesta 200 responde 502 y el documento sigue igual, asi que se puede
      * reintentar. En ambos casos ese es el mensaje que se muestra.
+     *
+     * El id va en la ruta, acotado a UUID, porque se concatena a la url del
+     * API.
      */
-    #[Route('/nobelio/documento/respuesta-validado', name: 'nobelio_documento_respuesta_validado', methods: ['POST'])]
-    public function respuestaValidado(Request $request, Nobelio $nobelio): Response
+    #[Route('/nobelio/documento/respuesta-validado/{id}', name: 'nobelio_documento_respuesta_validado', methods: ['POST'], requirements: ['id' => '[0-9a-fA-F-]{36}'])]
+    public function respuestaValidado(Request $request, Nobelio $nobelio, string $id): Response
     {
-        $id = (string) $request->request->get('id', '');
-
-        if (!$this->isCsrfTokenValid('acciones-documento', (string) $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('acciones-documento-detalle', (string) $request->request->get('_token'))) {
             $this->addFlash('danger', 'La petición no es válida.');
-        } elseif (!Nobelio::esUuid($id)) {
-            // El id se concatena a la url del API: solo pasa con forma de UUID.
-            $this->addFlash('danger', 'No se indicó sobre qué documento actuar.');
         } else {
             $respuesta = $nobelio->consumoPost("api/documentos/documento/{$id}/respuesta-validado/");
             if ($respuesta['error']) {
@@ -430,7 +382,36 @@ class DocumentoController extends AbstractController
             }
         }
 
-        return $this->redirigirALista($request);
+        return $this->redirectToRoute('nobelio_documento_detalle', ['id' => $id]);
+    }
+
+    /**
+     * Quita la marca respuesta_validado para poder avisar la validacion otra
+     * vez.
+     *
+     * Solo quita la marca: Nobelio no envia nada ni toca los avisos ya
+     * enviados. El documento vuelve a salir con respuesta_validado en false y
+     * el menu vuelve a ofrecer responderlo. Si no estaba marcado responde
+     * 400, y ese es el mensaje que se muestra.
+     *
+     * Se pide desde el menu de acciones de la ficha y vuelve a ella. El id va
+     * en la ruta, acotado a UUID, porque se concatena a la url del API.
+     */
+    #[Route('/nobelio/documento/desmarcar-respuesta-validado/{id}', name: 'nobelio_documento_desmarcar_respuesta_validado', methods: ['POST'], requirements: ['id' => '[0-9a-fA-F-]{36}'])]
+    public function desmarcarRespuestaValidado(Request $request, Nobelio $nobelio, string $id): Response
+    {
+        if (!$this->isCsrfTokenValid('acciones-documento-detalle', (string) $request->request->get('_token'))) {
+            $this->addFlash('danger', 'La petición no es válida.');
+        } else {
+            $respuesta = $nobelio->consumoPost("api/documentos/documento/{$id}/desmarcar-respuesta-validado/");
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $this->addFlash('success', 'Respuesta de validado desmarcada: la validación se puede avisar de nuevo.');
+            }
+        }
+
+        return $this->redirectToRoute('nobelio_documento_detalle', ['id' => $id]);
     }
 
     #[Route('/nobelio/documento/eliminar', name: 'nobelio_documento_eliminar', methods: ['POST'])]

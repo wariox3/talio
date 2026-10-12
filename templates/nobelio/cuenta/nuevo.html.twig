@@ -1,0 +1,16 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Nueva cuenta · Talio{% endblock %}
+{% block ruta %}<b>Nueva cuenta</b>{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Cuenta') }}
+        {# La cuenta solo tiene nombre, y es único en Nobelio. #}
+        {{ form_start(form) }}
+        <div class="form-stack">
+            {{ ui.campo('Nombre', form.nombre) }}
+            <div>{{ form_widget(form.btnGuardar) }}</div>
+        </div>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

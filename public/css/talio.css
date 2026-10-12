@@ -710,6 +710,89 @@ button.link {
 }
 button.link:hover { background: transparent; color: var(--accent-2); }
 
+/* Menu desplegable (<details class="menu">): el summary se ve como un boton
+   ghost y las opciones cuelgan debajo en una tarjeta, alineada a la derecha
+   porque el menu vive en el extremo derecho de la barra. */
+.menu { position: relative; }
+.menu > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    list-style: none;
+    border: 1px solid var(--line-2);
+    color: var(--ink-2);
+    padding: 5px 12px 5px 14px;
+    font-size: .83rem;
+    font-weight: 500;
+    /* Como un boton: el summary hereda el interlineado de la pagina y
+       quedaria mas alto que los botones de al lado. */
+    line-height: normal;
+    box-sizing: border-box;
+    border-radius: 2px;
+    cursor: pointer;
+    user-select: none;
+    transition: background .12s, border-color .12s, color .12s;
+}
+.menu > summary::-webkit-details-marker { display: none; }
+.menu > summary::after {
+    content: "";
+    width: 5px;
+    height: 5px;
+    margin-top: -3px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+    opacity: .6;
+    transition: transform .15s, margin .15s;
+}
+.menu > summary:hover { background: var(--surface-2); color: var(--ink); }
+.menu[open] > summary {
+    background: var(--surface-2);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+.menu[open] > summary::after { transform: rotate(-135deg); margin-top: 3px; opacity: 1; }
+.menu-items {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    min-width: 230px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 5px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: 0 10px 28px -8px var(--sombra-scroll), 0 2px 6px var(--sombra-scroll);
+    z-index: 30;
+    white-space: nowrap;
+}
+.menu-items > button,
+.menu-items > a {
+    display: block;
+    width: 100%;
+    background: transparent;
+    border: 0;
+    border-radius: 3px;
+    color: var(--ink);
+    padding: 8px 10px;
+    font-size: .84rem;
+    font-weight: 400;
+    line-height: 1.2;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+.menu-items > button:hover,
+.menu-items > a:hover,
+.menu-items > button:focus-visible,
+.menu-items > a:focus-visible {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    color: var(--accent);
+}
+.menu-vacio { padding: 8px 10px; font-size: .84rem; color: var(--muted); }
+
 /* Celda de acciones de una tabla: los botones se leen en linea y no parten
    la fila aunque haya dos o tres. */
 table.data td.acciones { white-space: nowrap; }
