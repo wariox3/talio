@@ -80,7 +80,19 @@ class NobelioTest extends TestCase
 
     public function testLlaveRechazada(): void
     {
-        $respuesta = $this->nobelio(new MockResponse('{"detail": "x"}', ['http_code' => 401]))->consumoGet('a');
+        // Como responde Nobelio: el mismo motivo en `detail` y en `errores`.
+        $cuerpo = json_encode([
+            'detail' => 'API Key inactiva o expirada.',
+            'errores' => [['codigo' => 'authentication_failed', 'mensaje' => 'API Key inactiva o expirada.']],
+        ]);
+        $respuesta = $this->nobelio(new MockResponse($cuerpo, ['http_code' => 401]))->consumoGet('a');
+
+        $this->assertSame('Nobelio rechazó la API Key de NOBELIO_TOKEN: API Key inactiva o expirada.', $respuesta['mensaje']);
+    }
+
+    public function testLlaveRechazadaSinMotivo(): void
+    {
+        $respuesta = $this->nobelio(new MockResponse('', ['http_code' => 401]))->consumoGet('a');
 
         $this->assertSame('Nobelio rechazó la API Key de NOBELIO_TOKEN', $respuesta['mensaje']);
     }

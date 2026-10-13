@@ -128,7 +128,11 @@ class Nobelio extends ClienteApi
     {
         $respuesta = $this->peticion($metodo, $url, $opciones, $archivo);
         if ($respuesta['status'] === 401) {
-            $respuesta['mensaje'] = 'Nobelio rechazó la API Key de NOBELIO_TOKEN';
+            // El motivo lo dice Nobelio ("API Key inactiva o expirada.", "Una
+            // llave de alcance global tiene que tener vencimiento."...) y es
+            // lo que dice que hay que arreglar; sin cuerpo no hay que agregar.
+            $motivo = $respuesta['mensaje'] === $this->mensajeDeError([], 401) ? '' : $respuesta['mensaje'];
+            $respuesta['mensaje'] = 'Nobelio rechazó la API Key de NOBELIO_TOKEN' . ($motivo !== '' ? ": {$motivo}" : '');
         }
 
         return $respuesta;
