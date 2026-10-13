@@ -1,25 +1,31 @@
 {% extends 'base_sin_menu.html.twig' %}
 {% import '_macros.html.twig' as ui %}
-{% block title %}Editar resolución · Talio{% endblock %}
+{# Sirve al alta y a la edición: con resolucion.id se está editando. #}
+{% set editando = resolucion.id is defined %}
+{% block title %}{{ editando ? 'Editar resolución' : 'Nueva resolución' }} · Talio{% endblock %}
 {% block ruta %}
-    Resolución {{ resolucion.id|default('') }} · <b>{{ emisor.razon_social|default('') }}</b>
+    {{ editando ? 'Resolución ' ~ resolucion.id : 'Nueva resolución' }} · <b>{{ emisor.razon_social|default('') }}</b>
 {% endblock %}
 {% block content %}
     <div class="block">
         {{ ui.cabecera('Resolución') }}
-        {# El emisor y el tipo de factura no se cambian desde aquí. La clave
-           técnica nunca vuelve de Nobelio: en blanco se conserva la que hay. #}
+        {# El emisor es el de la ventana y el tipo de factura solo se elige al
+           crear: después no se cambia. La clave técnica nunca vuelve de
+           Nobelio: al editar, en blanco se conserva la que hay. #}
         {{ form_start(form) }}
         <div class="form-stack">
+            {% if not editando %}
+                {{ ui.campo('Tipo de factura', form.tipoFactura) }}
+            {% endif %}
             {{ ui.campo('Número', form.numeroResolucion) }}
             {{ ui.campo('Fecha', form.fechaResolucion) }}
             {{ ui.campo('Prefijo', form.prefijo) }}
             {{ ui.campo('Rango desde', form.rangoDesde) }}
             {{ ui.campo('Rango hasta', form.rangoHasta) }}
-            {{ ui.campo('Consecutivo actual (siguiente a usar)', form.consecutivoActual) }}
+            {{ ui.campo(editando ? 'Consecutivo actual (siguiente a usar)' : 'Consecutivo actual (en blanco toma el rango desde)', form.consecutivoActual) }}
             {{ ui.campo('Vigente desde', form.vigenteDesde) }}
             {{ ui.campo('Vigente hasta', form.vigenteHasta) }}
-            {{ ui.campo('Clave técnica (en blanco no cambia)', form.claveTecnica) }}
+            {{ ui.campo(editando ? 'Clave técnica (en blanco no cambia)' : 'Clave técnica (para calcular el CUFE)', form.claveTecnica) }}
             <div class="check">
                 {{ form_widget(form.activa) }}
                 <label for="{{ form.activa.vars.id }}">Activa</label>

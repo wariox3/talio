@@ -192,6 +192,17 @@
         </div>
 
         <div class="tab-panel" id="resoluciones" role="tabpanel" hidden>
+            {# Importar trae de la DIAN las que al emisor le falten, con todos
+               sus softwares aceptados; las que ya tiene no las toca. Nuevo es
+               el alta a mano, para la que la DIAN no devuelve. #}
+            <div class="filters">
+                <div class="f-right">
+                    <button type="submit" class="ghost" form="resoluciones-emisor"
+                            formaction="{{ path('nobelio_emisor_resolucion_importar', { 'id': emisor.id }) }}"
+                            onclick="return confirm('¿Importar de la DIAN las resoluciones que le falten al emisor?')">Importar DIAN</button>
+                    <button type="button" class="ghost" onclick="abrirVentana('{{ path('nobelio_emisor_resolucion_nueva', { 'id': emisor.id }) }}', 'ResolucionNueva', 430, 720)">Nuevo</button>
+                </div>
+            </div>
             <div class="table-scroll">
                 <table class="data">
                     <thead>

@@ -349,37 +349,12 @@ class EmisorController extends AbstractController
      * `descripcion` es la que explica por que ("No registra prefijos
      * asociados al codigo de software"), y por eso se muestra siempre.
      *
-     * Importar si guarda: Nobelio vuelve a preguntar a la DIAN y crea las
-     * resoluciones que al emisor le falten —compara prefijo y numero—, con
-     * su clave tecnica. Las que ya tiene no las toca, y el tipo de factura lo
-     * decide el software: 01 el de facturacion y 20 el de documento
-     * equivalente.
+     * Guardarlas es cosa de resolucionImportar(), que va por emisor y se
+     * ofrece en la pestaña de resoluciones.
      */
     #[Route('/nobelio/software/resolucion-consulta/{id}', name: 'nobelio_software_resolucion_consulta', requirements: ['id' => '\\d+'])]
-    public function resolucionConsulta(Request $request, Nobelio $nobelio, int $id): Response
+    public function resolucionConsulta(Nobelio $nobelio, int $id): Response
     {
-        $form = $this->createFormBuilder()
-            ->add('btnImportar', SubmitType::class, ['label' => 'Importar'])
-            ->getForm();
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $respuesta = $nobelio->consumoPost('api/emisores/resolucion/importar-dian/', ['software' => $id]);
-            if ($respuesta['error']) {
-                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
-            } else {
-                // Nobelio devuelve solo las que creo: lista vacia (200) quiere
-                // decir que el emisor ya las tenia todas.
-                $creadas = count($respuesta['datos']);
-                $this->addFlash('success', $creadas > 0
-                    ? "Se importaron {$creadas} resoluciones. Recargue el detalle del emisor para verlas."
-                    : 'No hay resoluciones nuevas: el emisor ya tiene todas las que devuelve la DIAN.');
-            }
-
-            // Redirect despues del POST: un F5 no vuelve a importar.
-            return $this->redirectToRoute('nobelio_software_resolucion_consulta', ['id' => $id]);
-        }
-
         $consulta = [];
         $respuesta = $nobelio->consumoGet('api/emisores/resolucion/consulta-dian/', ['software' => $id]);
         if ($respuesta['error']) {
@@ -396,10 +371,97 @@ class EmisorController extends AbstractController
         }
 
         return $this->render('nobelio/emisor/resolucion_consulta.html.twig', [
-            'form' => $form->createView(),
             'software' => $software,
             'consulta' => $consulta,
             'rangos' => $consulta['rangos'] ?? [],
+        ]);
+    }
+
+    /**
+     * Importa de la DIAN las resoluciones del emisor y vuelve a su detalle,
+     * en la pestaña de resoluciones.
+     *
+     * Nobelio pregunta a la DIAN con cada software aceptado del emisor
+     * —facturacion y documento equivalente; el de nomina no se numera con
+     * resolucion— y crea las que al emisor le falten, comparando prefijo y
+     * numero, con su clave tecnica. Las que ya tiene no las toca, y el tipo
+     * de factura lo decide el software: 01 el de facturacion y 20 el de
+     * documento equivalente. Sin ningun software aceptado, o si la DIAN no
+     * devuelve rangos, responde 400 y su mensaje es el que se muestra.
+     *
+     * Comparte formulario y token con resolucionEliminar(): el boton solo
+     * cambia el destino con `formaction`.
+     */
+    #[Route('/nobelio/emisor/resolucion-importar/{id}', name: 'nobelio_emisor_resolucion_importar', methods: ['POST'], requirements: ['id' => '\\d+'])]
+    public function resolucionImportar(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        if (!$this->isCsrfTokenValid('resoluciones-emisor', (string) $request->request->get('_token'))) {
+            $this->addFlash('danger', 'La petición de importación no es válida.');
+        } else {
+            $respuesta = $nobelio->consumoPost('api/emisores/resolucion/importar-dian/', ['emisor' => $id]);
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                // Nobelio solo dice cuantas creo: cero quiere decir que el
+                // emisor ya las tenia todas.
+                $creadas = (int) ($respuesta['datos']['creadas'] ?? 0);
+                $this->addFlash('success', match (true) {
+                    $creadas === 0 => 'No hay resoluciones nuevas: el emisor ya tiene todas las que devuelve la DIAN.',
+                    $creadas === 1 => 'Se importó 1 resolución de la DIAN.',
+                    default => "Se importaron {$creadas} resoluciones de la DIAN.",
+                });
+            }
+        }
+
+        return $this->redirectToRoute('nobelio_emisor_detalle', ['id' => $id, '_fragment' => 'resoluciones']);
+    }
+
+    /**
+     * Ventana para registrar una resolucion del emisor a mano.
+     *
+     * Lo normal es importarlas de la DIAN con resolucionImportar(); esta es
+     * para la que la DIAN no devuelve o todavia no se puede consultar. El
+     * emisor sale del detalle desde donde se abre y el tipo de factura se
+     * elige del catalogo: Nobelio lo espera como id, no como codigo. El
+     * consecutivo es opcional —sin el, Nobelio arranca en el rango desde—, y
+     * la clave tecnica tambien, pero sin ella no se puede calcular el CUFE.
+     */
+    #[Route('/nobelio/emisor/resolucion-nueva/{id}', name: 'nobelio_emisor_resolucion_nueva', requirements: ['id' => '\\d+'])]
+    public function resolucionNueva(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $form = $this->formularioResolucion([], $this->opcionesTipoFactura($nobelio));
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $respuesta = $nobelio->consumoPost('api/emisores/resolucion/', [
+                'emisor' => $id,
+                'tipo_factura' => (int) $form->get('tipoFactura')->getData(),
+            ] + $this->datosResolucion($form));
+            if ($respuesta['error']) {
+                // Sin redirect: asi el form conserva lo digitado para corregir.
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $this->addFlash('success', sprintf(
+                    'Resolución %s registrada. Recargue el detalle del emisor para verla.',
+                    $respuesta['datos']['id'] ?? '',
+                ));
+
+                return $this->redirectToRoute('nobelio_emisor_resolucion_nueva', ['id' => $id]);
+            }
+        }
+
+        $emisor = [];
+        $respuestaEmisor = $nobelio->consumoGet("api/emisores/emisor/{$id}/");
+        if ($respuestaEmisor['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuestaEmisor['mensaje']}");
+        } else {
+            $emisor = $respuestaEmisor['datos'];
+        }
+
+        return $this->render('nobelio/emisor/resolucion.html.twig', [
+            'form' => $form->createView(),
+            'emisor' => $emisor,
+            'resolucion' => [],
         ]);
     }
 
@@ -423,51 +485,11 @@ class EmisorController extends AbstractController
             $resolucion = $respuestaResolucion['datos'];
         }
 
-        $form = $this->createFormBuilder([
-            'numeroResolucion' => $resolucion['numero_resolucion'] ?? null,
-            'fechaResolucion' => $resolucion['fecha_resolucion'] ?? null,
-            'prefijo' => $resolucion['prefijo'] ?? null,
-            'rangoDesde' => $resolucion['rango_desde'] ?? null,
-            'rangoHasta' => $resolucion['rango_hasta'] ?? null,
-            'consecutivoActual' => $resolucion['consecutivo_actual'] ?? null,
-            'vigenteDesde' => $resolucion['vigente_desde'] ?? null,
-            'vigenteHasta' => $resolucion['vigente_hasta'] ?? null,
-            'activa' => (bool) ($resolucion['activa'] ?? false),
-        ])
-            ->add('numeroResolucion', TextType::class, ['attr' => ['maxlength' => 50]])
-            // `input` string: las fechas van y vuelven como 'Y-m-d', que es
-            // como las manda y las espera Nobelio.
-            ->add('fechaResolucion', DateType::class, ['widget' => 'single_text', 'input' => 'string'])
-            ->add('prefijo', TextType::class, ['required' => false, 'attr' => ['maxlength' => 10]])
-            ->add('rangoDesde', IntegerType::class, ['attr' => ['min' => 0]])
-            ->add('rangoHasta', IntegerType::class, ['attr' => ['min' => 0]])
-            ->add('consecutivoActual', IntegerType::class, ['attr' => ['min' => 0]])
-            ->add('vigenteDesde', DateType::class, ['widget' => 'single_text', 'input' => 'string'])
-            ->add('vigenteHasta', DateType::class, ['widget' => 'single_text', 'input' => 'string'])
-            ->add('claveTecnica', TextType::class, ['required' => false, 'attr' => ['maxlength' => 255, 'autocomplete' => 'off']])
-            ->add('activa', CheckboxType::class, ['required' => false])
-            ->add('btnGuardar', SubmitType::class, ['label' => 'Guardar'])
-            ->getForm();
+        $form = $this->formularioResolucion($resolucion);
         $form->handleRequest($request);
 
         if ($resolucion && $form->isSubmitted() && $form->isValid()) {
-            $datos = [
-                'numero_resolucion' => trim((string) $form->get('numeroResolucion')->getData()),
-                'fecha_resolucion' => $form->get('fechaResolucion')->getData(),
-                'prefijo' => trim((string) $form->get('prefijo')->getData()),
-                'rango_desde' => $form->get('rangoDesde')->getData(),
-                'rango_hasta' => $form->get('rangoHasta')->getData(),
-                'consecutivo_actual' => $form->get('consecutivoActual')->getData(),
-                'vigente_desde' => $form->get('vigenteDesde')->getData(),
-                'vigente_hasta' => $form->get('vigenteHasta')->getData(),
-                'activa' => (bool) $form->get('activa')->getData(),
-            ];
-            $claveTecnica = trim((string) $form->get('claveTecnica')->getData());
-            if ($claveTecnica !== '') {
-                $datos['clave_tecnica'] = $claveTecnica;
-            }
-
-            $respuesta = $nobelio->consumoPatch("api/emisores/resolucion/{$id}/", $datos);
+            $respuesta = $nobelio->consumoPatch("api/emisores/resolucion/{$id}/", $this->datosResolucion($form));
             if ($respuesta['error']) {
                 // Sin redirect: asi el form conserva lo digitado para corregir.
                 $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
@@ -491,6 +513,103 @@ class EmisorController extends AbstractController
             'emisor' => $emisor,
             'resolucion' => $resolucion,
         ]);
+    }
+
+    /**
+     * El form de la resolucion, vacio para el alta o con lo que tiene Nobelio
+     * para editar.
+     *
+     * El tipo de factura solo se pide en el alta —despues no se cambia—, y
+     * por eso el campo solo existe cuando llegan sus opciones. El consecutivo
+     * es obligatorio al editar y opcional al crear.
+     */
+    private function formularioResolucion(array $resolucion = [], array $tiposFactura = []): FormInterface
+    {
+        $editando = (bool) $resolucion;
+
+        $builder = $this->createFormBuilder([
+            'numeroResolucion' => $resolucion['numero_resolucion'] ?? null,
+            'fechaResolucion' => $resolucion['fecha_resolucion'] ?? null,
+            'prefijo' => $resolucion['prefijo'] ?? null,
+            'rangoDesde' => $resolucion['rango_desde'] ?? null,
+            'rangoHasta' => $resolucion['rango_hasta'] ?? null,
+            'consecutivoActual' => $resolucion['consecutivo_actual'] ?? null,
+            'vigenteDesde' => $resolucion['vigente_desde'] ?? null,
+            'vigenteHasta' => $resolucion['vigente_hasta'] ?? null,
+            // Una resolucion nueva nace activa, igual que en Nobelio.
+            'activa' => $editando ? (bool) ($resolucion['activa'] ?? false) : true,
+        ]);
+        if (!$editando) {
+            $builder->add('tipoFactura', ChoiceType::class, ['choices' => $tiposFactura]);
+        }
+
+        return $builder
+            ->add('numeroResolucion', TextType::class, ['attr' => ['maxlength' => 50]])
+            // `input` string: las fechas van y vuelven como 'Y-m-d', que es
+            // como las manda y las espera Nobelio.
+            ->add('fechaResolucion', DateType::class, ['widget' => 'single_text', 'input' => 'string'])
+            ->add('prefijo', TextType::class, ['required' => false, 'attr' => ['maxlength' => 10]])
+            ->add('rangoDesde', IntegerType::class, ['attr' => ['min' => 0]])
+            ->add('rangoHasta', IntegerType::class, ['attr' => ['min' => 0]])
+            ->add('consecutivoActual', IntegerType::class, ['required' => $editando, 'attr' => ['min' => 0]])
+            ->add('vigenteDesde', DateType::class, ['widget' => 'single_text', 'input' => 'string'])
+            ->add('vigenteHasta', DateType::class, ['widget' => 'single_text', 'input' => 'string'])
+            ->add('claveTecnica', TextType::class, ['required' => false, 'attr' => ['maxlength' => 255, 'autocomplete' => 'off']])
+            ->add('activa', CheckboxType::class, ['required' => false])
+            ->add('btnGuardar', SubmitType::class, ['label' => 'Guardar'])
+            ->getForm();
+    }
+
+    /**
+     * Lo que se manda a Nobelio, igual en el alta y en la edicion. La clave
+     * tecnica solo va si se digito: mandarla vacia la borraria. El
+     * consecutivo solo falta en el alta, y sin el Nobelio toma el rango desde.
+     */
+    private function datosResolucion(FormInterface $form): array
+    {
+        $datos = [
+            'numero_resolucion' => trim((string) $form->get('numeroResolucion')->getData()),
+            'fecha_resolucion' => $form->get('fechaResolucion')->getData(),
+            'prefijo' => trim((string) $form->get('prefijo')->getData()),
+            'rango_desde' => $form->get('rangoDesde')->getData(),
+            'rango_hasta' => $form->get('rangoHasta')->getData(),
+            'vigente_desde' => $form->get('vigenteDesde')->getData(),
+            'vigente_hasta' => $form->get('vigenteHasta')->getData(),
+            'activa' => (bool) $form->get('activa')->getData(),
+        ];
+        $consecutivo = $form->get('consecutivoActual')->getData();
+        if ($consecutivo !== null) {
+            $datos['consecutivo_actual'] = $consecutivo;
+        }
+        $claveTecnica = trim((string) $form->get('claveTecnica')->getData());
+        if ($claveTecnica !== '') {
+            $datos['clave_tecnica'] = $claveTecnica;
+        }
+
+        return $datos;
+    }
+
+    /**
+     * Los tipos de factura activos del catalogo para el ChoiceType del alta:
+     * "codigo - nombre" => id, que es lo que espera `tipo_factura`.
+     */
+    private function opcionesTipoFactura(Nobelio $nobelio): array
+    {
+        $respuesta = $nobelio->consumoGetTodos('api/catalogos/tipo-factura/');
+        if ($respuesta['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+
+            return [];
+        }
+
+        $opciones = [];
+        foreach ($respuesta['datos'] as $tipo) {
+            if ($tipo['activo'] ?? true) {
+                $opciones["{$tipo['codigo']} - {$tipo['nombre']}"] = (string) $tipo['id'];
+            }
+        }
+
+        return $opciones;
     }
 
     /**
