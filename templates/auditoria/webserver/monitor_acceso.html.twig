@@ -1,8 +1,8 @@
 {% extends 'base.html.twig' %}
 {% import '_macros.html.twig' as ui %}
 
-{% block title %}WebServer · Talio{% endblock %}
-{% block ruta %}Auditoría <span>/</span> WebServer <span>/</span> <b>{{ servidor|capitalize }}</b>{% endblock %}
+{% block title %}Monitor acceso · Talio{% endblock %}
+{% block ruta %}Auditoría <span>/</span> WebServer <span>/</span> Monitor acceso <span>/</span> <b>{{ servidor|capitalize }}</b>{% endblock %}
 
 {% block acciones %}
     {% if error %}
@@ -16,7 +16,7 @@
     {# Filtros actuales, sin los vacíos, para que los enlaces de las tablas los conserven. #}
     {% set filtrosUrl = { servidor: servidor, horas: horas, origen: origen, ip: ip, api_key: apiKey, ruta: filtroRuta, host: host, status: status }|filter(v => v) %}
     <div class="block block--tight">
-        <form class="filters filters--flat" method="get" action="{{ path('auditoria_webserver_monitor') }}" id="filtros-webserver">
+        <form class="filters filters--flat" method="get" action="{{ path('auditoria_webserver_monitor_acceso') }}" id="filtros-webserver">
             <div class="field">
                 <label for="servidor">Servidor</label>
                 <select id="servidor" name="servidor" onchange="this.form.requestSubmit()">
@@ -88,7 +88,7 @@
             </div>
             <button type="submit">Filtrar</button>
             {% if origen or ip or apiKey or filtroRuta or host or status %}
-                <a href="{{ path('auditoria_webserver_monitor', { servidor: servidor, horas: horas }) }}">Quitar filtros</a>
+                <a href="{{ path('auditoria_webserver_monitor_acceso', { servidor: servidor, horas: horas }) }}">Quitar filtros</a>
             {% endif %}
         </form>
         {% if ipInvalida %}
@@ -162,30 +162,30 @@
                     <tr>
                         <td class="id">{{ acceso.id }}</td>
                         <td class="fecha">{{ acceso.fecha }}</td>
-                        <td><a href="{{ path('auditoria_webserver_monitor', filtrosUrl|merge({ origen: acceso.origen })) }}" title="Filtrar por este web server">{{ origenes[acceso.origen] ?? acceso.origen }}</a></td>
+                        <td><a href="{{ path('auditoria_webserver_monitor_acceso', filtrosUrl|merge({ origen: acceso.origen })) }}" title="Filtrar por este web server">{{ origenes[acceso.origen] ?? acceso.origen }}</a></td>
                         <td>
                             {% if acceso.host %}
-                                <a href="{{ path('auditoria_webserver_monitor', filtrosUrl|merge({ host: acceso.host })) }}" title="Filtrar por este host">{{ acceso.host }}</a>
+                                <a href="{{ path('auditoria_webserver_monitor_acceso', filtrosUrl|merge({ host: acceso.host })) }}" title="Filtrar por este host">{{ acceso.host }}</a>
                             {% endif %}
                         </td>
                         <td class="nowrap">
                             {% if acceso.ip_real %}
-                                <a href="{{ path('auditoria_webserver_monitor', filtrosUrl|merge({ ip: acceso.ip_real })) }}" title="Filtrar por esta IP">{{ acceso.ip_real }}</a>
+                                <a href="{{ path('auditoria_webserver_monitor_acceso', filtrosUrl|merge({ ip: acceso.ip_real })) }}" title="Filtrar por esta IP">{{ acceso.ip_real }}</a>
                             {% endif %}
                         </td>
                         <td class="nowrap">{{ acceso.ip }}</td>
                         <td class="nowrap">
                             {% if acceso.api_key %}
-                                <a href="{{ path('auditoria_webserver_monitor', filtrosUrl|merge({ api_key: acceso.api_key })) }}" title="Filtrar por esta API key">{{ acceso.api_key }}</a>
+                                <a href="{{ path('auditoria_webserver_monitor_acceso', filtrosUrl|merge({ api_key: acceso.api_key })) }}" title="Filtrar por esta API key">{{ acceso.api_key }}</a>
                             {% endif %}
                         </td>
                         <td>{{ acceso.metodo }}</td>
-                        <td class="wrap" style="word-break: break-all;"><a href="{{ path('auditoria_webserver_monitor', filtrosUrl|merge({ ruta: acceso.ruta })) }}" title="Filtrar por esta ruta">{{ acceso.ruta }}</a></td>
+                        <td class="wrap" style="word-break: break-all;"><a href="{{ path('auditoria_webserver_monitor_acceso', filtrosUrl|merge({ ruta: acceso.ruta })) }}" title="Filtrar por esta ruta">{{ acceso.ruta }}</a></td>
                         <td class="wrap" style="word-break: break-all;">{{ acceso.parametros }}</td>
                         <td class="wrap" style="word-break: break-all;">{{ acceso.referer }}</td>
                         <td class="center">
                             {% set claseStatus = acceso.status >= 500 ? 'crit' : (acceso.status >= 400 ? 'warn' : (acceso.status >= 300 ? 'idle' : 'ok')) %}
-                            <a href="{{ path('auditoria_webserver_monitor', filtrosUrl|merge({ status: acceso.status })) }}" class="tag {{ claseStatus }}" title="{{ significadoStatus[acceso.status] ?? 'Código ' ~ acceso.status }} · Filtrar por este status"><span class="dot"></span>{{ acceso.status }}</a>
+                            <a href="{{ path('auditoria_webserver_monitor_acceso', filtrosUrl|merge({ status: acceso.status })) }}" class="tag {{ claseStatus }}" title="{{ significadoStatus[acceso.status] ?? 'Código ' ~ acceso.status }} · Filtrar por este status"><span class="dot"></span>{{ acceso.status }}</a>
                         </td>
                         <td class="num">{{ acceso.bytes|number_format(0, ',', '.') }}</td>
                         <td class="num">{{ acceso.request_time }} s</td>
@@ -214,7 +214,7 @@
                             <tr>
                                 <td>
                                     {% if host.host != '(sin host)' %}
-                                        <a href="{{ path('auditoria_webserver_monitor', filtrosUrl|merge({ host: host.host })) }}" title="Filtrar por este host">{{ host.host }}</a>
+                                        <a href="{{ path('auditoria_webserver_monitor_acceso', filtrosUrl|merge({ host: host.host })) }}" title="Filtrar por este host">{{ host.host }}</a>
                                     {% else %}
                                         {{ host.host }}
                                     {% endif %}
@@ -240,10 +240,10 @@
                         <tbody>
                         {% for acceso in accesosPorRuta %}
                             <tr>
-                                <td class="wrap" style="word-break: break-all;"><a href="{{ path('auditoria_webserver_monitor', filtrosUrl|merge({ ruta: acceso.ruta })) }}" title="Filtrar por esta ruta">{{ acceso.ruta }}</a></td>
+                                <td class="wrap" style="word-break: break-all;"><a href="{{ path('auditoria_webserver_monitor_acceso', filtrosUrl|merge({ ruta: acceso.ruta })) }}" title="Filtrar por esta ruta">{{ acceso.ruta }}</a></td>
                                 <td class="nowrap">
                                     {% if acceso.host != '(sin host)' %}
-                                        <a href="{{ path('auditoria_webserver_monitor', filtrosUrl|merge({ host: acceso.host })) }}" title="Filtrar por este host">{{ acceso.host }}</a>
+                                        <a href="{{ path('auditoria_webserver_monitor_acceso', filtrosUrl|merge({ host: acceso.host })) }}" title="Filtrar por este host">{{ acceso.host }}</a>
                                     {% else %}
                                         {{ acceso.host }}
                                     {% endif %}
@@ -276,7 +276,7 @@
                             <tr>
                                 <td class="nowrap">
                                     {% if acceso.ip_real %}
-                                        <a href="{{ path('auditoria_webserver_monitor', filtrosUrl|merge({ ip: acceso.ip_real })) }}" title="Filtrar por esta IP">{{ acceso.ip_real }}</a>
+                                        <a href="{{ path('auditoria_webserver_monitor_acceso', filtrosUrl|merge({ ip: acceso.ip_real })) }}" title="Filtrar por esta IP">{{ acceso.ip_real }}</a>
                                     {% else %}
                                         <span title="Accesos registrados antes de que Lantano guardara la IP del cliente">(sin IP cliente)</span>
                                     {% endif %}
@@ -309,7 +309,7 @@
                             <tr>
                                 <td class="nowrap">
                                     {% if acceso.api_key %}
-                                        <a href="{{ path('auditoria_webserver_monitor', filtrosUrl|merge({ api_key: acceso.api_key })) }}" title="Filtrar por esta API key">{{ acceso.api_key }}</a>
+                                        <a href="{{ path('auditoria_webserver_monitor_acceso', filtrosUrl|merge({ api_key: acceso.api_key })) }}" title="Filtrar por esta API key">{{ acceso.api_key }}</a>
                                     {% else %}
                                         (sin API key)
                                     {% endif %}

@@ -10,30 +10,16 @@ use Symfony\Component\Routing\Attribute\Route;
 class WebServerController extends AbstractController
 {
     private const SERVIDOR_DEFECTO = 'ares';
-    // Servidores que siempre salen en la lista, aunque todavía no tengan accesos registrados.
+    // Servidores que siempre salen en la lista, aunque todavía no tengan accesos ni errores registrados.
     private const SERVIDORES = [self::SERVIDOR_DEFECTO, 'hebe', 'jardin'];
 
-    #[Route('/auditoria/webserver/monitor', name: 'auditoria_webserver_monitor')]
-    public function monitor(Request $request, BdWebServer $bdWebServer): Response
+    #[Route('/auditoria/webserver/monitor-acceso', name: 'auditoria_webserver_monitor_acceso')]
+    public function monitorAcceso(Request $request, BdWebServer $bdWebServer): Response
     {
         $error = null;
         $labels = [];
         $data = [];
-        // Solo se aceptan los servidores conocidos o que existan en la tabla; lo demás vuelve al de defecto.
-        $servidores = self::SERVIDORES;
-        $respuesta = $bdWebServer->servidores();
-        if(!$respuesta['error']) {
-            $servidores = array_values(array_unique([...self::SERVIDORES, ...$respuesta['datos']]));
-        }
-        sort($servidores);
-        $servidor = (string)$request->query->get('servidor', self::SERVIDOR_DEFECTO);
-        if(!in_array($servidor, $servidores, true)) {
-            $servidor = self::SERVIDOR_DEFECTO;
-        }
-        $horas = $request->query->getInt('horas', BdWebServer::PERIODO_DEFECTO);
-        if(!isset(BdWebServer::PERIODOS[$horas])) {
-            $horas = BdWebServer::PERIODO_DEFECTO;
-        }
+        [$servidores, $servidor, $horas] = $this->servidorYPeriodo($request, $bdWebServer);
         // Solo se acepta un servidor web conocido (nginx, apache); lo demás muestra todos.
         $origen = (string)$request->query->get('origen', '');
         if(!isset(BdWebServer::ORIGENES[$origen])) {
@@ -123,7 +109,7 @@ class WebServerController extends AbstractController
         if(!$respuesta['error']) {
             $accesosPorRuta = $respuesta['datos'];
         }
-        return $this->render('auditoria/webserver/monitor.html.twig', [
+        return $this->render('auditoria/webserver/monitor_acceso.html.twig', [
             'error' => $error,
             'servidores' => $servidores,
             'servidor' => $servidor,
@@ -150,5 +136,134 @@ class WebServerController extends AbstractController
             'accesosPorApiKey' => $accesosPorApiKey,
             'accesosPorRuta' => $accesosPorRuta
         ]);
+    }
+
+    /**
+     * Monitor de los error.log: cuántos errores hay, de qué nivel, en qué módulo y sitio, cuáles
+     * se repiten más y desde qué IP llegan. Sin elegir nivel cuenta las líneas de todos los
+     * niveles; el filtro deja quedarse solo con los errores o con errores y avisos.
+     */
+    #[Route('/auditoria/webserver/monitor-error', name: 'auditoria_webserver_monitor_error')]
+    public function monitorError(Request $request, BdWebServer $bdWebServer): Response
+    {
+        $error = null;
+        $labels = [];
+        $data = [];
+        [$servidores, $servidor, $horas] = $this->servidorYPeriodo($request, $bdWebServer);
+        // Solo se acepta un servidor web conocido (nginx, apache); lo demás muestra todos.
+        $origen = (string)$request->query->get('origen', '');
+        if(!isset(BdWebServer::ORIGENES[$origen])) {
+            $origen = '';
+        }
+        // Solo se acepta un grupo conocido o un nivel exacto; lo demás vuelve al de defecto.
+        $nivel = (string)$request->query->get('nivel', BdWebServer::NIVEL_DEFECTO);
+        if(!isset(BdWebServer::GRUPOS_NIVEL[$nivel]) && !isset(BdWebServer::NIVELES[$nivel])) {
+            $nivel = BdWebServer::NIVEL_DEFECTO;
+        }
+        // Una IP mal escrita no se aplica: se avisa en la vista y se muestra todo.
+        $ip = trim((string)$request->query->get('ip', ''));
+        $ipInvalida = $ip !== '' && filter_var($ip, FILTER_VALIDATE_IP) === false;
+        $modulo = trim((string)$request->query->get('modulo', ''));
+        $sitio = trim((string)$request->query->get('sitio', ''));
+        $texto = trim((string)$request->query->get('texto', ''));
+        $filtros = [
+            'origen' => $origen === '' ? null : $origen,
+            'nivel' => $nivel,
+            'modulo' => $modulo === '' ? null : $modulo,
+            'sitio' => $sitio === '' ? null : $sitio,
+            'ip' => ($ip === '' || $ipInvalida) ? null : $ip,
+            'texto' => $texto === '' ? null : $texto,
+        ];
+        $modulos = [];
+        $respuesta = $bdWebServer->modulosError($servidor, $horas);
+        if(!$respuesta['error']) {
+            $modulos = $respuesta['datos'];
+        }
+        // El módulo elegido se conserva en la lista aunque no tenga errores en el periodo.
+        if($modulo !== '' && !in_array($modulo, $modulos, true)) {
+            $modulos[] = $modulo;
+            sort($modulos);
+        }
+        $sitios = [];
+        $respuesta = $bdWebServer->sitiosError($servidor, $horas);
+        if(!$respuesta['error']) {
+            $sitios = $respuesta['datos'];
+        }
+        // El sitio elegido se conserva en la lista aunque no tenga errores en el periodo.
+        if($sitio !== '' && !in_array($sitio, $sitios, true)) {
+            $sitios[] = $sitio;
+            sort($sitios);
+        }
+        $respuesta = $bdWebServer->erroresPorHora($servidor, $horas, $filtros);
+        if(!$respuesta['error']) {
+            foreach ($respuesta['datos'] as $item) {
+                $labels[] = $item['hora'];
+                $data[] = (int)$item['cantidad'];
+            }
+        } else {
+            $error = $respuesta['mensaje'];
+        }
+        $consultas = [
+            'erroresPorNivel' => fn () => $bdWebServer->erroresPorNivel($servidor, $horas, $filtros),
+            'erroresPorModulo' => fn () => $bdWebServer->erroresPorModulo($servidor, $horas, $filtros),
+            'erroresPorSitio' => fn () => $bdWebServer->erroresPorSitio($servidor, $horas, 20, $filtros),
+            'erroresPorIp' => fn () => $bdWebServer->erroresPorIp($servidor, $horas, 20, $filtros),
+            'erroresPorMensaje' => fn () => $bdWebServer->erroresPorMensaje($servidor, $horas, 20, $filtros),
+            'ultimosErrores' => fn () => $bdWebServer->ultimosErrores($servidor, $horas, 20, $filtros),
+        ];
+        $tablas = [];
+        foreach ($consultas as $nombre => $consulta) {
+            // Si la gráfica ya falló no hay conexión: no se insiste con las demás.
+            $respuesta = $error === null ? $consulta() : ['error' => true];
+            $tablas[$nombre] = $respuesta['error'] ? [] : $respuesta['datos'];
+        }
+        return $this->render('auditoria/webserver/monitor_error.html.twig', [
+            'error' => $error,
+            'servidores' => $servidores,
+            'servidor' => $servidor,
+            'periodos' => BdWebServer::PERIODOS,
+            'horas' => $horas,
+            'origenes' => BdWebServer::ORIGENES,
+            'origen' => $origen,
+            'niveles' => BdWebServer::NIVELES,
+            'gruposNivel' => BdWebServer::GRUPOS_NIVEL,
+            'nivel' => $nivel,
+            'nivelDefecto' => BdWebServer::NIVEL_DEFECTO,
+            'modulo' => $modulo,
+            'modulos' => $modulos,
+            'sitio' => $sitio,
+            'sitios' => $sitios,
+            'ip' => $ip,
+            'ipInvalida' => $ipInvalida,
+            'texto' => $texto,
+            'labels' => $labels,
+            'data' => $data,
+            ...$tablas,
+        ]);
+    }
+
+    /**
+     * Servidores que se pueden elegir, y el servidor y el periodo pedidos en la URL.
+     *
+     * @return array{0: string[], 1: string, 2: int}
+     */
+    private function servidorYPeriodo(Request $request, BdWebServer $bdWebServer): array
+    {
+        // Solo se aceptan los servidores conocidos o que existan en las tablas; lo demás vuelve al de defecto.
+        $servidores = self::SERVIDORES;
+        $respuesta = $bdWebServer->servidores();
+        if(!$respuesta['error']) {
+            $servidores = array_values(array_unique([...self::SERVIDORES, ...$respuesta['datos']]));
+        }
+        sort($servidores);
+        $servidor = (string)$request->query->get('servidor', self::SERVIDOR_DEFECTO);
+        if(!in_array($servidor, $servidores, true)) {
+            $servidor = self::SERVIDOR_DEFECTO;
+        }
+        $horas = $request->query->getInt('horas', BdWebServer::PERIODO_DEFECTO);
+        if(!isset(BdWebServer::PERIODOS[$horas])) {
+            $horas = BdWebServer::PERIODO_DEFECTO;
+        }
+        return [$servidores, $servidor, $horas];
     }
 }

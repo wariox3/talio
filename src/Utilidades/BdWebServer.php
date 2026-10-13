@@ -5,9 +5,10 @@ namespace App\Utilidades;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Consultas de solo lectura sobre la tabla acceso de la base de Lantano
- * (PostgreSQL), donde se guardan los access.log de los servidores web. La
- * conexion se abre en la primera consulta, no al construir el servicio.
+ * Consultas de solo lectura sobre las tablas acceso y error de la base de
+ * Lantano (PostgreSQL), donde se guardan los access.log y los error.log de
+ * los servidores web. La conexion se abre en la primera consulta, no al
+ * construir el servicio.
  */
 class BdWebServer
 {
@@ -44,6 +45,37 @@ class BdWebServer
         '4xx' => ['min' => 400, 'max' => 499, 'texto' => '4xx Errores del cliente'],
         '5xx' => ['min' => 500, 'max' => 599, 'texto' => '5xx Errores del servidor'],
     ];
+
+    /**
+     * Niveles de los error.log, del más grave al menos, ya normalizados: Apache y Monolog
+     * escriben warning, critical y emergency donde nginx escribe warn, crit y emerg.
+     */
+    public const NIVELES = [
+        'emerg' => 'Emergencia',
+        'alert' => 'Alerta',
+        'crit' => 'Crítico',
+        'error' => 'Error',
+        'warn' => 'Aviso',
+        'notice' => 'Noticia',
+        'info' => 'Info',
+        'debug' => 'Debug',
+    ];
+
+    /**
+     * Grupos de nivel que se pueden filtrar además de un nivel exacto. Sin niveles no filtra.
+     */
+    public const GRUPOS_NIVEL = [
+        'todos' => ['niveles' => null, 'texto' => 'Todos los niveles'],
+        'errores' => ['niveles' => ['emerg', 'alert', 'crit', 'error'], 'texto' => 'Errores (error y críticos)'],
+        'avisos' => ['niveles' => ['emerg', 'alert', 'crit', 'error', 'warn'], 'texto' => 'Errores y avisos'],
+    ];
+    public const NIVEL_DEFECTO = 'todos';
+
+    /**
+     * Carpeta de la que cuelgan los sitios en los servidores Apache. El error.log de Apache no
+     * dice el virtual host, pero las rutas de los mensajes de PHP y Symfony sí traen el sitio.
+     */
+    private const RAIZ_SITIOS = '/mnt/sitios/';
 
     /**
      * Inicio del periodo, en hora local: el inicio del intervalo actual menos los intervalos
@@ -159,11 +191,13 @@ class BdWebServer
     }
 
     /**
-     * Servidores que tienen accesos registrados, en orden alfabético.
+     * Servidores que tienen accesos o errores registrados, en orden alfabético.
      */
     public function servidores(): array
     {
-        $sql = "SELECT DISTINCT servidor FROM acceso WHERE servidor IS NOT NULL ORDER BY servidor";
+        $sql = "SELECT servidor FROM acceso WHERE servidor IS NOT NULL
+                UNION SELECT servidor FROM error WHERE servidor IS NOT NULL
+                ORDER BY servidor";
         try {
             return [
                 'error' => false,
@@ -453,5 +487,243 @@ class BdWebServer
                 'mensaje' => $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Nivel normalizado a las claves de NIVELES. El alias es el de la tabla error cuando la
+     * consulta tiene joins.
+     */
+    private function nivelError(string $alias = ''): string
+    {
+        $c = $alias === '' ? '' : $alias . '.';
+        return "(CASE {$c}nivel WHEN 'warning' THEN 'warn' WHEN 'critical' THEN 'crit'
+                    WHEN 'emergency' THEN 'emerg' ELSE {$c}nivel END)";
+    }
+
+    /**
+     * Sitio al que pertenece un error: el host si el log lo trae (nginx) o, si no, la carpeta
+     * del sitio que aparece en el mensaje (Apache). Los que no dicen ninguno quedan en NULL.
+     */
+    private function sitioError(string $alias = ''): string
+    {
+        $c = $alias === '' ? '' : $alias . '.';
+        return "coalesce({$c}host, substring({$c}mensaje from '" . self::RAIZ_SITIOS . "([^/ ]+)/'))";
+    }
+
+    /**
+     * Condición SQL de los filtros opcionales de error: cada uno con su parámetro en NULL no filtra.
+     * La IP es la del cliente que el log atribuye al error, y el texto se busca dentro del mensaje
+     * sin distinguir mayúsculas.
+     */
+    private function condicionFiltrosError(string $alias = ''): string
+    {
+        $c = $alias === '' ? '' : $alias . '.';
+        return "(CAST(:origen AS text) IS NULL OR {$c}origen = CAST(:origen AS text))
+                    AND (CAST(:niveles AS text) IS NULL
+                        OR " . $this->nivelError($alias) . " = ANY(string_to_array(CAST(:niveles AS text), ',')))
+                    AND (CAST(:modulo AS text) IS NULL OR {$c}modulo = CAST(:modulo AS text))
+                    AND (CAST(:sitio AS text) IS NULL OR " . $this->sitioError($alias) . " = CAST(:sitio AS text))
+                    AND (CAST(:ip AS inet) IS NULL OR {$c}client = CAST(:ip AS inet))
+                    AND (CAST(:texto AS text) IS NULL OR strpos(lower({$c}mensaje), lower(CAST(:texto AS text))) > 0)";
+    }
+
+    /**
+     * Parámetros de los filtros opcionales de error; los que no vienen quedan en NULL.
+     * El nivel es un grupo de GRUPOS_NIVEL o un nivel de NIVELES; sin él se usa el de defecto.
+     *
+     * @param array{origen?: ?string, nivel?: ?string, modulo?: ?string, sitio?: ?string, ip?: ?string, texto?: ?string} $filtros
+     */
+    private function parametrosFiltrosError(array $filtros): array
+    {
+        $nivel = $filtros['nivel'] ?? self::NIVEL_DEFECTO;
+        $niveles = isset(self::NIVELES[$nivel]) ? [$nivel] : (self::GRUPOS_NIVEL[$nivel] ?? self::GRUPOS_NIVEL[self::NIVEL_DEFECTO])['niveles'];
+        return [
+            'origen' => $filtros['origen'] ?? null,
+            'niveles' => $niveles === null ? null : implode(',', $niveles),
+            'modulo' => $filtros['modulo'] ?? null,
+            'sitio' => $filtros['sitio'] ?? null,
+            'ip' => $filtros['ip'] ?? null,
+            'texto' => $filtros['texto'] ?? null,
+        ];
+    }
+
+    /**
+     * Ejecuta una consulta de la tabla error y devuelve sus filas, o la primera columna.
+     */
+    private function consultarError(string $sql, array $parametros, bool $columna = false): array
+    {
+        try {
+            $consulta = $this->conexion()->prepare($sql);
+            $consulta->execute($parametros);
+            return [
+                'error' => false,
+                'datos' => $columna ? $consulta->fetchAll(\PDO::FETCH_COLUMN) : $consulta->fetchAll()
+            ];
+        } catch (\PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Módulos que tienen errores en el periodo, de cualquier nivel, en orden alfabético.
+     */
+    public function modulosError(string $servidor, int $horas = self::PERIODO_DEFECTO): array
+    {
+        $sql = "SELECT DISTINCT modulo
+                FROM error
+                WHERE servidor = :servidor
+                    AND modulo IS NOT NULL
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                ORDER BY modulo";
+        return $this->consultarError($sql, [...$this->ventana($horas), 'servidor' => $servidor], true);
+    }
+
+    /**
+     * Sitios que tienen errores en el periodo, de cualquier nivel, en orden alfabético.
+     */
+    public function sitiosError(string $servidor, int $horas = self::PERIODO_DEFECTO): array
+    {
+        $sql = "SELECT DISTINCT " . $this->sitioError() . " AS sitio
+                FROM error
+                WHERE servidor = :servidor
+                    AND " . $this->sitioError() . " IS NOT NULL
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                ORDER BY sitio";
+        return $this->consultarError($sql, [...$this->ventana($horas), 'servidor' => $servidor], true);
+    }
+
+    /**
+     * Errores del periodo agrupados por intervalo, incluidos los intervalos sin errores.
+     * La etiqueta es la hora (HH) si el intervalo es de una hora, o HH:MI si es de minutos.
+     */
+    public function erroresPorHora(string $servidor, int $horas = self::PERIODO_DEFECTO, array $filtros = []): array
+    {
+        $sql = "SELECT to_char(h.hora, CASE WHEN CAST(:paso AS interval) >= interval '1 hour' THEN 'HH24' ELSE 'HH24:MI' END) AS hora,
+                    count(e.id) AS cantidad
+                FROM generate_series(
+                    " . self::INICIO_PERIODO . ",
+                    date_bin(CAST(:paso AS interval), now() AT TIME ZONE :zona, timestamp '2000-01-01'),
+                    CAST(:paso AS interval)) AS h(hora)
+                LEFT JOIN error e
+                    ON e.servidor = :servidor
+                    AND " . $this->condicionFiltrosError('e') . "
+                    AND e.fecha >= h.hora AT TIME ZONE :zona
+                    AND e.fecha < (h.hora + CAST(:paso AS interval)) AT TIME ZONE :zona
+                GROUP BY h.hora
+                ORDER BY h.hora";
+        return $this->consultarError($sql, [...$this->ventana($horas), 'servidor' => $servidor, ...$this->parametrosFiltrosError($filtros)]);
+    }
+
+    /**
+     * Total de errores por nivel en el periodo, del que más tiene al que menos.
+     */
+    public function erroresPorNivel(string $servidor, int $horas = self::PERIODO_DEFECTO, array $filtros = []): array
+    {
+        $sql = "SELECT " . $this->nivelError() . " AS nivel, count(*) AS total,
+                    to_char(max(fecha) AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS ultimo
+                FROM error
+                WHERE servidor = :servidor
+                    AND " . $this->condicionFiltrosError() . "
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                GROUP BY 1
+                ORDER BY total DESC, nivel";
+        return $this->consultarError($sql, [...$this->ventana($horas), 'servidor' => $servidor, ...$this->parametrosFiltrosError($filtros)]);
+    }
+
+    /**
+     * Total de errores por módulo en el periodo, del que más tiene al que menos. Los que no
+     * traen módulo (nginx) salen en una fila aparte con modulo en NULL.
+     */
+    public function erroresPorModulo(string $servidor, int $horas = self::PERIODO_DEFECTO, array $filtros = []): array
+    {
+        $sql = "SELECT modulo, count(*) AS total,
+                    to_char(max(fecha) AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS ultimo
+                FROM error
+                WHERE servidor = :servidor
+                    AND " . $this->condicionFiltrosError() . "
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                GROUP BY modulo
+                ORDER BY total DESC, modulo";
+        return $this->consultarError($sql, [...$this->ventana($horas), 'servidor' => $servidor, ...$this->parametrosFiltrosError($filtros)]);
+    }
+
+    /**
+     * Sitios con más errores en el periodo. Los errores que no dicen de qué sitio son salen
+     * en una fila aparte con sitio en NULL.
+     */
+    public function erroresPorSitio(string $servidor, int $horas = self::PERIODO_DEFECTO, int $limite = 20, array $filtros = []): array
+    {
+        $sql = "SELECT " . $this->sitioError() . " AS sitio, count(*) AS total,
+                    to_char(max(fecha) AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS ultimo
+                FROM error
+                WHERE servidor = :servidor
+                    AND " . $this->condicionFiltrosError() . "
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                GROUP BY 1
+                ORDER BY total DESC, sitio
+                LIMIT CAST(:limite AS integer)";
+        return $this->consultarError($sql, [...$this->ventana($horas), 'servidor' => $servidor, 'limite' => $limite, ...$this->parametrosFiltrosError($filtros)]);
+    }
+
+    /**
+     * IPs de cliente con más errores en el periodo, para detectar escáneres o abusos. Los
+     * errores que el log no atribuye a un cliente salen en una fila aparte con ip en NULL.
+     */
+    public function erroresPorIp(string $servidor, int $horas = self::PERIODO_DEFECTO, int $limite = 20, array $filtros = []): array
+    {
+        $sql = "SELECT host(client) AS ip, count(*) AS total,
+                    to_char(max(fecha) AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS ultimo
+                FROM error
+                WHERE servidor = :servidor
+                    AND " . $this->condicionFiltrosError() . "
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                GROUP BY client
+                ORDER BY total DESC, client
+                LIMIT CAST(:limite AS integer)";
+        return $this->consultarError($sql, [...$this->ventana($horas), 'servidor' => $servidor, 'limite' => $limite, ...$this->parametrosFiltrosError($filtros)]);
+    }
+
+    /**
+     * Errores que más se repiten en el periodo. Para que el mismo error cuente junto aunque
+     * cambien sus datos, se agrupa por el inicio del mensaje con lo que va entre comillas y los
+     * números borrados; de cada grupo se muestra el mensaje más reciente como ejemplo.
+     */
+    public function erroresPorMensaje(string $servidor, int $horas = self::PERIODO_DEFECTO, int $limite = 20, array $filtros = []): array
+    {
+        $sql = "SELECT nivel, modulo, count(*) AS total,
+                    to_char(max(fecha) AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS ultimo,
+                    left((array_agg(mensaje ORDER BY fecha DESC))[1], 400) AS ejemplo
+                FROM (
+                    SELECT " . $this->nivelError() . " AS nivel, modulo, fecha, mensaje,
+                        left(regexp_replace(regexp_replace(mensaje, '\"[^\"]*\"', '\"\"', 'g'), '[0-9]+', '0', 'g'), 100) AS firma
+                    FROM error
+                    WHERE servidor = :servidor
+                        AND " . $this->condicionFiltrosError() . "
+                        AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                ) AS e
+                GROUP BY nivel, modulo, firma
+                ORDER BY total DESC, firma
+                LIMIT CAST(:limite AS integer)";
+        return $this->consultarError($sql, [...$this->ventana($horas), 'servidor' => $servidor, 'limite' => $limite, ...$this->parametrosFiltrosError($filtros)]);
+    }
+
+    /**
+     * Últimos errores del periodo, del más reciente al más antiguo.
+     */
+    public function ultimosErrores(string $servidor, int $horas = self::PERIODO_DEFECTO, int $limite = 20, array $filtros = []): array
+    {
+        $sql = "SELECT id, to_char(fecha AT TIME ZONE :zona, 'YYYY-MM-DD HH24:MI:SS') AS fecha,
+                    origen, " . $this->nivelError() . " AS nivel, modulo, " . $this->sitioError() . " AS sitio,
+                    host(client) AS ip, mensaje, request, upstream, referer
+                FROM error
+                WHERE servidor = :servidor
+                    AND " . $this->condicionFiltrosError() . "
+                    AND fecha >= " . self::INICIO_PERIODO . " AT TIME ZONE :zona
+                ORDER BY fecha DESC
+                LIMIT CAST(:limite AS integer)";
+        return $this->consultarError($sql, [...$this->ventana($horas), 'servidor' => $servidor, 'limite' => $limite, ...$this->parametrosFiltrosError($filtros)]);
     }
 }

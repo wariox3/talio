@@ -12,7 +12,7 @@ de Lantano.
 | Servicios → Itrio | Movimientos y su facturación, consumos (Excel), contenedores y usuarios | API de Itrio |
 | Servicios → Nobelio | Cuentas (con sus webhooks), emisores (software, resoluciones, webhooks, pruebas), documentos y nóminas electrónicas | API de Nobelio |
 | Servicios externos → Kiai | Consumos por aliado y mes (Excel) | API de Kiai |
-| Auditoría → WebServer | Accesos de los servidores web por hora, IP, API key, host y ruta | PostgreSQL de Lantano |
+| Auditoría → WebServer | Monitor acceso: accesos de los servidores web por hora, IP, API key, host y ruta. Monitor error: errores de los error.log por hora, nivel, módulo, sitio, IP y mensaje más repetido | PostgreSQL de Lantano |
 
 ## Requisitos
 
@@ -220,7 +220,7 @@ src/
   Utilidades/
     ClienteApi.php         Base de los clientes HTTP (ver abajo)
     Wolframio.php  Tantalo.php  Itrio.php  Nobelio.php  Softgic.php (Kiai)
-    BdWebServer.php        Consultas a la tabla acceso de Lantano (PDO pgsql)
+    BdWebServer.php        Consultas a las tablas acceso y error de Lantano (PDO pgsql)
     Excel.php              Genera un XLSX y lo devuelve como descarga
 templates/<servicio>/      Vistas; base.html.twig (con menú) y base_sin_menu.html.twig (ventanas emergentes)
 ```

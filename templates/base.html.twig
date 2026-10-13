@@ -84,7 +84,8 @@
             <details class="nav-group" {{ ruta starts with 'auditoria_webserver_' ? 'open' }}>
                 <summary>WebServer</summary>
                 <div class="nav-sub">
-                    <a class="{{ ruta == 'auditoria_webserver_monitor' ? 'on' }}" href="{{ path('auditoria_webserver_monitor') }}">Monitor</a>
+                    <a class="{{ ruta == 'auditoria_webserver_monitor_acceso' ? 'on' }}" href="{{ path('auditoria_webserver_monitor_acceso') }}">Monitor acceso</a>
+                    <a class="{{ ruta == 'auditoria_webserver_monitor_error' ? 'on' }}" href="{{ path('auditoria_webserver_monitor_error') }}">Monitor error</a>
                 </div>
             </details>
         </div>

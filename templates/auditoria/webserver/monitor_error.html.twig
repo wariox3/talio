@@ -1,0 +1,338 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+
+{% block title %}Monitor error · Talio{% endblock %}
+{% block ruta %}Auditoría <span>/</span> WebServer <span>/</span> Monitor error <span>/</span> <b>{{ servidor|capitalize }}</b>{% endblock %}
+
+{% block acciones %}
+    {% if error %}
+        <span class="tag crit"><span class="dot"></span>Sin conexión a bdlantano</span>
+    {% else %}
+        <span class="stamp">{{ data|reduce((total, v) => total + v, 0) }} errores · {{ periodos[horas].texto }}</span>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {# Filtros actuales, sin los vacíos, para que los enlaces de las tablas los conserven. #}
+    {% set filtrosUrl = { servidor: servidor, horas: horas, origen: origen, nivel: nivel, modulo: modulo, sitio: sitio, ip: ip, texto: texto }|filter(v => v) %}
+    {# Color de cada nivel: lo grave en rojo, los avisos en ámbar y lo informativo apagado. #}
+    {% set claseNivel = { emerg: 'crit', alert: 'crit', crit: 'crit', error: 'crit', warn: 'warn' } %}
+    {% set textoNivel = gruposNivel[nivel].texto ?? niveles[nivel] ?? nivel %}
+    <div class="block block--tight">
+        <form class="filters filters--flat" method="get" action="{{ path('auditoria_webserver_monitor_error') }}" id="filtros-webserver">
+            <div class="field">
+                <label for="servidor">Servidor</label>
+                <select id="servidor" name="servidor" onchange="this.form.requestSubmit()">
+                    {% for item in servidores %}
+                        <option value="{{ item }}" {{ item == servidor ? 'selected' }}>{{ item|capitalize }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="horas">Periodo</label>
+                <select id="horas" name="horas" onchange="this.form.requestSubmit()">
+                    {% for valor, periodo in periodos %}
+                        <option value="{{ valor }}" {{ valor == horas ? 'selected' }}>{{ periodo.texto }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="origen">Web server</label>
+                <select id="origen" name="origen" onchange="this.form.requestSubmit()">
+                    <option value="">Todos</option>
+                    {% for valor, texto in origenes %}
+                        <option value="{{ valor }}" {{ valor == origen ? 'selected' }}>{{ texto }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="nivel">Nivel</label>
+                <select id="nivel" name="nivel" onchange="this.form.requestSubmit()">
+                    <optgroup label="Grupos">
+                        {% for valor, grupo in gruposNivel %}
+                            <option value="{{ valor }}" {{ valor == nivel ? 'selected' }}>{{ grupo.texto }}</option>
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="Niveles">
+                        {% for valor, nombre in niveles %}
+                            <option value="{{ valor }}" {{ valor == nivel ? 'selected' }}>{{ nombre }}</option>
+                        {% endfor %}
+                    </optgroup>
+                </select>
+            </div>
+            <div class="field">
+                <label for="modulo">Módulo</label>
+                <select id="modulo" name="modulo" onchange="this.form.requestSubmit()">
+                    <option value="">Todos</option>
+                    {% for item in modulos %}
+                        <option value="{{ item }}" {{ item == modulo ? 'selected' }}>{{ item }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="sitio" title="El host del error o, en Apache, la carpeta del sitio que aparece en el mensaje">Sitio</label>
+                <select id="sitio" name="sitio" onchange="this.form.requestSubmit()">
+                    <option value="">Todos</option>
+                    {% for item in sitios %}
+                        <option value="{{ item }}" {{ item == sitio ? 'selected' }}>{{ item }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field">
+                <label for="ip">IP cliente</label>
+                <input type="text" id="ip" name="ip" value="{{ ip }}" placeholder="Todas" autocomplete="off">
+            </div>
+            <div class="field">
+                <label for="texto">Mensaje contiene</label>
+                <input type="text" id="texto" name="texto" value="{{ texto }}" placeholder="Todos, ej. Permission denied" autocomplete="off">
+            </div>
+            <button type="submit">Filtrar</button>
+            {% if origen or modulo or sitio or ip or texto or nivel != nivelDefecto %}
+                <a href="{{ path('auditoria_webserver_monitor_error', { servidor: servidor, horas: horas }) }}">Quitar filtros</a>
+            {% endif %}
+        </form>
+        {% if ipInvalida %}
+            <p class="hint">«{{ ip }}» no es una IP válida; se muestran todas las IPs.</p>
+        {% endif %}
+    </div>
+
+    <div class="block">
+        {% set paso = periodos[horas].paso %}
+        {{ ui.cabecera(textoNivel ~ ' ' ~ (origen ? origenes[origen] ~ ' ' : '') ~ (paso >= 60 ? 'por hora' : 'cada ' ~ paso ~ ' min'), periodos[horas].texto) }}
+        {% if error %}
+            <p class="hint">No fue posible consultar bdlantano: {{ error }}</p>
+        {% else %}
+            <div class="chart-wrap">
+                <svg data-grafica
+                     data-labels="{{ labels|json_encode }}"
+                     data-valores="{{ data|json_encode }}"
+                     data-unidad="err"></svg>
+                <div class="chart-tip"></div>
+            </div>
+            <div class="chart-cap"><i></i>Errores registrados</div>
+        {% endif %}
+    </div>
+
+    {% if not error %}
+        {% set totalErrores = erroresPorNivel|reduce((suma, n) => suma + n.total, 0) %}
+        <div class="block">
+            {{ ui.cabecera('Errores más repetidos', 'Top ' ~ erroresPorMensaje|length ~ ' · ' ~ periodos[horas].texto) }}
+            {# Cada fila junta los errores que solo cambian en lo que va entre comillas o en los
+               números; el mensaje es el más reciente del grupo. #}
+            <div class="table-scroll" style="--tabla-alto: 420px;">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th class="center">Nivel</th><th>Módulo</th><th title="El más reciente de los que se agrupan en esta fila">Mensaje</th>
+                        <th class="num">Errores</th><th class="num">%</th><th>Último</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for item in erroresPorMensaje %}
+                        <tr>
+                            <td class="center">
+                                <a href="{{ path('auditoria_webserver_monitor_error', filtrosUrl|merge({ nivel: item.nivel })) }}" class="tag {{ claseNivel[item.nivel] ?? 'idle' }}" title="Filtrar por este nivel"><span class="dot"></span>{{ niveles[item.nivel] ?? item.nivel }}</a>
+                            </td>
+                            <td class="nowrap">
+                                {% if item.modulo %}
+                                    <a href="{{ path('auditoria_webserver_monitor_error', filtrosUrl|merge({ modulo: item.modulo })) }}" title="Filtrar por este módulo">{{ item.modulo }}</a>
+                                {% endif %}
+                            </td>
+                            <td class="wrap" style="word-break: break-all;">{{ item.ejemplo }}</td>
+                            <td class="num">{{ item.total|number_format(0, ',', '.') }}</td>
+                            <td class="num">{{ totalErrores > 0 ? (item.total * 100 / totalErrores)|number_format(1, ',', '.') : 0 }}</td>
+                            <td class="fecha">{{ item.ultimo }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="6">Sin errores registrados.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mitades">
+            <div class="block">
+                {{ ui.cabecera('Errores por nivel', erroresPorNivel|length ~ ' niveles · ' ~ periodos[horas].texto) }}
+                <div class="table-scroll">
+                    <table class="data">
+                        <thead>
+                        <tr><th>Nivel</th><th class="num">Errores</th><th class="num">%</th><th>Último</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for item in erroresPorNivel %}
+                            <tr>
+                                <td>
+                                    <a href="{{ path('auditoria_webserver_monitor_error', filtrosUrl|merge({ nivel: item.nivel })) }}" class="tag {{ claseNivel[item.nivel] ?? 'idle' }}" title="Filtrar por este nivel"><span class="dot"></span>{{ niveles[item.nivel] ?? item.nivel }}</a>
+                                </td>
+                                <td class="num">{{ item.total|number_format(0, ',', '.') }}</td>
+                                <td class="num">{{ totalErrores > 0 ? (item.total * 100 / totalErrores)|number_format(1, ',', '.') : 0 }}</td>
+                                <td class="fecha">{{ item.ultimo }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="4">Sin errores registrados.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="block">
+                {{ ui.cabecera('Errores por módulo', erroresPorModulo|length ~ ' módulos · ' ~ periodos[horas].texto) }}
+                <div class="table-scroll">
+                    <table class="data">
+                        <thead>
+                        <tr><th>Módulo</th><th class="num">Errores</th><th class="num">%</th><th>Último</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for item in erroresPorModulo %}
+                            <tr>
+                                <td>
+                                    {% if item.modulo %}
+                                        <a href="{{ path('auditoria_webserver_monitor_error', filtrosUrl|merge({ modulo: item.modulo })) }}" title="Filtrar por este módulo">{{ item.modulo }}</a>
+                                    {% else %}
+                                        <span title="El error.log de nginx no dice el módulo">(sin módulo)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="num">{{ item.total|number_format(0, ',', '.') }}</td>
+                                <td class="num">{{ totalErrores > 0 ? (item.total * 100 / totalErrores)|number_format(1, ',', '.') : 0 }}</td>
+                                <td class="fecha">{{ item.ultimo }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="4">Sin errores registrados.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="mitades">
+            <div class="block">
+                {{ ui.cabecera('Errores por sitio', 'Top ' ~ erroresPorSitio|length ~ ' · ' ~ periodos[horas].texto) }}
+                <div class="table-scroll" style="--tabla-alto: 360px;">
+                    <table class="data">
+                        <thead>
+                        <tr><th>Sitio</th><th class="num">Errores</th><th class="num">%</th><th>Último</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for item in erroresPorSitio %}
+                            <tr>
+                                <td>
+                                    {% if item.sitio %}
+                                        <a href="{{ path('auditoria_webserver_monitor_error', filtrosUrl|merge({ sitio: item.sitio })) }}" title="Filtrar por este sitio">{{ item.sitio }}</a>
+                                    {% else %}
+                                        <span title="Errores que no traen host ni la carpeta del sitio en el mensaje">(sin sitio)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="num">{{ item.total|number_format(0, ',', '.') }}</td>
+                                <td class="num">{{ totalErrores > 0 ? (item.total * 100 / totalErrores)|number_format(1, ',', '.') : 0 }}</td>
+                                <td class="fecha">{{ item.ultimo }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="4">Sin errores registrados.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="block">
+                {{ ui.cabecera('Errores por IP cliente', 'Top ' ~ erroresPorIp|length ~ ' · ' ~ periodos[horas].texto) }}
+                <div class="table-scroll" style="--tabla-alto: 360px;">
+                    <table class="data">
+                        <thead>
+                        <tr><th>IP cliente</th><th class="num">Errores</th><th class="num">%</th><th>Último</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for item in erroresPorIp %}
+                            <tr>
+                                <td class="nowrap">
+                                    {% if item.ip %}
+                                        <a href="{{ path('auditoria_webserver_monitor_error', filtrosUrl|merge({ ip: item.ip })) }}" title="Filtrar por esta IP">{{ item.ip }}</a>
+                                    {% else %}
+                                        <span title="Errores que el log no atribuye a un cliente">(sin IP cliente)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="num">{{ item.total|number_format(0, ',', '.') }}</td>
+                                <td class="num">{{ totalErrores > 0 ? (item.total * 100 / totalErrores)|number_format(1, ',', '.') : 0 }}</td>
+                                <td class="fecha">{{ item.ultimo }}</td>
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="4">Sin errores registrados.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="block">
+            {{ ui.cabecera('Últimos errores', ultimosErrores|length ~ ' registros · ' ~ periodos[horas].texto) }}
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Id</th><th>Fecha</th><th>Origen</th><th class="center">Nivel</th><th>Módulo</th><th>Sitio</th>
+                        <th>IP cliente</th><th>Mensaje</th><th>Petición</th><th>Upstream</th><th>Referer</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for item in ultimosErrores %}
+                        <tr>
+                            <td class="id">{{ item.id }}</td>
+                            <td class="fecha">{{ item.fecha }}</td>
+                            <td><a href="{{ path('auditoria_webserver_monitor_error', filtrosUrl|merge({ origen: item.origen })) }}" title="Filtrar por este web server">{{ origenes[item.origen] ?? item.origen }}</a></td>
+                            <td class="center">
+                                <a href="{{ path('auditoria_webserver_monitor_error', filtrosUrl|merge({ nivel: item.nivel })) }}" class="tag {{ claseNivel[item.nivel] ?? 'idle' }}" title="Filtrar por este nivel"><span class="dot"></span>{{ niveles[item.nivel] ?? item.nivel }}</a>
+                            </td>
+                            <td class="nowrap">
+                                {% if item.modulo %}
+                                    <a href="{{ path('auditoria_webserver_monitor_error', filtrosUrl|merge({ modulo: item.modulo })) }}" title="Filtrar por este módulo">{{ item.modulo }}</a>
+                                {% endif %}
+                            </td>
+                            <td class="nowrap">
+                                {% if item.sitio %}
+                                    <a href="{{ path('auditoria_webserver_monitor_error', filtrosUrl|merge({ sitio: item.sitio })) }}" title="Filtrar por este sitio">{{ item.sitio }}</a>
+                                {% endif %}
+                            </td>
+                            <td class="nowrap">
+                                {% if item.ip %}
+                                    <a href="{{ path('auditoria_webserver_monitor_error', filtrosUrl|merge({ ip: item.ip })) }}" title="Filtrar por esta IP">{{ item.ip }}</a>
+                                {% endif %}
+                            </td>
+                            <td class="wrap" style="word-break: break-all;">{{ item.mensaje }}</td>
+                            <td class="wrap" style="word-break: break-all;">{{ item.request }}</td>
+                            <td class="wrap" style="word-break: break-all;">{{ item.upstream }}</td>
+                            <td class="wrap" style="word-break: break-all;">{{ item.referer }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="11">Sin errores registrados.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ asset('js/grafica.js') }}"></script>
+    <script>
+        /* Los campos vacíos se deshabilitan al enviar para que no queden en la URL
+           como ?origen=&modulo=&sitio=&ip=&texto=. */
+        document.getElementById('filtros-webserver').addEventListener('submit', function () {
+            this.querySelectorAll('input, select').forEach(function (campo) {
+                if (campo.name && campo.value.trim() === '') {
+                    campo.disabled = true;
+                }
+            });
+        });
+        /* Al volver con "atrás" el navegador puede restaurar la página con los campos aún deshabilitados. */
+        window.addEventListener('pageshow', function () {
+            document.querySelectorAll('#filtros-webserver [disabled]').forEach(function (campo) {
+                campo.disabled = false;
+            });
+        });
+    </script>
+{% endblock %}
