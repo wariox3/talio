@@ -243,6 +243,48 @@ class WebServerController extends AbstractController
     }
 
     /**
+     * Vacía la tabla acceso, de todos los servidores, y vuelve al monitor con el mismo servidor y periodo.
+     */
+    #[Route('/auditoria/webserver/monitor-acceso/limpiar', name: 'auditoria_webserver_monitor_acceso_limpiar', methods: ['POST'])]
+    public function limpiarAcceso(Request $request, BdWebServer $bdWebServer): Response
+    {
+        $servidor = (string)$request->request->get('servidor', '');
+        $horas = $request->request->getInt('horas', BdWebServer::PERIODO_DEFECTO);
+        if(!$this->isCsrfTokenValid('limpiar-acceso', (string)$request->request->get('_token'))) {
+            $this->addFlash('danger', 'La petición de limpieza no es válida.');
+        } else {
+            $respuesta = $bdWebServer->limpiarAccesos();
+            if($respuesta['error']) {
+                $this->addFlash('danger', "bdlantano: {$respuesta['mensaje']}");
+            } else {
+                $this->addFlash('success', 'Se vació la tabla de accesos de todos los servidores.');
+            }
+        }
+        return $this->redirectToRoute('auditoria_webserver_monitor_acceso', ['servidor' => $servidor, 'horas' => $horas]);
+    }
+
+    /**
+     * Vacía la tabla error, de todos los servidores, y vuelve al monitor con el mismo servidor y periodo.
+     */
+    #[Route('/auditoria/webserver/monitor-error/limpiar', name: 'auditoria_webserver_monitor_error_limpiar', methods: ['POST'])]
+    public function limpiarError(Request $request, BdWebServer $bdWebServer): Response
+    {
+        $servidor = (string)$request->request->get('servidor', '');
+        $horas = $request->request->getInt('horas', BdWebServer::PERIODO_DEFECTO);
+        if(!$this->isCsrfTokenValid('limpiar-error', (string)$request->request->get('_token'))) {
+            $this->addFlash('danger', 'La petición de limpieza no es válida.');
+        } else {
+            $respuesta = $bdWebServer->limpiarErrores();
+            if($respuesta['error']) {
+                $this->addFlash('danger', "bdlantano: {$respuesta['mensaje']}");
+            } else {
+                $this->addFlash('success', 'Se vació la tabla de errores de todos los servidores.');
+            }
+        }
+        return $this->redirectToRoute('auditoria_webserver_monitor_error', ['servidor' => $servidor, 'horas' => $horas]);
+    }
+
+    /**
      * Servidores que se pueden elegir, y el servidor y el periodo pedidos en la URL.
      *
      * @return array{0: string[], 1: string, 2: int}

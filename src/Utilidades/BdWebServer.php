@@ -5,9 +5,9 @@ namespace App\Utilidades;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
- * Consultas de solo lectura sobre las tablas acceso y error de la base de
- * Lantano (PostgreSQL), donde se guardan los access.log y los error.log de
- * los servidores web. La conexion se abre en la primera consulta, no al
+ * Consultas sobre las tablas acceso y error de la base de Lantano (PostgreSQL),
+ * donde se guardan los access.log y los error.log de los servidores web. Todas
+ * son de solo lectura menos limpiarAccesos y limpiarErrores. La conexion se abre en la primera consulta, no al
  * construir el servicio.
  */
 class BdWebServer
@@ -725,5 +725,43 @@ class BdWebServer
                 ORDER BY fecha DESC
                 LIMIT CAST(:limite AS integer)";
         return $this->consultarError($sql, [...$this->ventana($horas), 'servidor' => $servidor, 'limite' => $limite, ...$this->parametrosFiltrosError($filtros)]);
+    }
+
+    /**
+     * Vacía la tabla acceso con TRUNCATE: todos los servidores y fechas. Los ids vuelven a empezar en 1.
+     */
+    public function limpiarAccesos(): array
+    {
+        try {
+            $this->conexion()->exec("TRUNCATE TABLE acceso RESTART IDENTITY");
+            return [
+                'error' => false,
+                'datos' => null
+            ];
+        } catch (\PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Vacía la tabla error con TRUNCATE: todos los servidores, fechas y niveles. Los ids vuelven a empezar en 1.
+     */
+    public function limpiarErrores(): array
+    {
+        try {
+            $this->conexion()->exec("TRUNCATE TABLE error RESTART IDENTITY");
+            return [
+                'error' => false,
+                'datos' => null
+            ];
+        } catch (\PDOException $e) {
+            return [
+                'error' => true,
+                'mensaje' => $e->getMessage()
+            ];
+        }
     }
 }

@@ -9,6 +9,9 @@
         <span class="tag crit"><span class="dot"></span>Sin conexión a bdlantano</span>
     {% else %}
         <span class="stamp">{{ data|reduce((total, v) => total + v, 0) }} errores · {{ periodos[horas].texto }}</span>
+        {# El formulario va al final del contenido y el botón lo apunta con form=. #}
+        <button type="submit" form="limpiar-error"
+                onclick="return confirm('¿Vaciar la tabla de errores?\n\nSe borran los errores de TODOS los servidores, de cualquier fecha y nivel, no solo los del periodo y filtros actuales. No se puede deshacer.')">Limpiar</button>
     {% endif %}
 {% endblock %}
 
@@ -314,6 +317,11 @@
             </div>
         </div>
     {% endif %}
+    <form id="limpiar-error" method="post" action="{{ path('auditoria_webserver_monitor_error_limpiar') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('limpiar-error') }}">
+        <input type="hidden" name="servidor" value="{{ servidor }}">
+        <input type="hidden" name="horas" value="{{ horas }}">
+    </form>
 {% endblock %}
 
 {% block javascripts %}
