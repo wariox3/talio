@@ -18,6 +18,8 @@
     {% if documento.tiene_pdf %}
         <button type="button" class="ghost" onclick="location.href='{{ path('nobelio_recepcion_descargar', { 'archivo': 'pdf', 'id': documento.id }) }}'">PDF</button>
     {% endif %}
+    {# El siguiente evento RADIAN, como en la lista. #}
+    {{ include('nobelio/recepcion/_acciones_radian.html.twig', { documento: documento, boton: true }) }}
     {# Consulta el CUFE en la DIAN en el momento. El form va al final del
        contenido y el boton lo apunta con form=. #}
     <button type="submit" form="verificar-documento" class="ghost"

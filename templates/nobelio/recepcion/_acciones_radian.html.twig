@@ -1,0 +1,21 @@
+{# El siguiente evento RADIAN que se puede pedir segun el ultimo registrado:
+   sin eventos -> acuse 030; acuse -> recibo 032; recibo -> aceptacion 033 o
+   reclamo 031. Abre la ventana del evento con el codigo elegido. Solo en
+   facturas de venta y no de contado: RADIAN no admite eventos sobre ellas
+   (LGC62). Lo usan la lista (enlaces) y la ficha (botones, con boton: true). #}
+{% set siguientes = {
+    'sin_eventos': { '030': 'Acuse 030' },
+    'acuse': { '032': 'Recibo 032' },
+    'recibo': { '033': 'Aceptación 033', '031': 'Reclamo 031' },
+} %}
+{% set estado = documento.radian_estado|default('') %}
+{% if siguientes[estado] is defined and documento.documento_tipo == 'factura_venta' and documento.forma_pago|default('') != '1' %}
+    {% for codigo, nombre in siguientes[estado] %}
+        {% set abrir = "abrirVentana('" ~ path('nobelio_recepcion_evento_nuevo', { 'id': documento.id, 'codigo': codigo }) ~ "', 'EventoNuevo', 560, 640)" %}
+        {% if boton|default(false) %}
+            <button type="button" class="ghost" onclick="{{ abrir }}">{{ nombre }}</button>
+        {% else %}
+            <a href="javascript:{{ abrir }}">{{ nombre }}</a>
+        {% endif %}
+    {% endfor %}
+{% endif %}

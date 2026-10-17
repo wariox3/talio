@@ -93,20 +93,8 @@
                         <td class="id" title="{{ documento.cufe_cude }}">
                             {{- documento.cufe_cude ? documento.cufe_cude|slice(0, 12) ~ '…' -}}
                         </td>
-                        {# Sin eventos, lo que sigue es el acuse de recibo: abre la
-                           ventana del evento con el 030 elegido. Solo en facturas
-                           de venta y no de contado: RADIAN no admite eventos sobre
-                           ellas (LGC62). #}
                         <td class="acciones">
-                            {% if documento.radian_estado|default('') == 'sin_eventos' and documento.documento_tipo == 'factura_venta' and documento.forma_pago|default('') != '1' %}
-                                <a href="javascript:abrirVentana('{{ path('nobelio_recepcion_evento_nuevo', { 'id': documento.id, 'codigo': '030' }) }}', 'EventoNuevo', 560, 640)">Acuse 030</a>
-                            {% endif %}
-                            {# Con el acuse, lo que sigue es el recibo del bien o
-                               servicio: abre la ventana con el 032 elegido. Mismas
-                               condiciones que el acuse. #}
-                            {% if documento.radian_estado|default('') == 'acuse' and documento.documento_tipo == 'factura_venta' and documento.forma_pago|default('') != '1' %}
-                                <a href="javascript:abrirVentana('{{ path('nobelio_recepcion_evento_nuevo', { 'id': documento.id, 'codigo': '032' }) }}', 'EventoNuevo', 560, 640)">Recibo 032</a>
-                            {% endif %}
+                            {{ include('nobelio/recepcion/_acciones_radian.html.twig', { documento: documento }) }}
                             {# Sin eventos registrados. Un pendiente o rechazado no cambia
                                radian_estado y tambien impide borrar: Nobelio lo
                                comprueba y responde diciendolo. El boton vive dentro
