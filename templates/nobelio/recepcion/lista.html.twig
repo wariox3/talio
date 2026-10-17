@@ -101,6 +101,12 @@
                             {% if documento.radian_estado|default('') == 'sin_eventos' and documento.documento_tipo == 'factura_venta' and documento.forma_pago|default('') != '1' %}
                                 <a href="javascript:abrirVentana('{{ path('nobelio_recepcion_evento_nuevo', { 'id': documento.id, 'codigo': '030' }) }}', 'EventoNuevo', 560, 640)">Acuse 030</a>
                             {% endif %}
+                            {# Con el acuse, lo que sigue es el recibo del bien o
+                               servicio: abre la ventana con el 032 elegido. Mismas
+                               condiciones que el acuse. #}
+                            {% if documento.radian_estado|default('') == 'acuse' and documento.documento_tipo == 'factura_venta' and documento.forma_pago|default('') != '1' %}
+                                <a href="javascript:abrirVentana('{{ path('nobelio_recepcion_evento_nuevo', { 'id': documento.id, 'codigo': '032' }) }}', 'EventoNuevo', 560, 640)">Recibo 032</a>
+                            {% endif %}
                             {# Sin eventos registrados. Un pendiente o rechazado no cambia
                                radian_estado y tambien impide borrar: Nobelio lo
                                comprueba y responde diciendolo. El boton vive dentro
