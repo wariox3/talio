@@ -40,6 +40,14 @@ class RecepcionController extends AbstractController
         'reclamada' => 'Reclamo (031)',
     ];
 
+    // Filtro estado_recepcion. Nobelio lo recibe como true/false; el vacio no
+    // manda el parametro y trae los dos. La lista arranca en false.
+    public const ESTADO_RECEPCION = [
+        'Todos' => '',
+        'Sí' => 'true',
+        'No' => 'false',
+    ];
+
     // Codigo DIAN de la forma de pago (cac:PaymentMeans/cbc:ID), como lo
     // devuelve Nobelio. RADIAN solo admite eventos sobre facturas a credito.
     public const FORMAS_PAGO = [
@@ -76,7 +84,8 @@ class RecepcionController extends AbstractController
     {
         // El correo puede llegar por GET desde la ficha del correo; despues
         // viaja en el form como los demas filtros.
-        $form = $this->createFormBuilder(['correo' => $request->query->get('correo')])
+        $form = $this->createFormBuilder(['correo' => $request->query->get('correo'), 'estado_recepcion' => 'false'])
+            ->add('estado_recepcion', ChoiceType::class, ['required' => false, 'choices' => self::ESTADO_RECEPCION])
             ->add('documento_tipo', ChoiceType::class, ['required' => false, 'choices' => ['Todos' => ''] + array_flip(self::TIPOS)])
             ->add('radian_estado', ChoiceType::class, ['required' => false, 'choices' => ['Todos' => ''] + array_flip(self::ESTADOS_RADIAN)])
             ->add('proveedor', TextType::class, ['required' => false])
@@ -92,12 +101,16 @@ class RecepcionController extends AbstractController
         $form->handleRequest($request);
 
         $pagina = max(1, (int) $request->request->get('pagina', 1));
-        $filtros = ['correo' => trim((string) $form->get('correo')->getData())];
+        $filtros = [
+            'estado_recepcion' => 'false',
+            'correo' => trim((string) $form->get('correo')->getData()),
+        ];
 
         if ($form->isSubmitted() && $form->isValid()) {
             $desde = $form->get('desde')->getData();
             $hasta = $form->get('hasta')->getData();
             $filtros = [
+                'estado_recepcion' => (string) $form->get('estado_recepcion')->getData(),
                 'documento_tipo' => (string) $form->get('documento_tipo')->getData(),
                 'radian_estado' => (string) $form->get('radian_estado')->getData(),
                 'proveedor' => trim((string) $form->get('proveedor')->getData()),

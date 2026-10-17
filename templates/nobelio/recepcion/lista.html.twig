@@ -14,6 +14,7 @@
     <input type="hidden" name="pagina" value="{{ pagina }}">
     <div class="block">
         <div class="filters">
+            {{ ui.campo('Estado recepción', form.estado_recepcion) }}
             {{ ui.campo('Tipo', form.documento_tipo) }}
             {# El ultimo evento que la DIAN registro sobre la factura. #}
             {{ ui.campo('Estado RADIAN', form.radian_estado) }}
@@ -53,9 +54,10 @@
                     <th class="num">Correo</th>
                     <th>Moneda</th>
                     <th>Forma de pago</th>
-                    <th class="num">Total a pagar</th>
-                    <th>Validación DIAN</th>
+                    <th class="num">Total</th>
+                    <th>Validado</th>
                     <th>RADIAN</th>
+                    <th>Recepción</th>
                     <th>CUFE/CUDE</th>
                     <th>Acciones</th>
                 </tr>
@@ -85,6 +87,7 @@
                         <td class="num">{{ documento.total_a_pagar is empty ? '' : documento.total_a_pagar|number_format(2, ',', '.') }}</td>
                         <td>{{ include('nobelio/recepcion/_validacion.html.twig', { codigo: documento.validacion_codigo }) }}</td>
                         <td>{{ include('nobelio/recepcion/_radian.html.twig', { estado: documento.radian_estado|default('') }) }}</td>
+                        <td>{{ ui.estado(documento.estado_recepcion|default(false), 'Sí', 'No') }}</td>
                         {# 96 caracteres de SHA-384: el principio y el completo
                            en el title, como el CUNE en la nomina. #}
                         <td class="id" title="{{ documento.cufe_cude }}">
@@ -112,7 +115,7 @@
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="15">
+                        <td colspan="16">
                             {% if total == 0 %}
                                 No hay documentos recibidos que mostrar.
                             {% else %}
