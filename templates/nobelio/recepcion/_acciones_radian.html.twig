@@ -3,11 +3,7 @@
    reclamo 031. Abre la ventana del evento con el codigo elegido. Solo en
    facturas de venta y no de contado: RADIAN no admite eventos sobre ellas
    (LGC62). Lo usan la lista (enlaces) y la ficha (botones, con boton: true). #}
-{% set siguientes = {
-    'sin_eventos': { '030': 'Acuse 030' },
-    'acuse': { '032': 'Recibo 032' },
-    'recibo': { '033': 'Aceptación 033', '031': 'Reclamo 031' },
-} %}
+{% set siguientes = constant('App\\Controller\\nobelio\\RecepcionController::EVENTOS_SIGUIENTES') %}
 {% set estado = documento.radian_estado|default('') %}
 {% if siguientes[estado] is defined and documento.documento_tipo == 'factura_venta' and documento.forma_pago|default('') != '1' %}
     {% for codigo, nombre in siguientes[estado] %}

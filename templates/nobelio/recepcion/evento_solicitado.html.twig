@@ -1,0 +1,29 @@
+{# Respuesta de la ventana del evento cuando Nobelio lo acepta: recarga la
+   pagina que abrio la ventana y la cierra. El aviso de exito queda en la
+   sesion y sale en esa pagina al recargarse.
+   - Ficha del documento: es un GET, se recarga tal cual.
+   - Lista: es un POST, asi que en vez de reload() (el navegador pediria
+     reenviarlo) se vuelve a enviar su form de filtros; sin boton pulsado el
+     controlador conserva los filtros y la pagina. #}
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Evento solicitado · Talio</title></head>
+<body>
+<script>
+    if (window.opener && !window.opener.closed) {
+        try {
+            var origen = window.opener.location.pathname;
+            if (origen === '{{ path('nobelio_recepcion_detalle', { 'id': id }) }}') {
+                window.opener.location.reload();
+            } else if (origen === '{{ path('nobelio_recepcion_lista') }}') {
+                var filtros = window.opener.document.getElementById('filtros-recepcion');
+                if (filtros) {
+                    filtros.submit();
+                }
+            }
+        } catch (e) {}
+    }
+    window.close();
+</script>
+</body>
+</html>

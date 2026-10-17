@@ -7,9 +7,13 @@
 {% block content %}
     <div class="block">
         {{ ui.cabecera('Evento', documento.radian_estado|default('') ? constant('App\\Controller\\nobelio\\RecepcionController::ESTADOS_RADIAN')[documento.radian_estado]|default(documento.radian_estado)) }}
-        {# Van en orden: 030 acuse, 032 recibo y despues 033 aceptacion o 031
-           reclamo, que se excluyen. El 033 y el 031 tienen 3 dias habiles
-           desde el 032. Nobelio lo comprueba y dice por que no cabe. #}
+        {# Solo el evento siguiente: 030 acuse, 032 recibo y despues 033
+           aceptacion o 031 reclamo, que se excluyen. El 033 y el 031 tienen 3
+           dias habiles desde el 032. Nobelio lo comprueba y dice por que no
+           cabe. #}
+        {% if permitidos is empty %}
+            <p>Este documento no admite más eventos RADIAN.</p>
+        {% else %}
         {{ form_start(form) }}
         <div class="form-stack">
             {{ ui.campo('Evento', form.codigo) }}
@@ -43,9 +47,11 @@
             <div>{{ form_widget(form.btnSolicitar, { 'attr': { 'onclick': "return confirm('El evento queda registrado en RADIAN y no se puede deshacer. ¿Solicitarlo?')" } }) }}</div>
         </div>
         {{ form_end(form) }}
+        {% endif %}
     </div>
 {% endblock %}
 {% block javascripts %}
+    {% if permitidos is not empty %}
     <script>
         // Muestra solo los campos del evento elegido: cada grupo dice en
         // data-eventos a que codigos aplica.
@@ -62,4 +68,5 @@
             actualizar();
         })();
     </script>
+    {% endif %}
 {% endblock %}

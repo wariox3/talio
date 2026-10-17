@@ -73,6 +73,16 @@ class RecepcionController extends AbstractController
         '033' => '033 · Aceptación expresa',
     ];
 
+    // El siguiente evento que se puede pedir segun radian_estado (el ultimo
+    // registrado): codigo => nombre corto de la accion. Nobelio exige el orden
+    // 030 -> 032 -> 033 o 031; aceptada y reclamada ya no admiten mas. Lo usan
+    // la ventana del evento y las acciones de la lista y la ficha.
+    public const EVENTOS_SIGUIENTES = [
+        'sin_eventos' => ['030' => 'Acuse 030'],
+        'acuse' => ['032' => 'Recibo 032'],
+        'recibo' => ['033' => 'Aceptación 033', '031' => 'Reclamo 031'],
+    ];
+
     // Tope de la carga manual, el mismo de Nobelio (MAXIMO_CARGA).
     private const MAXIMO_CARGA = 10 * 1024 * 1024;
 
@@ -442,8 +452,10 @@ class RecepcionController extends AbstractController
      * orden 030 -> 032 -> 033 o 031, el plazo de 3 dias habiles desde el 032—
      * las comprueba Nobelio, y su 400 es el mensaje que sale.
      *
-     * Con ?codigo= el form abre con ese evento elegido (la lista lo usa para
-     * el acuse 030). La persona solo viaja en el 030 y el 032, y sin ella
+     * Solo se ofrece el evento siguiente segun radian_estado
+     * (EVENTOS_SIGUIENTES), y nada en facturas de contado o que no son de
+     * venta. Con ?codigo= el form abre con ese evento elegido (las acciones de
+     * la lista y la ficha lo usan). La persona solo viaja en el 030 y el 032, y sin ella
      * Nobelio usa la configurada en el emisor; el concepto, solo en el 031,
      * donde es obligatorio. El id es el UUID del documento y se concatena a la
      * url del API: el requirement lo acota.
@@ -464,11 +476,23 @@ class RecepcionController extends AbstractController
         $conceptos = $this->opcionesCatalogo($nobelio, 'api/catalogos/concepto-reclamo/', 'codigo');
         $tiposIdentificacion = $this->opcionesCatalogo($nobelio, 'api/catalogos/tipo-identificacion/', 'id');
 
-        // El evento puede llegar elegido por GET, como el 030 desde la lista.
-        $codigo = (string) $request->query->get('codigo', '');
+        // Solo el evento siguiente. RADIAN no admite eventos sobre facturas de
+        // contado ni sobre lo que no es factura de venta (LGC62).
+        $permitidos = [];
+        if (($documento['documento_tipo'] ?? '') === 'factura_venta' && (string) ($documento['forma_pago'] ?? '') !== '1') {
+            $siguientes = self::EVENTOS_SIGUIENTES[$documento['radian_estado'] ?? ''] ?? [];
+            $permitidos = array_intersect_key(self::EVENTOS, $siguientes);
+        }
 
-        $form = $this->createFormBuilder(['codigo' => isset(self::EVENTOS[$codigo]) ? $codigo : null])
-            ->add('codigo', ChoiceType::class, ['choices' => array_flip(self::EVENTOS)])
+        // El evento puede llegar elegido por GET, como desde las acciones de
+        // la lista. Si solo hay uno, ese.
+        $codigo = (string) $request->query->get('codigo', '');
+        if (!isset($permitidos[$codigo])) {
+            $codigo = count($permitidos) === 1 ? (string) array_key_first($permitidos) : null;
+        }
+
+        $form = $this->createFormBuilder(['codigo' => $codigo])
+            ->add('codigo', ChoiceType::class, ['choices' => array_flip($permitidos)])
             ->add('concepto_reclamo', ChoiceType::class, ['required' => false, 'choices' => $conceptos, 'placeholder' => ''])
             ->add('persona_tipo_identificacion', ChoiceType::class, ['required' => false, 'choices' => $tiposIdentificacion, 'placeholder' => ''])
             ->add('persona_numero_identificacion', TextType::class, ['required' => false, 'attr' => ['maxlength' => 20]])
@@ -480,7 +504,7 @@ class RecepcionController extends AbstractController
             ->getForm();
         $form->handleRequest($request);
 
-        if ($documento && $form->isSubmitted() && $form->isValid()) {
+        if ($permitidos && $form->isSubmitted() && $form->isValid()) {
             $codigo = (string) $form->get('codigo')->getData();
             $datos = ['codigo' => $codigo];
 
@@ -515,17 +539,21 @@ class RecepcionController extends AbstractController
                 $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
             } else {
                 $this->addFlash('success', sprintf(
-                    'Evento %s solicitado; se envía a la DIAN en segundo plano. Recargue la ficha del documento para ver cómo queda.',
+                    'Evento %s solicitado; se envía a la DIAN en segundo plano.',
                     $respuesta['datos']['numero'] ?? '',
                 ));
 
-                return $this->redirectToRoute('nobelio_recepcion_evento_nuevo', ['id' => $id]);
+                // La ventana se cierra y recarga la ficha que la abrio, que es
+                // donde sale el aviso. No pasa por base_sin_menu para no
+                // consumir el aviso aqui.
+                return $this->render('nobelio/recepcion/evento_solicitado.html.twig', ['id' => $id]);
             }
         }
 
         return $this->render('nobelio/recepcion/evento_nuevo.html.twig', [
             'form' => $form->createView(),
             'documento' => $documento,
+            'permitidos' => $permitidos,
         ]);
     }
 

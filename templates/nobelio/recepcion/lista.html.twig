@@ -10,7 +10,8 @@
 {% block content %}
     {% set tipos = constant('App\\Controller\\nobelio\\RecepcionController::TIPOS') %}
     {% set formasPago = constant('App\\Controller\\nobelio\\RecepcionController::FORMAS_PAGO') %}
-    {{ form_start(form) }}
+    {# El id lo usa la ventana del evento para volver a enviar los filtros. #}
+    {{ form_start(form, { 'attr': { 'id': 'filtros-recepcion' } }) }}
     <input type="hidden" name="pagina" value="{{ pagina }}">
     <div class="block">
         <div class="filters">
