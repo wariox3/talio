@@ -10,7 +10,7 @@ de Lantano.
 | Servicios → Wolframio | Monitor, cuentas (suscriptor/empleador en Kiai, sets de pruebas) y documentos pendientes de enviar, con error o esperando respuesta | API de Wolframio, API de Kiai |
 | Servicios → Tántalo | Monitor de la cola de decodificación | API de Tántalo |
 | Servicios → Itrio | Movimientos y su facturación, consumos (Excel), contenedores y usuarios | API de Itrio |
-| Servicios → Nobelio | Cuentas (con sus webhooks), emisores (software, resoluciones, webhooks, pruebas), documentos y nóminas electrónicas | API de Nobelio |
+| Servicios → Nobelio | Monitor (rechazados, emitidos por hora en 24 h, últimos 10), cuentas (con sus webhooks), emisores (software, resoluciones, webhooks, pruebas), documentos y nóminas electrónicas | API de Nobelio |
 | Servicios externos → Kiai | Consumos por aliado y mes (Excel) | API de Kiai |
 | Auditoría → WebServer | Monitor acceso: accesos de los servidores web por hora, IP, API key, host y ruta. Monitor error: errores de los error.log por hora, nivel, módulo, sitio, IP y mensaje más repetido | PostgreSQL de Lantano |
 

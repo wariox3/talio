@@ -1,0 +1,112 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+
+{% block title %}Monitor Nobelio · Talio{% endblock %}
+{% block ruta %}Nobelio <span>/</span> <b>Monitor</b>{% endblock %}
+
+{% block acciones %}
+    <span class="stamp">{{ "now"|date('H:i:s', 'America/Bogota') }}</span>
+{% endblock %}
+
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Documentos') }}
+        <div class="kpis">
+            {% if rechazados is null %}
+                <div class="kpi kpi--idle">
+                    <span class="kpi-head">
+                        <span class="kpi-l">Rechazados por la DIAN</span>
+                        <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>
+                    </span>
+                    <span class="kpi-v">—</span>
+                    <span class="kpi-f">
+                        <span class="tag idle"><span class="dot"></span>Sin respuesta de Nobelio</span>
+                    </span>
+                </div>
+            {% else %}
+                <a class="kpi {{ rechazados > 0 ? 'kpi--crit' : 'kpi--ok' }}" href="{{ path('nobelio_documento_lista', { 'estado': 'rechazado' }) }}">
+                    <span class="kpi-head">
+                        <span class="kpi-l">Rechazados por la DIAN</span>
+                        <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>
+                    </span>
+                    <span class="kpi-v">{{ rechazados|number_format(0, ',', '.') }}</span>
+                    <span class="kpi-f">
+                        {% if rechazados > 0 %}
+                            <span class="tag crit"><span class="dot"></span>Requiere revisión</span>
+                        {% else %}
+                            <span class="tag ok"><span class="dot"></span>Sin rechazos</span>
+                        {% endif %}
+                        <span class="kpi-ir" aria-hidden="true">→</span>
+                    </span>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="block">
+        {{ ui.cabecera('Documentos emitidos por hora', parcial
+            ? 'Últimas 24 h · parcial (primeros ' ~ maxDocumentos ~ ')'
+            : 'Últimas 24 h · ' ~ totalEmitidos|number_format(0, ',', '.')) }}
+        {% if errorGrafica %}
+            <p class="hint">No se pudo armar la gráfica: Nobelio no respondió.</p>
+        {% else %}
+            <div class="chart-wrap">
+                <svg data-grafica
+                     data-labels="{{ labels|json_encode }}"
+                     data-valores="{{ data|json_encode }}"
+                     data-unidad="doc"></svg>
+                <div class="chart-tip"></div>
+            </div>
+            <div class="chart-cap"><i></i>Documentos emitidos (sin borradores), por hora de emisión</div>
+        {% endif %}
+    </div>
+
+    <div class="block">
+        {{ ui.cabecera('Últimos documentos', '10 más recientes') }}
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Ambiente</th>
+                    <th>Número</th>
+                    <th>Tipo</th>
+                    <th class="num">Emisor</th>
+                    <th>Emisión</th>
+                    <th>Adquiriente</th>
+                    <th class="num">Total</th>
+                    <th>Estado</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% set tagPorEstado = { 'aceptado': 'ok', 'rechazado': 'crit', 'enviado': 'warn', 'firmado': 'warn', 'borrador': 'idle' } %}
+                {% for documento in ultimosDocumentos %}
+                    <tr>
+                        <td class="id">
+                            <a href="{{ path('nobelio_documento_detalle', { 'id': documento.id }) }}">{{ documento.id }}</a>
+                        </td>
+                        <td>{{ ui.ambiente(documento.ambiente) }}</td>
+                        <td class="id">{{ documento.numero }}</td>
+                        <td>{{ documento.documento_tipo_nombre }}</td>
+                        <td class="num">
+                            <a href="{{ path('nobelio_emisor_detalle', { 'id': documento.emisor }) }}">{{ documento.emisor }}</a>
+                        </td>
+                        <td class="fecha">{{ documento.fecha_emision }} {{ documento.hora_emision|default('')|slice(0, 5) }}</td>
+                        <td>{{ documento.adquiriente.razon_social|default('') }}</td>
+                        <td class="num">{{ documento.total_a_pagar|default(0)|number_format(0, ',', '.') }}</td>
+                        <td class="nowrap">
+                            <span class="tag {{ tagPorEstado[documento.estado_nombre]|default('idle') }}"><span class="dot"></span>{{ documento.estado_nombre|capitalize }}</span>
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr><td colspan="9">Sin documentos recientes.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    <script src="{{ asset('js/grafica.js') }}"></script>
+{% endblock %}
