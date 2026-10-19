@@ -414,6 +414,36 @@ class DocumentoController extends AbstractController
         return $this->redirectToRoute('nobelio_documento_detalle', ['id' => $id]);
     }
 
+    /**
+     * Devuelve a borrador un documento rechazado por la DIAN.
+     *
+     * Sirve cuando lo rechazado no estaba en los datos del documento (una
+     * regla corregida en Nobelio, el certificado, la resolucion): despues se
+     * emite otra vez con el mismo numero y un CUFE nuevo. Nobelio borra el
+     * CUFE, el XML firmado, el track_id y el envio; los errores del rechazo
+     * se quedan hasta el siguiente envio. Si no esta rechazado responde 400,
+     * y ese es el mensaje que se muestra.
+     *
+     * Se pide desde el menu de acciones de la ficha y vuelve a ella. El id va
+     * en la ruta, acotado a UUID, porque se concatena a la url del API.
+     */
+    #[Route('/nobelio/documento/reiniciar/{id}', name: 'nobelio_documento_reiniciar', methods: ['POST'], requirements: ['id' => '[0-9a-fA-F-]{36}'])]
+    public function reiniciar(Request $request, Nobelio $nobelio, string $id): Response
+    {
+        if (!$this->isCsrfTokenValid('acciones-documento-detalle', (string) $request->request->get('_token'))) {
+            $this->addFlash('danger', 'La petición no es válida.');
+        } else {
+            $respuesta = $nobelio->consumoPost("api/documentos/documento/{$id}/reiniciar/");
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $this->addFlash('success', 'Documento reiniciado: quedó en borrador y se puede emitir de nuevo. La fecha de emisión debe ser la de hoy.');
+            }
+        }
+
+        return $this->redirectToRoute('nobelio_documento_detalle', ['id' => $id]);
+    }
+
     #[Route('/nobelio/documento/eliminar', name: 'nobelio_documento_eliminar', methods: ['POST'])]
     public function eliminar(Request $request, Nobelio $nobelio): Response
     {

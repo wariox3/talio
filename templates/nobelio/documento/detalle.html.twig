@@ -35,6 +35,12 @@
                 <button type="submit" form="acciones-documento"
                         formaction="{{ path('nobelio_documento_respuesta_validado', { 'id': documento.id }) }}"
                         onclick="return confirm('¿Avisar la validación del documento {{ documento.numero|e('js') }} a los webhooks del emisor?')">Respuesta validado</button>
+            {% elseif documento.estado_nombre|default('') == 'rechazado' %}
+                {# Nobelio solo reinicia un rechazado; en otro estado
+                   contestaria 400. #}
+                <button type="submit" form="acciones-documento"
+                        formaction="{{ path('nobelio_documento_reiniciar', { 'id': documento.id }) }}"
+                        onclick="return confirm('¿Reiniciar el documento {{ documento.numero|e('js') }}? Vuelve a borrador y se borran el CUFE, el XML firmado y el track id.')">Reiniciar</button>
             {% else %}
                 <span class="menu-vacio">Sin acciones disponibles</span>
             {% endif %}
