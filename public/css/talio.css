@@ -434,6 +434,10 @@ pre {
     transition: opacity .15s, transform .15s;
 }
 .kpi:hover .kpi-ir, .kpi:focus-visible .kpi-ir { opacity: 1; transform: none; }
+/* Desglose de una tarjeta que no es enlace: cada parte lleva al suyo. */
+.kpi-desglose { flex-wrap: wrap; gap: 4px 14px; font-size: .8rem; }
+.kpi-desglose a { color: var(--ink-2); }
+.kpi-desglose b { color: var(--kc); font-variant-numeric: tabular-nums; }
 
 /* -------------------------------------------------------------- tablas -- */
 /* El contenedor es el que scrollea, en los dos ejes. Acotarlo en alto es lo

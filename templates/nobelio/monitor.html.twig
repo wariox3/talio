@@ -40,6 +40,34 @@
                     </span>
                 </a>
             {% endif %}
+            {# Tres estados y un solo filtro en el listado: la tarjeta no es un
+               enlace, lo es cada estado del desglose. #}
+            {% if pendientes is null %}
+                <div class="kpi kpi--idle">
+                    <span class="kpi-head">
+                        <span class="kpi-l">Pendientes</span>
+                        <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    </span>
+                    <span class="kpi-v">—</span>
+                    <span class="kpi-f">
+                        <span class="tag idle"><span class="dot"></span>Sin respuesta de Nobelio</span>
+                    </span>
+                </div>
+            {% else %}
+                {% set totalPendientes = pendientes.borrador + pendientes.firmado + pendientes.enviado %}
+                <div class="kpi {{ totalPendientes > 0 ? 'kpi--warn' : 'kpi--ok' }}">
+                    <span class="kpi-head">
+                        <span class="kpi-l">Pendientes</span>
+                        <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    </span>
+                    <span class="kpi-v">{{ totalPendientes|number_format(0, ',', '.') }}</span>
+                    <span class="kpi-f kpi-desglose">
+                        {% for estado, etiqueta in { 'borrador': 'Borrador', 'firmado': 'Firmado', 'enviado': 'Enviado' } %}
+                            <a href="{{ path('nobelio_documento_lista', { 'estado': estado }) }}">{{ etiqueta }} <b>{{ pendientes[estado]|number_format(0, ',', '.') }}</b></a>
+                        {% endfor %}
+                    </span>
+                </div>
+            {% endif %}
         </div>
     </div>
 

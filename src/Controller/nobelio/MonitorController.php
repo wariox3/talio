@@ -30,6 +30,20 @@ class MonitorController extends AbstractController
             $rechazados = (int) ($respuesta['datos']['count'] ?? 0);
         }
 
+        // Pendientes: lo que aun no tiene veredicto de la DIAN. El filtro de
+        // Nobelio admite un solo estado, asi que va un count por cada uno. Si
+        // alguno falla la tarjeta queda sin dato: un total parcial engañaria.
+        $pendientes = ['borrador' => 0, 'firmado' => 0, 'enviado' => 0];
+        foreach (array_keys($pendientes) as $estado) {
+            $respuesta = $nobelio->consumoGet('api/documentos/documento/', ['estado' => $estado]);
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+                $pendientes = null;
+                break;
+            }
+            $pendientes[$estado] = (int) ($respuesta['datos']['count'] ?? 0);
+        }
+
         // 24 franjas de una hora, de la de hace 23 h a la actual.
         $zona = new \DateTimeZone(self::ZONA);
         $horaActual = new \DateTimeImmutable('now', $zona);
@@ -97,6 +111,7 @@ class MonitorController extends AbstractController
 
         return $this->render('nobelio/monitor.html.twig', [
             'rechazados' => $rechazados,
+            'pendientes' => $pendientes,
             'labels' => $labels,
             'data' => array_values($franjas),
             'totalEmitidos' => $totalEmitidos,
