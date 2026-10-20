@@ -134,20 +134,6 @@
                                         name="id" value="{{ nomina.id }}"
                                         {% if accion.pregunta is defined %}onclick="return confirm('¿{{ accion.pregunta }} la nómina {{ nomina.numero }}?')"{% endif %}>{{ accion.titulo }}</button>
                             {% endfor %}
-                            {# Consultar solo lee lo que dice la DIAN —p. ej. el
-                               detalle de una rechazada—; no cambia la nómina.
-                               Sin CUNE no hay por qué preguntar. #}
-                            {% if nomina.cune %}
-                                <button type="submit" class="link" form="acciones-nomina"
-                                        formaction="{{ path('nobelio_nomina_consultar') }}"
-                                        name="id" value="{{ nomina.id }}">Consultar</button>
-                            {% endif %}
-                            {# El XML se guarda al firmar, asi que un borrador
-                               todavia no tiene que descargar. Es una descarga,
-                               no una accion: va como enlace GET fuera del form. #}
-                            {% if nomina.estado_nombre != 'borrador' %}
-                                <a href="{{ path('nobelio_nomina_descargar', { 'id': nomina.id }) }}">XML</a>
-                            {% endif %}
                             {# Nobelio no deja borrar lo que la DIAN ya aceptó,
                                asi que en una aceptada no se ofrece el boton. #}
                             {% if nomina.estado_nombre != 'aceptado' %}

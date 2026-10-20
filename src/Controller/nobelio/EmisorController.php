@@ -83,6 +83,31 @@ class EmisorController extends AbstractController
         ]);
     }
 
+    /**
+     * Elimina un emisor desde la lista. El id se concatena a la url del API,
+     * asi que se acota antes de usarlo.
+     */
+    #[Route('/nobelio/emisor/eliminar', name: 'nobelio_emisor_eliminar', methods: ['POST'])]
+    public function eliminar(Request $request, Nobelio $nobelio): Response
+    {
+        $emisor = (string) $request->request->get('emisor', '');
+
+        if (!$this->isCsrfTokenValid('emisores', (string) $request->request->get('_token'))) {
+            $this->addFlash('danger', 'La petición de borrado no es válida.');
+        } elseif (!ctype_digit($emisor)) {
+            $this->addFlash('danger', 'No se indicó qué emisor eliminar.');
+        } else {
+            $respuesta = $nobelio->consumoDelete("api/emisores/emisor/{$emisor}/");
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $this->addFlash('success', 'Emisor eliminado.');
+            }
+        }
+
+        return $this->redirectToRoute('nobelio_emisor_lista');
+    }
+
     #[Route('/nobelio/emisor/detalle/{id}', name: 'nobelio_emisor_detalle', requirements: ['id' => '\\d+'])]
     public function detalle(Nobelio $nobelio, int $id): Response
     {
