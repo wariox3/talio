@@ -4,6 +4,15 @@
 {% block ruta %}Nobelio <span>/</span> <b>Nómina</b>{% endblock %}
 {% block acciones %}
     <span class="stamp">{{ total }} nómina{{ total == 1 ? '' : 's' }}</span>
+    {# Procesos de Nobelio sobre las nóminas de todos los emisores, no solo las
+       filtradas. Van por el form de acciones, que lleva el filtro para volver
+       a la misma lista. #}
+    <button type="submit" class="ghost" form="acciones-nomina"
+            formaction="{{ path('nobelio_nomina_lote', { 'proceso': 'actualizar-estado' }) }}"
+            onclick="return confirm('¿Consultar en la DIAN las nóminas enviadas de todos los emisores (hasta 50)?')">Actualizar estado</button>
+    <button type="submit" class="ghost" form="acciones-nomina"
+            formaction="{{ path('nobelio_nomina_lote', { 'proceso': 'emitir-pendientes' }) }}"
+            onclick="return confirm('¿Firmar y enviar a la DIAN las nóminas pendientes de todos los emisores (hasta 20)?')">Emitir pendientes</button>
 {% endblock %}
 {% block content %}
     {# La acción que toca en cada estado. En Nobelio todo es emitir, que lleva
@@ -33,6 +42,7 @@
             {# El SearchFilter de Nobelio mira el número, el CUNE y el documento
                del empleado. #}
             {{ ui.campo('Número, CUNE o documento', form.search) }}
+            {{ ui.campo('Id emisor', form.emisor) }}
             <div class="f-right">
                 {{ form_widget(form.btnFiltrar) }}
                 {# Siempre renderizados: si se dejan sin renderizar, form_end()
@@ -122,7 +132,7 @@
                                 <button type="submit" class="link" form="acciones-nomina"
                                         formaction="{{ path('nobelio_nomina_accion', { 'accion': accion.accion }) }}"
                                         name="id" value="{{ nomina.id }}"
-                                        onclick="return confirm('¿{{ accion.pregunta }} la nómina {{ nomina.numero }}?')">{{ accion.titulo }}</button>
+                                        {% if accion.pregunta is defined %}onclick="return confirm('¿{{ accion.pregunta }} la nómina {{ nomina.numero }}?')"{% endif %}>{{ accion.titulo }}</button>
                             {% endfor %}
                             {# Consultar solo lee lo que dice la DIAN —p. ej. el
                                detalle de una rechazada—; no cambia la nómina.
@@ -165,7 +175,15 @@
     {{ form_end(form) }}
     {# Un solo form para todas las acciones de la tabla: el borrado es su
        action por defecto y las demas lo cambian con formaction. #}
+    {# El filtro y la pagina van repetidos aqui porque este form no es el de
+       los filtros: sin ellos, el redirect de la accion devolveria a la primera
+       pagina sin filtrar. #}
     <form id="acciones-nomina" method="post" action="{{ path('nobelio_nomina_eliminar') }}">
         <input type="hidden" name="_token" value="{{ csrf_token('acciones-nomina') }}">
+        <input type="hidden" name="estado" value="{{ estado }}">
+        <input type="hidden" name="tipo" value="{{ tipo }}">
+        <input type="hidden" name="search" value="{{ busqueda }}">
+        <input type="hidden" name="emisor" value="{{ emisor }}">
+        <input type="hidden" name="pagina" value="{{ pagina }}">
     </form>
 {% endblock %}

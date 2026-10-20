@@ -24,6 +24,10 @@ class NominaController extends AbstractController
         'Rechazado por la DIAN' => 'rechazado',
     ];
 
+    // Tiempo maximo de los procesos por lotes (ver lote()). Nobelio procesa
+    // hasta 20 emisiones o 50 consultas a la DIAN en una sola peticion.
+    private const SEGUNDOS_LOTE = 180;
+
     // Los dos documentos que emite el servicio de nomina: el soporte de pago y
     // la nota que lo ajusta. Son los codigos DIAN del TipoXML de Nobelio.
     private const TIPOS = [
@@ -39,6 +43,7 @@ class NominaController extends AbstractController
             ->add('estado', ChoiceType::class, ['required' => false, 'choices' => self::ESTADOS])
             ->add('tipo', ChoiceType::class, ['required' => false, 'choices' => self::TIPOS])
             ->add('search', TextType::class, ['required' => false])
+            ->add('emisor', TextType::class, ['required' => false, 'attr' => ['inputmode' => 'numeric']])
             ->add('btnFiltrar', SubmitType::class, ['label' => 'Filtrar'])
             ->add('btnAnterior', SubmitType::class, ['label' => 'Anterior'])
             ->add('btnSiguiente', SubmitType::class, ['label' => 'Siguiente'])
@@ -51,11 +56,13 @@ class NominaController extends AbstractController
         $estado = '';
         $tipo = '';
         $busqueda = '';
+        $emisor = '';
 
         if ($form->isSubmitted() && $form->isValid()) {
             $estado = (string) $form->get('estado')->getData();
             $tipo = (string) $form->get('tipo')->getData();
             $busqueda = trim((string) $form->get('search')->getData());
+            $emisor = trim((string) $form->get('emisor')->getData());
             if ($form->get('btnFiltrar')->isClicked()) {
                 $pagina = 1;
             } elseif ($form->get('btnAnterior')->isClicked()) {
@@ -63,6 +70,25 @@ class NominaController extends AbstractController
             } elseif ($form->get('btnSiguiente')->isClicked()) {
                 $pagina++;
             }
+        } else {
+            // Por GET el filtro puede llegar en la query: asi enlazan las
+            // tarjetas del monitor (?estado=rechazado) y asi vuelven las
+            // acciones (ver redirigirALista()).
+            $estado = (string) $request->query->get('estado', '');
+            if (!in_array($estado, self::ESTADOS, true)) {
+                $estado = '';
+            }
+            $tipo = (string) $request->query->get('tipo', '');
+            if (!in_array($tipo, self::TIPOS, true)) {
+                $tipo = '';
+            }
+            $busqueda = trim((string) $request->query->get('search', ''));
+            $emisor = trim((string) $request->query->get('emisor', ''));
+            $pagina = max(1, (int) $request->query->get('pagina', 1));
+            $form->get('estado')->setData($estado);
+            $form->get('tipo')->setData($tipo);
+            $form->get('search')->setData($busqueda);
+            $form->get('emisor')->setData($emisor);
         }
 
         // Lo mas reciente primero. El consecutivo desempata dentro del mismo
@@ -80,6 +106,11 @@ class NominaController extends AbstractController
             // El SearchFilter de la nomina mira el numero, el CUNE y el
             // documento del empleado.
             $parametros['search'] = $busqueda;
+        }
+        if ($emisor !== '') {
+            // Se manda tal cual: si no es un entero Nobelio responde 400
+            // diciendo que valor recibio, y ese es el mensaje que sale.
+            $parametros['emisor'] = $emisor;
         }
 
         $nominas = [];
@@ -105,7 +136,48 @@ class NominaController extends AbstractController
             'pagina' => $pagina,
             'hayAnterior' => $hayAnterior,
             'haySiguiente' => $haySiguiente,
+            'estado' => $estado,
+            'tipo' => $tipo,
+            'busqueda' => $busqueda,
+            'emisor' => $emisor,
         ]);
+    }
+
+    /**
+     * Vuelve a la lista con el filtro y la pagina con que se pidio la accion.
+     *
+     * El form de acciones los repite en hidden porque no es el de los
+     * filtros; aqui pasan a la query, que es lo que lee la lista por GET. Sin
+     * esto, emitir desde un filtro devolvia a la primera pagina sin filtrar.
+     */
+    private function redirigirALista(Request $request): Response
+    {
+        $parametros = [];
+
+        // Estado y tipo se reenvian al API tal cual, asi que solo pasan si
+        // son de los del filtro.
+        $estado = (string) $request->request->get('estado', '');
+        if ($estado !== '' && in_array($estado, self::ESTADOS, true)) {
+            $parametros['estado'] = $estado;
+        }
+        $tipo = (string) $request->request->get('tipo', '');
+        if ($tipo !== '' && in_array($tipo, self::TIPOS, true)) {
+            $parametros['tipo'] = $tipo;
+        }
+
+        foreach (['search', 'emisor'] as $filtro) {
+            $valor = trim((string) $request->request->get($filtro, ''));
+            if ($valor !== '') {
+                $parametros[$filtro] = $valor;
+            }
+        }
+
+        $pagina = max(1, (int) $request->request->get('pagina', 1));
+        if ($pagina > 1) {
+            $parametros['pagina'] = $pagina;
+        }
+
+        return $this->redirectToRoute('nobelio_nomina_lista', $parametros);
     }
 
     /**
@@ -174,6 +246,87 @@ class NominaController extends AbstractController
      * requirement: el id se concatena a la url del API y una accion libre
      * dejaria construir cualquier ruta.
      */
+    /**
+     * Procesos por lotes de Nobelio sobre las nominas de todos los emisores.
+     *
+     * - actualizar-estado: consulta en la DIAN las `enviado` (hasta 50 por
+     *   llamada) y aplica lo que diga, sin reenviar.
+     * - emitir-pendientes: firma y envia las `borrador` y reenvia las
+     *   `firmado` (hasta 20 por llamada).
+     *
+     * Los dos piden una llave global en Nobelio (403 si no) y siguen aunque
+     * una nomina falle: su error viene en el resultado. Lo que no cabe en la
+     * llamada queda en `pendientes` y sale pulsando otra vez.
+     *
+     * El proceso esta en la ruta, acotado por el requirement, porque se
+     * concatena a la url del API.
+     */
+    #[Route('/nobelio/nomina/lote/{proceso}', name: 'nobelio_nomina_lote', methods: ['POST'], requirements: ['proceso' => 'actualizar-estado|emitir-pendientes'])]
+    public function lote(Request $request, Nobelio $nobelio, string $proceso): Response
+    {
+        if (!$this->isCsrfTokenValid('acciones-nomina', (string) $request->request->get('_token'))) {
+            $this->addFlash('danger', 'La petición no es válida.');
+
+            return $this->redirigirALista($request);
+        }
+
+        // Nobelio no contesta hasta terminar el lote, con un viaje a la DIAN
+        // por nomina: los limites normales del cliente lo cortarian.
+        set_time_limit(self::SEGUNDOS_LOTE + 30);
+        $respuesta = $nobelio->consumoPost("api/nomina/nomina/{$proceso}/", [], self::SEGUNDOS_LOTE);
+        if ($respuesta['error']) {
+            $mensaje = "Nobelio: {$respuesta['mensaje']}";
+            if ($respuesta['status'] === 0) {
+                // Sin respuesta no se sabe como quedo: Nobelio pudo seguir.
+                $mensaje .= ' El proceso pudo haber seguido en Nobelio: revise la lista antes de volver a lanzarlo.';
+            }
+            $this->addFlash('danger', $mensaje);
+
+            return $this->redirigirALista($request);
+        }
+
+        $datos = $respuesta['datos'];
+        $resultados = $datos['resultados'] ?? [];
+        $procesadas = (int) ($proceso === 'actualizar-estado' ? ($datos['consultadas'] ?? 0) : ($datos['emitidas'] ?? 0));
+        $pendientes = (int) ($datos['pendientes'] ?? 0);
+
+        // Cuantas quedaron en cada estado, y las que fallaron aparte.
+        $porEstado = [];
+        $fallidas = [];
+        foreach ($resultados as $resultado) {
+            if (($resultado['error'] ?? '') !== '') {
+                $fallidas[] = ($resultado['numero'] ?? '?') . ": {$resultado['error']}";
+                continue;
+            }
+            $estado = (string) ($resultado['estado'] ?? '');
+            $porEstado[$estado] = ($porEstado[$estado] ?? 0) + 1;
+        }
+
+        $mensaje = $proceso === 'actualizar-estado'
+            ? "Actualizar estado: {$procesadas} nómina" . ($procesadas === 1 ? '' : 's') . ' consultada' . ($procesadas === 1 ? '' : 's') . '.'
+            : "Emitir pendientes: {$procesadas} nómina" . ($procesadas === 1 ? '' : 's') . ' procesada' . ($procesadas === 1 ? '' : 's') . '.';
+        if ($porEstado) {
+            $mensaje .= ' ' . implode(', ', array_map(
+                fn ($estado, $cuenta) => "{$cuenta} {$estado}",
+                array_keys($porEstado),
+                $porEstado,
+            )) . '.';
+        }
+        if ($fallidas) {
+            $mensaje .= ' ' . count($fallidas) . ' con error.';
+        }
+        $mensaje .= $pendientes > 0
+            ? " Quedan {$pendientes} pendiente" . ($pendientes === 1 ? '' : 's') . ': pulse otra vez para seguir.'
+            : ' No quedan pendientes.';
+
+        $this->addFlash($fallidas || ($porEstado['rechazado'] ?? 0) > 0 ? 'warning' : 'success', $mensaje);
+        if ($fallidas) {
+            $this->addFlash('danger', 'Con error: ' . implode(' · ', $fallidas));
+        }
+
+        return $this->redirigirALista($request);
+    }
+
     #[Route('/nobelio/nomina/accion/{accion}', name: 'nobelio_nomina_accion', methods: ['POST'], requirements: ['accion' => 'emitir'])]
     public function accion(Request $request, Nobelio $nobelio, string $accion): Response
     {
@@ -217,7 +370,7 @@ class NominaController extends AbstractController
             }
         }
 
-        return $this->redirectToRoute('nobelio_nomina_lista');
+        return $this->redirigirALista($request);
     }
 
     /**
@@ -267,7 +420,7 @@ class NominaController extends AbstractController
             }
         }
 
-        return $this->redirectToRoute('nobelio_nomina_lista');
+        return $this->redirigirALista($request);
     }
 
     /**
@@ -324,7 +477,7 @@ class NominaController extends AbstractController
             }
         }
 
-        return $this->redirectToRoute('nobelio_nomina_lista');
+        return $this->redirigirALista($request);
     }
 
     /**

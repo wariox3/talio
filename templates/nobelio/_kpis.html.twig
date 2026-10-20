@@ -1,0 +1,62 @@
+{# Tarjetas del monitor que se repiten para documentos y nomina. El valor null
+   es que Nobelio no respondio: la tarjeta se pinta sin dato. #}
+
+{% macro sinRespuesta(etiqueta, icono) %}
+    <div class="kpi kpi--idle">
+        <span class="kpi-head">
+            <span class="kpi-l">{{ etiqueta }}</span>
+            {{ icono|raw }}
+        </span>
+        <span class="kpi-v">—</span>
+        <span class="kpi-f">
+            <span class="tag idle"><span class="dot"></span>Sin respuesta de Nobelio</span>
+        </span>
+    </div>
+{% endmacro %}
+
+{# Rechazados por la DIAN. `ruta` es el listado, que acepta ?estado=. #}
+{% macro rechazados(etiqueta, valor, ruta) %}
+    {% set icono = '<svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>' %}
+    {% if valor is null %}
+        {{ _self.sinRespuesta(etiqueta, icono) }}
+    {% else %}
+        <a class="kpi {{ valor > 0 ? 'kpi--crit' : 'kpi--ok' }}" href="{{ path(ruta, { 'estado': 'rechazado' }) }}">
+            <span class="kpi-head">
+                <span class="kpi-l">{{ etiqueta }}</span>
+                {{ icono|raw }}
+            </span>
+            <span class="kpi-v">{{ valor|number_format(0, ',', '.') }}</span>
+            <span class="kpi-f">
+                {% if valor > 0 %}
+                    <span class="tag crit"><span class="dot"></span>Requiere revisión</span>
+                {% else %}
+                    <span class="tag ok"><span class="dot"></span>Sin rechazos</span>
+                {% endif %}
+                <span class="kpi-ir" aria-hidden="true">→</span>
+            </span>
+        </a>
+    {% endif %}
+{% endmacro %}
+
+{# Pendientes: borrador, firmado y enviado. Tres estados y un solo filtro en el
+   listado: la tarjeta no es un enlace, lo es cada estado del desglose. #}
+{% macro pendientes(etiqueta, valores, ruta) %}
+    {% set icono = '<svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>' %}
+    {% if valores is null %}
+        {{ _self.sinRespuesta(etiqueta, icono) }}
+    {% else %}
+        {% set total = valores.borrador + valores.firmado + valores.enviado %}
+        <div class="kpi {{ total > 0 ? 'kpi--warn' : 'kpi--ok' }}">
+            <span class="kpi-head">
+                <span class="kpi-l">{{ etiqueta }}</span>
+                {{ icono|raw }}
+            </span>
+            <span class="kpi-v">{{ total|number_format(0, ',', '.') }}</span>
+            <span class="kpi-f kpi-desglose">
+                {% for estado, nombre in { 'borrador': 'Borrador', 'firmado': 'Firmado', 'enviado': 'Enviado' } %}
+                    <a href="{{ path(ruta, { 'estado': estado }) }}">{{ nombre }} <b>{{ valores[estado]|number_format(0, ',', '.') }}</b></a>
+                {% endfor %}
+            </span>
+        </div>
+    {% endif %}
+{% endmacro %}

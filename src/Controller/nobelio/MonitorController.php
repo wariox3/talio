@@ -21,28 +21,12 @@ class MonitorController extends AbstractController
     #[Route('/nobelio/monitor', name: 'nobelio_monitor')]
     public function monitor(Nobelio $nobelio): Response
     {
-        // Rechazados: basta el count del listado filtrado.
-        $rechazados = null;
-        $respuesta = $nobelio->consumoGet('api/documentos/documento/', ['estado' => 'rechazado']);
-        if ($respuesta['error']) {
-            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
-        } else {
-            $rechazados = (int) ($respuesta['datos']['count'] ?? 0);
-        }
+        $rechazados = $this->contar($nobelio, 'api/documentos/documento/', ['estado' => 'rechazado']);
+        $pendientes = $this->contarPendientes($nobelio, 'api/documentos/documento/');
+        $nominasRechazadas = $this->contar($nobelio, 'api/nomina/nomina/', ['estado' => 'rechazado']);
+        $nominasPendientes = $this->contarPendientes($nobelio, 'api/nomina/nomina/');
 
-        // Pendientes: lo que aun no tiene veredicto de la DIAN. El filtro de
-        // Nobelio admite un solo estado, asi que va un count por cada uno. Si
-        // alguno falla la tarjeta queda sin dato: un total parcial engañaria.
-        $pendientes = ['borrador' => 0, 'firmado' => 0, 'enviado' => 0];
-        foreach (array_keys($pendientes) as $estado) {
-            $respuesta = $nobelio->consumoGet('api/documentos/documento/', ['estado' => $estado]);
-            if ($respuesta['error']) {
-                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
-                $pendientes = null;
-                break;
-            }
-            $pendientes[$estado] = (int) ($respuesta['datos']['count'] ?? 0);
-        }
+        $softwareSinSet = $this->contar($nobelio, 'api/emisores/software/', ['set_pruebas_aceptado' => 'false']);
 
         // 24 franjas de una hora, de la de hace 23 h a la actual.
         $zona = new \DateTimeZone(self::ZONA);
@@ -112,6 +96,9 @@ class MonitorController extends AbstractController
         return $this->render('nobelio/monitor.html.twig', [
             'rechazados' => $rechazados,
             'pendientes' => $pendientes,
+            'nominasRechazadas' => $nominasRechazadas,
+            'nominasPendientes' => $nominasPendientes,
+            'softwareSinSet' => $softwareSinSet,
             'labels' => $labels,
             'data' => array_values($franjas),
             'totalEmitidos' => $totalEmitidos,
@@ -120,6 +107,40 @@ class MonitorController extends AbstractController
             'maxDocumentos' => self::MAX_PAGINAS * 10,
             'ultimosDocumentos' => $ultimosDocumentos,
         ]);
+    }
+
+    /**
+     * El count de un listado filtrado, o null si Nobelio no respondio.
+     */
+    private function contar(Nobelio $nobelio, string $url, array $filtros): ?int
+    {
+        $respuesta = $nobelio->consumoGet($url, $filtros);
+        if ($respuesta['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+
+            return null;
+        }
+
+        return (int) ($respuesta['datos']['count'] ?? 0);
+    }
+
+    /**
+     * Lo que aun no tiene veredicto de la DIAN, por estado. El filtro de
+     * Nobelio admite un solo estado, asi que va un count por cada uno. Si
+     * alguno falla devuelve null: un total parcial engañaria.
+     */
+    private function contarPendientes(Nobelio $nobelio, string $url): ?array
+    {
+        $pendientes = [];
+        foreach (['borrador', 'firmado', 'enviado'] as $estado) {
+            $cuenta = $this->contar($nobelio, $url, ['estado' => $estado]);
+            if ($cuenta === null) {
+                return null;
+            }
+            $pendientes[$estado] = $cuenta;
+        }
+
+        return $pendientes;
     }
 
     private function emision(array $documento, \DateTimeZone $zona): ?\DateTimeImmutable

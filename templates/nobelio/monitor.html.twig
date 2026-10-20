@@ -1,5 +1,6 @@
 {% extends 'base.html.twig' %}
 {% import '_macros.html.twig' as ui %}
+{% import 'nobelio/_kpis.html.twig' as kpis %}
 
 {% block title %}Monitor Nobelio · Talio{% endblock %}
 {% block ruta %}Nobelio <span>/</span> <b>Monitor</b>{% endblock %}
@@ -12,11 +13,13 @@
     <div class="block">
         {{ ui.cabecera('Documentos') }}
         <div class="kpis">
-            {% if rechazados is null %}
+            {{ kpis.rechazados('Rechazados por la DIAN', rechazados, 'nobelio_documento_lista') }}
+            {{ kpis.pendientes('Pendientes', pendientes, 'nobelio_documento_lista') }}
+            {% if softwareSinSet is null %}
                 <div class="kpi kpi--idle">
                     <span class="kpi-head">
-                        <span class="kpi-l">Rechazados por la DIAN</span>
-                        <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>
+                        <span class="kpi-l">Software sin set de pruebas</span>
+                        <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4"/></svg>
                     </span>
                     <span class="kpi-v">—</span>
                     <span class="kpi-f">
@@ -24,50 +27,30 @@
                     </span>
                 </div>
             {% else %}
-                <a class="kpi {{ rechazados > 0 ? 'kpi--crit' : 'kpi--ok' }}" href="{{ path('nobelio_documento_lista', { 'estado': 'rechazado' }) }}">
+                <a class="kpi {{ softwareSinSet > 0 ? 'kpi--warn' : 'kpi--ok' }}" href="{{ path('nobelio_software_lista', { 'set_pruebas_aceptado': 'false' }) }}">
                     <span class="kpi-head">
-                        <span class="kpi-l">Rechazados por la DIAN</span>
-                        <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>
+                        <span class="kpi-l">Software sin set de pruebas</span>
+                        <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1"/><path d="M8 20h8M12 16v4"/></svg>
                     </span>
-                    <span class="kpi-v">{{ rechazados|number_format(0, ',', '.') }}</span>
+                    <span class="kpi-v">{{ softwareSinSet|number_format(0, ',', '.') }}</span>
                     <span class="kpi-f">
-                        {% if rechazados > 0 %}
-                            <span class="tag crit"><span class="dot"></span>Requiere revisión</span>
+                        {% if softwareSinSet > 0 %}
+                            <span class="tag warn"><span class="dot"></span>Habilitación pendiente</span>
                         {% else %}
-                            <span class="tag ok"><span class="dot"></span>Sin rechazos</span>
+                            <span class="tag ok"><span class="dot"></span>Todos aceptados</span>
                         {% endif %}
                         <span class="kpi-ir" aria-hidden="true">→</span>
                     </span>
                 </a>
             {% endif %}
-            {# Tres estados y un solo filtro en el listado: la tarjeta no es un
-               enlace, lo es cada estado del desglose. #}
-            {% if pendientes is null %}
-                <div class="kpi kpi--idle">
-                    <span class="kpi-head">
-                        <span class="kpi-l">Pendientes</span>
-                        <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                    </span>
-                    <span class="kpi-v">—</span>
-                    <span class="kpi-f">
-                        <span class="tag idle"><span class="dot"></span>Sin respuesta de Nobelio</span>
-                    </span>
-                </div>
-            {% else %}
-                {% set totalPendientes = pendientes.borrador + pendientes.firmado + pendientes.enviado %}
-                <div class="kpi {{ totalPendientes > 0 ? 'kpi--warn' : 'kpi--ok' }}">
-                    <span class="kpi-head">
-                        <span class="kpi-l">Pendientes</span>
-                        <svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                    </span>
-                    <span class="kpi-v">{{ totalPendientes|number_format(0, ',', '.') }}</span>
-                    <span class="kpi-f kpi-desglose">
-                        {% for estado, etiqueta in { 'borrador': 'Borrador', 'firmado': 'Firmado', 'enviado': 'Enviado' } %}
-                            <a href="{{ path('nobelio_documento_lista', { 'estado': estado }) }}">{{ etiqueta }} <b>{{ pendientes[estado]|number_format(0, ',', '.') }}</b></a>
-                        {% endfor %}
-                    </span>
-                </div>
-            {% endif %}
+        </div>
+    </div>
+
+    <div class="block">
+        {{ ui.cabecera('Nómina') }}
+        <div class="kpis">
+            {{ kpis.rechazados('Rechazadas por la DIAN', nominasRechazadas, 'nobelio_nomina_lista') }}
+            {{ kpis.pendientes('Pendientes', nominasPendientes, 'nobelio_nomina_lista') }}
         </div>
     </div>
 

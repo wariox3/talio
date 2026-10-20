@@ -58,12 +58,22 @@ class Nobelio extends ClienteApi
         return ['error' => false, 'status' => 200, 'datos' => $resultados];
     }
 
-    public function consumoPost(string $url, array $datos = []): array
+    /**
+     * Con $segundos se reemplazan los limites de tiempo por defecto, para los
+     * procesos por lotes de Nobelio, que no contestan nada hasta terminar.
+     */
+    public function consumoPost(string $url, array $datos = [], ?int $segundos = null): array
     {
         // Un array vacio de PHP se serializa como [], y los endpoints que leen
         // el cuerpo esperan un objeto: DRF responde "Datos inválidos. Se
         // esperaba un diccionario pero es un list". Con stdClass sale {}.
-        return $this->llamar('POST', $url, ['json' => $datos ?: new \stdClass()]);
+        $opciones = ['json' => $datos ?: new \stdClass()];
+        if ($segundos !== null) {
+            $opciones['timeout'] = $segundos;
+            $opciones['max_duration'] = $segundos;
+        }
+
+        return $this->llamar('POST', $url, $opciones);
     }
 
     public function consumoPatch(string $url, array $datos = []): array

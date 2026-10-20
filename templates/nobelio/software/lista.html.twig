@@ -1,0 +1,77 @@
+{% extends 'base.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Software · Talio{% endblock %}
+{% block ruta %}Nobelio <span>/</span> <b>Software</b>{% endblock %}
+{% block acciones %}
+    <span class="stamp">{{ total }} software</span>
+{% endblock %}
+{% block content %}
+    {{ form_start(form) }}
+    <input type="hidden" name="pagina" value="{{ pagina }}">
+    <div class="block">
+        <div class="filters">
+            {{ ui.campo('Set de pruebas', form.setPruebas) }}
+            {{ ui.campo('Emisor (id)', form.emisor) }}
+            <div class="f-right">
+                {{ form_widget(form.btnFiltrar) }}
+                {# Siempre renderizados: si se dejan sin renderizar, form_end()
+                   llama a form_rest() y los vuelca sueltos al final del form. #}
+                {{ form_widget(form.btnAnterior, { 'attr': hayAnterior
+                    ? {'class': 'ghost'}
+                    : {'class': 'ghost', 'disabled': 'disabled'} }) }}
+                {{ form_widget(form.btnSiguiente, { 'attr': haySiguiente
+                    ? {'class': 'ghost'}
+                    : {'class': 'ghost', 'disabled': 'disabled'} }) }}
+                <span class="f-count">Página {{ pagina }}</span>
+            </div>
+        </div>
+        {# El tipo llega como codigo; si Nobelio manda `tipo_display` se usa esa
+           etiqueta. Igual que en la ficha del emisor. #}
+        {% set tiposSoftware = { 'nomina': 'Nómina', 'facturacion': 'Facturación', 'documento_equivalente': 'Documento equivalente' } %}
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                <tr>
+                    <th>Id</th>
+                    <th class="num">Emisor</th>
+                    <th>Razón social</th>
+                    <th>Identificador</th>
+                    <th>Tipo</th>
+                    <th>Test set id</th>
+                    <th>Set de pruebas</th>
+                    <th>Creado</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for programa in software %}
+                    <tr>
+                        <td class="id">{{ programa.id }}</td>
+                        <td class="num">
+                            {# Al tab de software de la ficha del emisor, donde
+                               estan sus acciones. #}
+                            <a href="{{ path('nobelio_emisor_detalle', { 'id': programa.emisor, '_fragment': 'software' }) }}">{{ programa.emisor }}</a>
+                        </td>
+                        <td>{{ programa.emisor_nombre|default('') }}</td>
+                        <td class="id">{{ programa.identificador }}</td>
+                        <td>{{ programa.tipo_display|default(tiposSoftware[programa.tipo]|default(programa.tipo|default(''))) }}</td>
+                        <td class="id">{{ programa.test_set_id }}</td>
+                        <td>{{ ui.estado(programa.set_pruebas_aceptado, 'Aceptado', 'Sin aceptar') }}</td>
+                        <td class="fecha">{{ programa.creado_en|default(null) ? programa.creado_en|date('Y-m-d H:i', false) }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="8">
+                            {% if total == 0 %}
+                                No hay software que mostrar.
+                            {% else %}
+                                Esta página no tiene resultados.
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {{ form_end(form) }}
+{% endblock %}
