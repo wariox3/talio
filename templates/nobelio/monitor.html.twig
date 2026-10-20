@@ -73,7 +73,7 @@
     </div>
 
     <div class="block">
-        {{ ui.cabecera('Últimos documentos', '10 más recientes') }}
+        {{ ui.cabecera('Últimos documentos', 'Producción · 10 más recientes') }}
         <div class="table-scroll">
             <table class="data">
                 <thead>
@@ -110,7 +110,7 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td colspan="9">Sin documentos recientes.</td></tr>
+                    <tr><td colspan="9">Sin documentos recientes de producción.</td></tr>
                 {% endfor %}
                 </tbody>
             </table>

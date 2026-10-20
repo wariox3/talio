@@ -14,6 +14,14 @@ class MonitorController extends AbstractController
     // alcanza, la grafica se marca como parcial.
     private const MAX_PAGINAS = 30;
 
+    // "Ultimos documentos" muestra solo los de produccion, y Nobelio no filtra
+    // por ambiente: se sacan de las paginas que ya se piden para la grafica y,
+    // si no alcanzan, se siguen pidiendo hasta este tope adicional (en una
+    // instalacion casi toda en habilitacion se quedaria pidiendo sin fin).
+    private const ULTIMOS = 10;
+    private const MAX_PAGINAS_ULTIMOS = 10;
+    private const AMBIENTE_PRODUCCION = 1;
+
     // fecha_emision y hora_emision son la hora local de Nobelio (TIME_ZONE de
     // Django), no UTC. Se fija aqui para no depender del php.ini.
     private const ZONA = 'America/Bogota';
@@ -42,6 +50,7 @@ class MonitorController extends AbstractController
         $totalEmitidos = 0;
         $parcial = false;
         $errorGrafica = false;
+        $hayMasPaginas = false;
 
         for ($pagina = 1; $pagina <= self::MAX_PAGINAS; $pagina++) {
             $respuesta = $nobelio->consumoGet('api/documentos/documento/', [
@@ -55,10 +64,8 @@ class MonitorController extends AbstractController
             }
 
             $documentos = $respuesta['datos']['results'] ?? [];
-            // La primera pagina son justo los 10 mas recientes.
-            if ($pagina === 1) {
-                $ultimosDocumentos = $documentos;
-            }
+            $hayMasPaginas = !empty($respuesta['datos']['next']);
+            $ultimosDocumentos = $this->agregarDeProduccion($ultimosDocumentos, $documentos);
 
             $fueraDeRango = false;
             foreach ($documentos as $documento) {
@@ -83,12 +90,28 @@ class MonitorController extends AbstractController
                 }
             }
 
-            if ($fueraDeRango || empty($respuesta['datos']['next'])) {
+            if ($fueraDeRango || !$hayMasPaginas) {
                 break;
             }
             if ($pagina === self::MAX_PAGINAS) {
                 $parcial = true;
             }
+        }
+
+        // Si la ventana de la grafica no trajo 10 de produccion, se siguen las
+        // paginas solo para la tabla.
+        $tope = $pagina + self::MAX_PAGINAS_ULTIMOS;
+        while (!$errorGrafica && $hayMasPaginas && count($ultimosDocumentos) < self::ULTIMOS && ++$pagina <= $tope) {
+            $respuesta = $nobelio->consumoGet('api/documentos/documento/', [
+                'page' => $pagina,
+                'ordering' => '-fecha_emision,-hora_emision',
+            ]);
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+                break;
+            }
+            $hayMasPaginas = !empty($respuesta['datos']['next']);
+            $ultimosDocumentos = $this->agregarDeProduccion($ultimosDocumentos, $respuesta['datos']['results'] ?? []);
         }
 
         $labels = array_map(fn ($clave) => substr($clave, -2), array_keys($franjas));
@@ -141,6 +164,25 @@ class MonitorController extends AbstractController
         }
 
         return $pendientes;
+    }
+
+    /**
+     * Suma a $ultimos los documentos de produccion de $documentos, hasta
+     * completar ULTIMOS. El ambiente llega como entero (1 produccion,
+     * 2 habilitacion).
+     */
+    private function agregarDeProduccion(array $ultimos, array $documentos): array
+    {
+        foreach ($documentos as $documento) {
+            if (count($ultimos) >= self::ULTIMOS) {
+                break;
+            }
+            if ((int) ($documento['ambiente'] ?? 0) === self::AMBIENTE_PRODUCCION) {
+                $ultimos[] = $documento;
+            }
+        }
+
+        return $ultimos;
     }
 
     private function emision(array $documento, \DateTimeZone $zona): ?\DateTimeImmutable
