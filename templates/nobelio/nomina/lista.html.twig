@@ -64,7 +64,7 @@
                     <th>Ambiente</th>
                     <th>Número</th>
                     <th>Tipo</th>
-                    <th class="num">Emisor</th>
+                    <th>Emisor</th>
                     <th>Empleado</th>
                     <th>Generación</th>
                     <th>Pago</th>
@@ -80,8 +80,10 @@
                 <tbody>
                 {% for nomina in nominas %}
                     <tr>
-                        <td class="id">
-                            <a href="{{ path('nobelio_nomina_detalle', { 'id': nomina.id }) }}">{{ nomina.id }}</a>
+                        {# El id es un UUID: se muestra el principio, como el CUNE,
+                           y el completo queda en el title. #}
+                        <td class="id" title="{{ nomina.id }}">
+                            <a href="{{ path('nobelio_nomina_detalle', { 'id': nomina.id }) }}">{{ nomina.id|length > 8 ? nomina.id|slice(0, 8) ~ '…' : nomina.id }}</a>
                         </td>
                         <td>{{ ui.ambiente(nomina.ambiente) }}</td>
                         <td class="id">{{ nomina.numero }}</td>
@@ -91,8 +93,8 @@
                                o la reemplaza entera o la elimina. #}
                             {%- if nomina.tipo_nota %} · {{ tiposNota[nomina.tipo_nota]|default(nomina.tipo_nota) }}{% endif -%}
                         </td>
-                        <td class="num">
-                            <a href="{{ path('nobelio_emisor_detalle', { 'id': nomina.emisor }) }}">{{ nomina.emisor }}</a>
+                        <td>
+                            <a href="{{ path('nobelio_emisor_detalle', { 'id': nomina.emisor }) }}">{{ nomina.emisor_razon_social|default(nomina.emisor) }}</a>
                         </td>
                         <td>{{ nomina.empleado_nombre }}</td>
                         <td class="fecha">{{ nomina.fecha_generacion }}</td>

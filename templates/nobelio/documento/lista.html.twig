@@ -48,7 +48,7 @@
                     <th>Ambiente</th>
                     <th>Número</th>
                     <th>Tipo</th>
-                    <th class="num">Emisor</th>
+                    <th>Emisor</th>
                     <th>Emisión</th>
                     <th>Adquiriente</th>
                     <th class="num">Total</th>
@@ -62,14 +62,16 @@
                 <tbody>
                 {% for documento in documentos %}
                     <tr>
-                        <td class="id">
-                            <a href="{{ path('nobelio_documento_detalle', { 'id': documento.id }) }}">{{ documento.id }}</a>
+                        {# El id es un UUID: se muestra el principio y el completo
+                           queda en el title. #}
+                        <td class="id" title="{{ documento.id }}">
+                            <a href="{{ path('nobelio_documento_detalle', { 'id': documento.id }) }}">{{ documento.id|length > 8 ? documento.id|slice(0, 8) ~ '…' : documento.id }}</a>
                         </td>
                         <td>{{ ui.ambiente(documento.ambiente) }}</td>
                         <td class="id">{{ documento.numero }}</td>
                         <td>{{ documento.documento_tipo_nombre }}</td>
-                        <td class="num">
-                            <a href="{{ path('nobelio_emisor_detalle', { 'id': documento.emisor }) }}">{{ documento.emisor }}</a>
+                        <td>
+                            <a href="{{ path('nobelio_emisor_detalle', { 'id': documento.emisor }) }}">{{ documento.emisor_razon_social|default(documento.emisor) }}</a>
                         </td>
                         <td class="fecha">{{ documento.fecha_emision }}</td>
                         <td>{{ documento.adquiriente.razon_social }}</td>

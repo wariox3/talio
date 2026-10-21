@@ -79,10 +79,9 @@
             <table class="data">
                 <thead>
                 <tr>
-                    <th>Id</th>
                     <th>Número</th>
                     <th>Tipo</th>
-                    <th class="num">Emisor</th>
+                    <th>Emisor</th>
                     <th>Emisión</th>
                     <th>Adquiriente</th>
                     <th class="num">Total</th>
@@ -94,12 +93,11 @@
                 {% for documento in ultimosDocumentos %}
                     <tr>
                         <td class="id">
-                            <a href="{{ path('nobelio_documento_detalle', { 'id': documento.id }) }}">{{ documento.id }}</a>
+                            <a href="{{ path('nobelio_documento_detalle', { 'id': documento.id }) }}">{{ documento.numero }}</a>
                         </td>
-                        <td class="id">{{ documento.numero }}</td>
                         <td>{{ documento.documento_tipo_nombre }}</td>
-                        <td class="num">
-                            <a href="{{ path('nobelio_emisor_detalle', { 'id': documento.emisor }) }}">{{ documento.emisor }}</a>
+                        <td>
+                            <a href="{{ path('nobelio_emisor_detalle', { 'id': documento.emisor }) }}">{{ documento.emisor_razon_social|default(documento.emisor) }}</a>
                         </td>
                         <td class="fecha">{{ documento.fecha_emision }} {{ documento.hora_emision|default('')|slice(0, 5) }}</td>
                         <td>{{ documento.adquiriente.razon_social|default('') }}</td>
@@ -109,7 +107,7 @@
                         </td>
                     </tr>
                 {% else %}
-                    <tr><td colspan="8">Sin documentos recientes de producción.</td></tr>
+                    <tr><td colspan="7">Sin documentos recientes de producción.</td></tr>
                 {% endfor %}
                 </tbody>
             </table>
