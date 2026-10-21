@@ -15,7 +15,13 @@
         <div class="brand">
             <b><a href="{{ path('inicio') }}">Talio</a></b>
             <span>1.0</span>
+            {# Solo se ve en pantallas angostas, donde el menu va plegado. #}
+            <button type="button" class="nav-toggle" aria-controls="nav-menu" aria-expanded="false" aria-label="Abrir menú">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+            </button>
         </div>
+
+        <div class="side-menu" id="nav-menu">
 
         <div class="nav-sec">
             <div class="nav-head">General</div>
@@ -106,6 +112,7 @@
         <div class="side-foot">
             {{ app.user ? app.user.userIdentifier : 'Sin sesión' }}
             <small><a href="{{ path('logout') }}">Salir</a></small>
+        </div>
         </div>
     </nav>
 

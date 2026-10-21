@@ -61,3 +61,25 @@ document.addEventListener('keydown', evento => {
         document.querySelectorAll('details.menu[open]').forEach(menu => { menu.open = false; });
     }
 });
+
+// Menu lateral en pantallas angostas: el boton lo abre y lo cierra. Escape
+// tambien lo cierra. En escritorio el boton no se ve y esto no hace nada.
+document.addEventListener('click', evento => {
+    const boton = evento.target.closest('.nav-toggle');
+    if (!boton) {
+        return;
+    }
+    const abierto = boton.closest('.side').classList.toggle('is-open');
+    boton.setAttribute('aria-expanded', abierto);
+    boton.setAttribute('aria-label', abierto ? 'Cerrar menú' : 'Abrir menú');
+});
+document.addEventListener('keydown', evento => {
+    const lateral = document.querySelector('.side.is-open');
+    if (evento.key === 'Escape' && lateral) {
+        lateral.classList.remove('is-open');
+        const boton = lateral.querySelector('.nav-toggle');
+        boton.setAttribute('aria-expanded', 'false');
+        boton.setAttribute('aria-label', 'Abrir menú');
+        boton.focus();
+    }
+});

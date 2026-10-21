@@ -166,6 +166,13 @@ pre {
 }
 .brand a { color: inherit; text-decoration: none; }
 
+/* Contenedor del menu: ocupa el alto que deja .brand para que .side-foot
+   siga pegado abajo con margin-top: auto. */
+.side-menu { display: flex; flex-direction: column; flex: 1; }
+
+/* Boton del menu en pantallas angostas; en escritorio no se ve. */
+.nav-toggle { display: none; }
+
 .nav-sec { padding: 16px 0 0; }
 .nav-head {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
@@ -350,6 +357,12 @@ pre {
    franja lateral, el icono y el numero; el fondo solo se tiñe cuando hay algo
    que atender (crit / warn), para que lo normal no compita con lo urgente. */
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+/* Columnas fijas para que tarjetas de bloques distintos queden alineadas,
+   aunque un bloque tenga menos tarjetas que columnas. */
+.kpis--5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .kpis--5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .kpis--5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .kpis--5 { grid-template-columns: minmax(0, 1fr); } }
 .kpi {
     --kc: var(--muted);
     --kbg: var(--surface);
@@ -928,7 +941,37 @@ table.data td.acciones > * + * { margin-left: 12px; }
 /* ------------------------------------------------------------ responsive */
 @media (max-width: 860px) {
     .app { grid-template-columns: minmax(0, 1fr); }
-    .side { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+    /* El menu queda como barra fija arriba con el boton; se despliega encima
+       del contenido y, si es mas alto que la pantalla, se desplaza solo. */
+    .side { top: 0; z-index: 10; height: auto; overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
+    .brand { border-bottom: 0; }
+    .side-menu { display: none; }
+    .side.is-open .side-menu {
+        display: flex;
+        max-height: calc(100vh - var(--barra));
+        overflow-y: auto;
+        border-top: 1px solid var(--line);
+    }
+    .nav-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: auto;
+        margin-right: -8px;
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        color: var(--ink);
+    }
+    .nav-toggle:hover, .side.is-open .nav-toggle { background: var(--surface); border-color: var(--line); }
+    .nav-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+    /* La barra del menu ya va fija: la de la pagina pasa a fluir con el
+       contenido y, si la ruta y las acciones no caben, baja a dos lineas. */
+    .topbar { position: static; flex-wrap: wrap; padding-top: 10px; padding-bottom: 10px; row-gap: 8px; }
+    .topbar .right { flex-wrap: wrap; gap: 8px 12px; }
     .block, .topbar, .aviso { padding-left: 16px; padding-right: 16px; }
     /* Un solo par por fila: el titulo y el dato se quedan juntos. */
     .ficha { grid-template-columns: auto minmax(0, 1fr); }
