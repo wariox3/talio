@@ -108,6 +108,47 @@ class EmisorController extends AbstractController
         return $this->redirectToRoute('nobelio_emisor_lista');
     }
 
+    /**
+     * Edita solo la referencia_externa del emisor, en ventana aparte desde la
+     * lista. Va por PATCH con ese unico campo para no tocar el resto. El id se
+     * concatena a la url del API: el requirement lo acota.
+     */
+    #[Route('/nobelio/emisor/editar/{id}', name: 'nobelio_emisor_editar', requirements: ['id' => '\\d+'])]
+    public function editar(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $emisor = [];
+        $respuestaEmisor = $nobelio->consumoGet("api/emisores/emisor/{$id}/");
+        if ($respuestaEmisor['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuestaEmisor['mensaje']}");
+        } else {
+            $emisor = $respuestaEmisor['datos'];
+        }
+
+        $form = $this->createFormBuilder(['referenciaExterna' => $emisor['referencia_externa'] ?? null])
+            ->add('referenciaExterna', TextType::class, ['required' => false])
+            ->add('btnGuardar', SubmitType::class, ['label' => 'Guardar'])
+            ->getForm();
+        $form->handleRequest($request);
+
+        if ($emisor && $form->isSubmitted() && $form->isValid()) {
+            $respuesta = $nobelio->consumoPatch("api/emisores/emisor/{$id}/", [
+                'referencia_externa' => trim((string) $form->get('referenciaExterna')->getData()),
+            ]);
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $this->addFlash('success', 'Emisor actualizado. Recargue la lista para ver los cambios.');
+
+                return $this->redirectToRoute('nobelio_emisor_editar', ['id' => $id]);
+            }
+        }
+
+        return $this->render('nobelio/emisor/editar.html.twig', [
+            'form' => $form->createView(),
+            'emisor' => $emisor,
+        ]);
+    }
+
     #[Route('/nobelio/emisor/detalle/{id}', name: 'nobelio_emisor_detalle', requirements: ['id' => '\\d+'])]
     public function detalle(Nobelio $nobelio, int $id): Response
     {

@@ -15,6 +15,21 @@
         <div class="kpis">
             {{ kpis.rechazados('Rechazados por la DIAN', rechazados, 'nobelio_documento_lista') }}
             {{ kpis.pendientes('Pendientes', pendientes, 'nobelio_documento_lista') }}
+            {{ kpis.sinRespuestaValidado('Aceptados sin respuesta validado', sinRespuestaValidado, 'nobelio_documento_lista') }}
+        </div>
+    </div>
+
+    <div class="block">
+        {{ ui.cabecera('Nómina') }}
+        <div class="kpis">
+            {{ kpis.rechazados('Rechazadas por la DIAN', nominasRechazadas, 'nobelio_nomina_lista') }}
+            {{ kpis.pendientes('Pendientes', nominasPendientes, 'nobelio_nomina_lista') }}
+        </div>
+    </div>
+
+    <div class="block">
+        {{ ui.cabecera('Software') }}
+        <div class="kpis">
             {% if softwareSinSet is null %}
                 <div class="kpi kpi--idle">
                     <span class="kpi-head">
@@ -43,14 +58,6 @@
                     </span>
                 </a>
             {% endif %}
-        </div>
-    </div>
-
-    <div class="block">
-        {{ ui.cabecera('Nómina') }}
-        <div class="kpis">
-            {{ kpis.rechazados('Rechazadas por la DIAN', nominasRechazadas, 'nobelio_nomina_lista') }}
-            {{ kpis.pendientes('Pendientes', nominasPendientes, 'nobelio_nomina_lista') }}
         </div>
     </div>
 

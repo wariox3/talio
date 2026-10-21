@@ -1,0 +1,18 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Editar emisor · Talio{% endblock %}
+{% block ruta %}
+    Emisor {{ emisor.id|default('') }} · <b>{{ emisor.razon_social|default('') }}</b>
+{% endblock %}
+{% block content %}
+    <div class="block">
+        {{ ui.cabecera('Emisor') }}
+        {# Solo la referencia externa: el resto del emisor se maneja en Nobelio. #}
+        {{ form_start(form) }}
+        <div class="form-stack">
+            {{ ui.campo('Referencia externa', form.referenciaExterna) }}
+            <div>{{ form_widget(form.btnGuardar) }}</div>
+        </div>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

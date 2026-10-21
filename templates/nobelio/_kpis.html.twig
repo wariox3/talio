@@ -60,3 +60,28 @@
         </div>
     {% endif %}
 {% endmacro %}
+
+{# Aceptados por la DIAN a los que aun no se les aviso la validacion a los
+   webhooks del emisor. Enlaza al listado con los dos filtros. #}
+{% macro sinRespuestaValidado(etiqueta, valor, ruta) %}
+    {% set icono = '<svg class="kpi-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>' %}
+    {% if valor is null %}
+        {{ _self.sinRespuesta(etiqueta, icono) }}
+    {% else %}
+        <a class="kpi {{ valor > 0 ? 'kpi--warn' : 'kpi--ok' }}" href="{{ path(ruta, { 'estado': 'aceptado', 'respuesta_validado': 'false' }) }}">
+            <span class="kpi-head">
+                <span class="kpi-l">{{ etiqueta }}</span>
+                {{ icono|raw }}
+            </span>
+            <span class="kpi-v">{{ valor|number_format(0, ',', '.') }}</span>
+            <span class="kpi-f">
+                {% if valor > 0 %}
+                    <span class="tag warn"><span class="dot"></span>Sin avisar</span>
+                {% else %}
+                    <span class="tag ok"><span class="dot"></span>Todos avisados</span>
+                {% endif %}
+                <span class="kpi-ir" aria-hidden="true">→</span>
+            </span>
+        </a>
+    {% endif %}
+{% endmacro %}

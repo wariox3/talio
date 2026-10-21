@@ -29,10 +29,8 @@ class MonitorController extends AbstractController
     #[Route('/nobelio/monitor', name: 'nobelio_monitor')]
     public function monitor(Nobelio $nobelio): Response
     {
-        $rechazados = $this->contar($nobelio, 'api/documentos/documento/', ['estado' => 'rechazado']);
-        $pendientes = $this->contarPendientes($nobelio, 'api/documentos/documento/');
-        $nominasRechazadas = $this->contar($nobelio, 'api/nomina/nomina/', ['estado' => 'rechazado']);
-        $nominasPendientes = $this->contarPendientes($nobelio, 'api/nomina/nomina/');
+        [$rechazados, $pendientes, $sinRespuestaValidado] = $this->resumen($nobelio, 'api/documentos/documento/resumen-monitor/');
+        [$nominasRechazadas, $nominasPendientes] = $this->resumen($nobelio, 'api/nomina/nomina/resumen-monitor/');
 
         $softwareSinSet = $this->contar($nobelio, 'api/emisores/software/', ['set_pruebas_aceptado' => 'false']);
 
@@ -119,6 +117,7 @@ class MonitorController extends AbstractController
         return $this->render('nobelio/monitor.html.twig', [
             'rechazados' => $rechazados,
             'pendientes' => $pendientes,
+            'sinRespuestaValidado' => $sinRespuestaValidado,
             'nominasRechazadas' => $nominasRechazadas,
             'nominasPendientes' => $nominasPendientes,
             'softwareSinSet' => $softwareSinSet,
@@ -130,6 +129,33 @@ class MonitorController extends AbstractController
             'maxDocumentos' => self::MAX_PAGINAS * 10,
             'ultimosDocumentos' => $ultimosDocumentos,
         ]);
+    }
+
+    /**
+     * Los conteos de las tarjetas en una sola llamada al resumen-monitor de
+     * documentos o de nomina: [rechazados, pendientes por estado, aceptados
+     * sin respuesta validado]. Si Nobelio no responde los tres van en null.
+     */
+    private function resumen(Nobelio $nobelio, string $url): array
+    {
+        $respuesta = $nobelio->consumoGet($url);
+        if ($respuesta['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+
+            return [null, null, null];
+        }
+
+        $datos = $respuesta['datos'];
+
+        return [
+            (int) ($datos['rechazado'] ?? 0),
+            [
+                'borrador' => (int) ($datos['borrador'] ?? 0),
+                'firmado' => (int) ($datos['firmado'] ?? 0),
+                'enviado' => (int) ($datos['enviado'] ?? 0),
+            ],
+            (int) ($datos['aceptado_sin_respuesta_validado'] ?? 0),
+        ];
     }
 
     /**
@@ -145,25 +171,6 @@ class MonitorController extends AbstractController
         }
 
         return (int) ($respuesta['datos']['count'] ?? 0);
-    }
-
-    /**
-     * Lo que aun no tiene veredicto de la DIAN, por estado. El filtro de
-     * Nobelio admite un solo estado, asi que va un count por cada uno. Si
-     * alguno falla devuelve null: un total parcial engañaria.
-     */
-    private function contarPendientes(Nobelio $nobelio, string $url): ?array
-    {
-        $pendientes = [];
-        foreach (['borrador', 'firmado', 'enviado'] as $estado) {
-            $cuenta = $this->contar($nobelio, $url, ['estado' => $estado]);
-            if ($cuenta === null) {
-                return null;
-            }
-            $pendientes[$estado] = $cuenta;
-        }
-
-        return $pendientes;
     }
 
     /**

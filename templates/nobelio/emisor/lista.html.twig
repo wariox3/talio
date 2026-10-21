@@ -49,7 +49,7 @@
                         </td>
                         <td>{{ emisor.referencia_externa ?? '' }}</td>
                         <td class="num">
-                            {{- emisor.numero_identificacion }}{% if emisor.digito_verificacion %}-{{ emisor.digito_verificacion }}{% endif -%}
+                            {{- emisor.numero_identificacion -}}
                         </td>
                         <td>{{ emisor.razon_social }}</td>
                         <td>{{ emisor.municipio_nombre }}</td>
@@ -64,6 +64,7 @@
                            emisores que facturan y no tienen el equivalente. #}
                         <td>{{ ui.estado(emisor.habilitado_documento_equivalente, 'Habilitado', 'Sin habilitar') }}</td>
                         <td class="acciones">
+                            <a href="javascript:abrirVentana('{{ path('nobelio_emisor_editar', { 'id': emisor.id }) }}', 'EmisorEditar', 300, 560)">Editar</a>
                             <button type="submit" class="link" form="emisores"
                                     name="emisor" value="{{ emisor.id }}"
                                     onclick="return confirm('¿Eliminar el emisor {{ emisor.razon_social|e('js') }}?')">Eliminar</button>
