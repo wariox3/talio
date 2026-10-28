@@ -10,12 +10,14 @@ use Symfony\Component\Routing\Attribute\Route;
 class BackblazeController extends AbstractController
 {
     /**
-     * Explorador del bucket de backups por directorios. El directorio actual
-     * va en ?ruta= ("" la raiz, si no termina en "/").
+     * Explorador por directorios del bucket de backups del servidor elegido
+     * en ?servidor=. El directorio actual va en ?ruta= ("" la raiz, si no
+     * termina en "/").
      */
     #[Route('/utilidades/backblaze/backups', name: 'utilidades_backblaze_backups')]
     public function backups(Request $request, Backblaze $backblaze): Response
     {
+        $servidor = $this->servidor($request);
         $ruta = ltrim($request->query->getString('ruta'), '/');
         if ($ruta !== '' && !str_ends_with($ruta, '/')) {
             $ruta .= '/';
@@ -23,7 +25,7 @@ class BackblazeController extends AbstractController
 
         $carpetas = [];
         $archivos = [];
-        $respuesta = $backblaze->listar($ruta);
+        $respuesta = $backblaze->listar(Backblaze::BUCKETS[$servidor], $ruta);
         if ($respuesta['error']) {
             $this->addFlash('danger', $respuesta['mensaje']);
         } else {
@@ -43,6 +45,8 @@ class BackblazeController extends AbstractController
         }
 
         return $this->render('utilidades/backblaze/backups.html.twig', [
+            'servidores' => array_keys(Backblaze::BUCKETS),
+            'servidor' => $servidor,
             'directorio' => $ruta,
             'migas' => $migas,
             'carpetas' => $carpetas,
@@ -53,15 +57,24 @@ class BackblazeController extends AbstractController
     #[Route('/utilidades/backblaze/descargar', name: 'utilidades_backblaze_descargar')]
     public function descargar(Request $request, Backblaze $backblaze): Response
     {
+        $servidor = $this->servidor($request);
         $archivo = $request->query->getString('archivo');
-        $respuesta = $archivo === '' ? ['error' => true, 'mensaje' => 'No se indicó el archivo.'] : $backblaze->urlDescarga($archivo);
+        $respuesta = $archivo === '' ? ['error' => true, 'mensaje' => 'No se indicó el archivo.'] : $backblaze->urlDescarga(Backblaze::BUCKETS[$servidor], $archivo);
         if ($respuesta['error']) {
             $this->addFlash('danger', $respuesta['mensaje']);
             $carpeta = str_contains($archivo, '/') ? substr($archivo, 0, strrpos($archivo, '/') + 1) : '';
 
-            return $this->redirectToRoute('utilidades_backblaze_backups', ['ruta' => $carpeta]);
+            return $this->redirectToRoute('utilidades_backblaze_backups', ['servidor' => $servidor, 'ruta' => $carpeta]);
         }
 
         return $this->redirect($respuesta['url']);
+    }
+
+    /** Servidor de ?servidor=; si falta o no existe, el primero de Backblaze::BUCKETS. */
+    private function servidor(Request $request): string
+    {
+        $servidor = $request->query->getString('servidor');
+
+        return isset(Backblaze::BUCKETS[$servidor]) ? $servidor : array_key_first(Backblaze::BUCKETS);
     }
 }

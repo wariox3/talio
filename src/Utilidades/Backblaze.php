@@ -6,7 +6,8 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
- * Cliente de Backblaze B2 (API nativa v2) para el bucket de backups.
+ * Cliente de Backblaze B2 (API nativa v2) para los buckets de backups, uno
+ * por servidor (ver BUCKETS).
  *
  * B2 no tiene URL fija: b2_authorize_account devuelve la apiUrl y la
  * downloadUrl de la cuenta, por eso la URL base es vacia y cada peticion va
@@ -27,23 +28,28 @@ class Backblaze extends ClienteApi
     /** Tope de paginas de 1000 entradas al listar un directorio. */
     private const MAX_PAGINAS = 10;
 
+    /** Bucket de backups de cada servidor; la primera es la opcion por defecto. */
+    public const BUCKETS = [
+        'afrodita' => 'backup-afrodita',
+        'artemisa' => 'backup-artemisa',
+    ];
+
     public function __construct(
         HttpClientInterface $httpClient,
         #[Autowire(env: 'B2_KEY_ID')] private readonly string $keyId,
         #[Autowire(env: 'B2_APPLICATION_KEY')] private readonly string $applicationKey,
-        #[Autowire(env: 'B2_BUCKET')] private readonly string $bucket,
     ) {
         parent::__construct($httpClient, '', 'Backblaze');
     }
 
     /**
-     * Carpetas y archivos directamente bajo $prefijo ("" es la raiz; si no,
+     * Carpetas y archivos de $bucket directamente bajo $prefijo ("" es la raiz; si no,
      * termina en "/"). Exito: ['error' => false, 'carpetas' => [...],
      * 'archivos' => [...]], cada archivo con nombre, tamano y fecha (ms).
      */
-    public function listar(string $prefijo): array
+    public function listar(string $bucket, string $prefijo): array
     {
-        $sesion = $this->autorizar();
+        $sesion = $this->autorizar($bucket);
         if ($sesion['error']) {
             return $sesion;
         }
@@ -88,12 +94,12 @@ class Backblaze extends ClienteApi
     }
 
     /**
-     * URL de descarga directa a B2 de un archivo del bucket, firmada solo
+     * URL de descarga directa a B2 de un archivo de $bucket, firmada solo
      * para ese archivo y valida VIGENCIA_DESCARGA segundos.
      */
-    public function urlDescarga(string $nombreArchivo): array
+    public function urlDescarga(string $bucket, string $nombreArchivo): array
     {
-        $sesion = $this->autorizar();
+        $sesion = $this->autorizar($bucket);
         if ($sesion['error']) {
             return $sesion;
         }
@@ -114,7 +120,7 @@ class Backblaze extends ClienteApi
 
         // Cada segmento codificado, las "/" del nombre se conservan.
         $ruta = implode('/', array_map('rawurlencode', explode('/', $nombreArchivo)));
-        $url = $sesion['downloadUrl'] . '/file/' . rawurlencode($this->bucket) . '/' . $ruta . '?' . http_build_query([
+        $url = $sesion['downloadUrl'] . '/file/' . rawurlencode($bucket) . '/' . $ruta . '?' . http_build_query([
             'Authorization' => $respuesta['datos']['authorizationToken'],
             'b2ContentDisposition' => $disposicion,
         ], '', '&', PHP_QUERY_RFC3986);
@@ -123,14 +129,17 @@ class Backblaze extends ClienteApi
     }
 
     /**
-     * Token de la cuenta, URLs y bucketId del bucket configurado. Si la llave
+     * Token de la cuenta, URLs y bucketId de $bucket. Si la llave
      * esta restringida a ese bucket, el id ya viene en la autorizacion; si no,
      * se busca por nombre.
      */
-    private function autorizar(): array
+    private function autorizar(string $bucket): array
     {
-        if ($this->keyId === '' || $this->applicationKey === '' || $this->bucket === '') {
-            return ['error' => true, 'status' => 0, 'mensaje' => 'Falta configurar B2_KEY_ID, B2_APPLICATION_KEY o B2_BUCKET.'];
+        if ($this->keyId === '' || $this->applicationKey === '') {
+            return ['error' => true, 'status' => 0, 'mensaje' => 'Falta configurar B2_KEY_ID o B2_APPLICATION_KEY.'];
+        }
+        if (!in_array($bucket, self::BUCKETS, true)) {
+            return ['error' => true, 'status' => 0, 'mensaje' => "Backblaze: bucket {$bucket} no permitido."];
         }
 
         $respuesta = $this->peticion('GET', self::URL_AUTORIZAR, ['auth_basic' => [$this->keyId, $this->applicationKey]]);
@@ -147,7 +156,7 @@ class Backblaze extends ClienteApi
             'bucketId' => null,
         ];
 
-        if (($datos['allowed']['bucketName'] ?? null) === $this->bucket) {
+        if (($datos['allowed']['bucketName'] ?? null) === $bucket) {
             $sesion['bucketId'] = $datos['allowed']['bucketId'];
 
             return $sesion;
@@ -155,7 +164,7 @@ class Backblaze extends ClienteApi
 
         $buckets = $this->peticion('POST', $sesion['apiUrl'] . '/b2api/v2/b2_list_buckets', [
             'headers' => ['Authorization' => $sesion['token']],
-            'json' => ['accountId' => $datos['accountId'], 'bucketName' => $this->bucket],
+            'json' => ['accountId' => $datos['accountId'], 'bucketName' => $bucket],
         ]);
         if ($buckets['error']) {
             return $buckets;
@@ -163,7 +172,7 @@ class Backblaze extends ClienteApi
 
         $sesion['bucketId'] = $buckets['datos']['buckets'][0]['bucketId'] ?? null;
         if ($sesion['bucketId'] === null) {
-            return ['error' => true, 'status' => 404, 'mensaje' => "Backblaze: no existe el bucket {$this->bucket} o la llave no tiene acceso."];
+            return ['error' => true, 'status' => 404, 'mensaje' => "Backblaze: no existe el bucket {$bucket} o la llave no tiene acceso."];
         }
 
         return $sesion;

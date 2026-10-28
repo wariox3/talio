@@ -13,11 +13,23 @@
 {% endmacro %}
 
 {% block content %}
+    <div class="block block--tight">
+        <form class="filters filters--flat" method="get" action="{{ path('utilidades_backblaze_backups') }}">
+            <div class="field">
+                <label for="servidor">Servidor</label>
+                <select id="servidor" name="servidor" onchange="this.form.requestSubmit()">
+                    {% for item in servidores %}
+                        <option value="{{ item }}" {{ item == servidor ? 'selected' }}>{{ item|capitalize }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
     <div class="block">
         <p class="hint">
-            <a href="{{ path('utilidades_backblaze_backups') }}">raíz</a>
+            <a href="{{ path('utilidades_backblaze_backups', { servidor: servidor }) }}">raíz</a>
             {% for miga in migas %}
-                / {% if loop.last %}<b>{{ miga.nombre }}</b>{% else %}<a href="{{ path('utilidades_backblaze_backups', { ruta: miga.ruta }) }}">{{ miga.nombre }}</a>{% endif %}
+                / {% if loop.last %}<b>{{ miga.nombre }}</b>{% else %}<a href="{{ path('utilidades_backblaze_backups', { servidor: servidor, ruta: miga.ruta }) }}">{{ miga.nombre }}</a>{% endif %}
             {% endfor %}
         </p>
     </div>
@@ -30,11 +42,11 @@
                 <tbody>
                 {% if migas is not empty %}
                     {% set padre = migas|length > 1 ? migas[migas|length - 2].ruta : '' %}
-                    <tr><td colspan="4"><a href="{{ path('utilidades_backblaze_backups', { ruta: padre }) }}">..</a></td></tr>
+                    <tr><td colspan="4"><a href="{{ path('utilidades_backblaze_backups', { servidor: servidor, ruta: padre }) }}">..</a></td></tr>
                 {% endif %}
                 {% for carpeta in carpetas %}
                     <tr>
-                        <td><a href="{{ path('utilidades_backblaze_backups', { ruta: carpeta }) }}">{{ carpeta|slice(directorio|length) }}</a></td>
+                        <td><a href="{{ path('utilidades_backblaze_backups', { servidor: servidor, ruta: carpeta }) }}">{{ carpeta|slice(directorio|length) }}</a></td>
                         <td class="num"></td><td></td><td></td>
                     </tr>
                 {% endfor %}
@@ -43,7 +55,7 @@
                         <td>{{ archivo.nombre|slice(directorio|length) }}</td>
                         <td class="num nowrap">{{ _self.tamano(archivo.tamano) }}</td>
                         <td class="fecha">{{ (archivo.fecha // 1000)|date('Y-m-d H:i') }}</td>
-                        <td class="acciones"><a href="{{ path('utilidades_backblaze_descargar', { archivo: archivo.nombre }) }}">Descargar</a></td>
+                        <td class="acciones"><a href="{{ path('utilidades_backblaze_descargar', { servidor: servidor, archivo: archivo.nombre }) }}">Descargar</a></td>
                     </tr>
                 {% endfor %}
                 {% if carpetas is empty and archivos is empty %}
