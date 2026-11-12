@@ -7,7 +7,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Cliente de Backblaze B2 (API nativa v2) para los buckets de backups, uno
- * por servidor (ver BUCKETS).
+ * por servidor (ver BUCKETS), y el bucket de archivos (BUCKET_ARCHIVOS).
  *
  * B2 no tiene URL fija: b2_authorize_account devuelve la apiUrl y la
  * downloadUrl de la cuenta, por eso la URL base es vacia y cada peticion va
@@ -33,6 +33,9 @@ class Backblaze extends ClienteApi
         'afrodita' => 'backup-afrodita',
         'artemisa' => 'backup-artemisa',
     ];
+
+    /** Bucket de archivos de Semantica. */
+    public const BUCKET_ARCHIVOS = 'semantica';
 
     public function __construct(
         HttpClientInterface $httpClient,
@@ -138,7 +141,7 @@ class Backblaze extends ClienteApi
         if ($this->keyId === '' || $this->applicationKey === '') {
             return ['error' => true, 'status' => 0, 'mensaje' => 'Falta configurar B2_KEY_ID o B2_APPLICATION_KEY.'];
         }
-        if (!in_array($bucket, self::BUCKETS, true)) {
+        if ($bucket !== self::BUCKET_ARCHIVOS && !in_array($bucket, self::BUCKETS, true)) {
             return ['error' => true, 'status' => 0, 'mensaje' => "Backblaze: bucket {$bucket} no permitido."];
         }
 

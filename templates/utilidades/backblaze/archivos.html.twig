@@ -1,0 +1,12 @@
+{% extends 'base.html.twig' %}
+{% block title %}Archivos · Talio{% endblock %}
+{% block ruta %}Utilidades <span>/</span> Backblaze <span>/</span> <b>Archivos</b>{% endblock %}
+{% block acciones %}<span class="stamp">{{ bucket }} · {{ carpetas|length }} carpetas · {{ archivos|length }} archivos</span>{% endblock %}
+
+{% block content %}
+    {% include 'utilidades/backblaze/_explorador.html.twig' with {
+        ruta_listar: 'utilidades_backblaze_archivos',
+        ruta_descargar: 'utilidades_backblaze_archivos_descargar',
+        parametros: {},
+    } %}
+{% endblock %}

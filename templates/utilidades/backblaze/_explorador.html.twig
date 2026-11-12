@@ -1,0 +1,54 @@
+{#
+    Explorador de un bucket de Backblaze. Recibe directorio, migas, carpetas,
+    archivos, ruta_listar y ruta_descargar (nombres de ruta) y parametros
+    (query fijo de ambas rutas, p. ej. { servidor: 'afrodita' }).
+#}
+{% macro tamano(bytes) %}
+    {%- set unidades = ['B', 'KB', 'MB', 'GB', 'TB'] -%}
+    {%- set i = 0 -%}
+    {%- for u in unidades|slice(1) -%}
+        {%- if bytes >= 1024 -%}{%- set bytes = bytes / 1024 -%}{%- set i = i + 1 -%}{%- endif -%}
+    {%- endfor -%}
+    {{- i == 0 ? bytes : bytes|number_format(1, ',', '.') }} {{ unidades[i] -}}
+{% endmacro %}
+
+<div class="block">
+    <p class="hint">
+        <a href="{{ path(ruta_listar, parametros) }}">raíz</a>
+        {% for miga in migas %}
+            / {% if loop.last %}<b>{{ miga.nombre }}</b>{% else %}<a href="{{ path(ruta_listar, parametros|merge({ ruta: miga.ruta })) }}">{{ miga.nombre }}</a>{% endif %}
+        {% endfor %}
+    </p>
+</div>
+<div class="block">
+    <div class="table-scroll">
+        <table class="data">
+            <thead>
+            <tr><th>Nombre</th><th class="num">Tamaño</th><th>Fecha</th><th></th></tr>
+            </thead>
+            <tbody>
+            {% if migas is not empty %}
+                {% set padre = migas|length > 1 ? migas[migas|length - 2].ruta : '' %}
+                <tr><td colspan="4"><a href="{{ path(ruta_listar, parametros|merge({ ruta: padre })) }}">..</a></td></tr>
+            {% endif %}
+            {% for carpeta in carpetas %}
+                <tr>
+                    <td><a href="{{ path(ruta_listar, parametros|merge({ ruta: carpeta })) }}">{{ carpeta|slice(directorio|length) }}</a></td>
+                    <td class="num"></td><td></td><td></td>
+                </tr>
+            {% endfor %}
+            {% for archivo in archivos %}
+                <tr>
+                    <td>{{ archivo.nombre|slice(directorio|length) }}</td>
+                    <td class="num nowrap">{{ _self.tamano(archivo.tamano) }}</td>
+                    <td class="fecha">{{ (archivo.fecha // 1000)|date('Y-m-d H:i') }}</td>
+                    <td class="acciones"><a href="{{ path(ruta_descargar, parametros|merge({ archivo: archivo.nombre })) }}">Descargar</a></td>
+                </tr>
+            {% endfor %}
+            {% if carpetas is empty and archivos is empty %}
+                <tr><td colspan="4">Directorio vacío.</td></tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
