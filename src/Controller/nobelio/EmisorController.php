@@ -24,6 +24,19 @@ class EmisorController extends AbstractController
         'Documento equivalente electrónico' => 'documento_equivalente',
     ];
 
+    // Tope de POST api/emisores/software/{id}/habilitar/: Nobelio corta a los
+    // 75 s y gunicorn a los 120; con esto se le deja contestar.
+    private const SEGUNDOS_HABILITAR = 110;
+
+    // Los `motivo` con que termina habilitar/ (apps/emisores/servicios/habilitacion.py).
+    private const MOTIVOS_HABILITAR = [
+        'set_aceptado' => 'La DIAN aceptó el Set de Pruebas: el software y el emisor quedaron habilitados.',
+        'sin_pendientes' => 'No quedan documentos pendientes: todos están aceptados o rechazados. Si hay rechazados, corríjalos y vuelva a llamar.',
+        'con_errores' => 'Lo que queda no se pudo emitir: revise el error de cada documento.',
+        'dian_sin_respuesta' => 'La DIAN no respondió y el proceso se cortó a mitad. Vuelva a llamar: sigue donde quedó.',
+        'tiempo_agotado' => 'Se agotó el tiempo de la petición. Vuelva a llamar: sigue donde quedó, sin reenviar nada.',
+    ];
+
     #[Route('/nobelio/emisor/lista', name: 'nobelio_emisor_lista')]
     public function lista(Request $request, Nobelio $nobelio): Response
     {
@@ -1034,6 +1047,68 @@ class EmisorController extends AbstractController
             'form' => $form->createView(),
             'formNotaAjuste' => $formNotaAjuste->createView(),
             'software' => $software,
+        ]);
+    }
+
+    /**
+     * Ventana que emite el Set de Pruebas de un software y consulta su estado
+     * en la DIAN.
+     *
+     * Nobelio toma los documentos de pruebas del emisor —facturas y notas
+     * credito en el de facturacion, nominas y notas de ajuste en el de
+     * nomina—, firma y envia lo pendiente y consulta lo enviado hasta el
+     * veredicto. Trabaja en la propia peticion, hasta unos 75 segundos: si se
+     * corta (`dian_sin_respuesta` o `tiempo_agotado`) se vuelve a llamar y
+     * sigue donde quedo, sin reenviar nada. Por eso el resultado se pinta en
+     * la misma respuesta del POST y no con un redirect: el boton queda para
+     * volver a llamar.
+     *
+     * Solo sobre un software de facturacion o de nomina sin el set aceptado;
+     * en otro caso Nobelio responde 400 y su mensaje es el que se muestra.
+     */
+    #[Route('/nobelio/software/habilitar/{id}', name: 'nobelio_software_habilitar', requirements: ['id' => '\\d+'])]
+    public function softwareHabilitar(Request $request, Nobelio $nobelio, int $id): Response
+    {
+        $form = $this->createFormBuilder()
+            ->add('btnHabilitar', SubmitType::class, ['label' => 'Emitir / consultar'])
+            ->getForm();
+        $form->handleRequest($request);
+
+        $resultado = null;
+        if ($form->isSubmitted() && $form->isValid()) {
+            // Nobelio no contesta hasta terminar (o agotar su presupuesto de
+            // 75 s): los limites normales del cliente lo cortarian.
+            set_time_limit(self::SEGUNDOS_HABILITAR + 30);
+            $respuesta = $nobelio->consumoPost("api/emisores/software/{$id}/habilitar/", [], self::SEGUNDOS_HABILITAR);
+            if ($respuesta['error']) {
+                $this->addFlash('danger', "Nobelio: {$respuesta['mensaje']}");
+            } else {
+                $resultado = $respuesta['datos'];
+                $motivo = (string) ($resultado['motivo'] ?? '');
+                $this->addFlash(
+                    match ($motivo) {
+                        'set_aceptado' => 'success',
+                        'sin_pendientes' => 'info',
+                        default => 'warning',
+                    },
+                    self::MOTIVOS_HABILITAR[$motivo] ?? "Nobelio terminó con motivo '{$motivo}'.",
+                );
+            }
+        }
+
+        // Despues del POST, para que el estado del set salga ya actualizado.
+        $software = [];
+        $respuestaSoftware = $nobelio->consumoGet("api/emisores/software/{$id}/");
+        if ($respuestaSoftware['error']) {
+            $this->addFlash('danger', "Nobelio: {$respuestaSoftware['mensaje']}");
+        } else {
+            $software = $respuestaSoftware['datos'];
+        }
+
+        return $this->render('nobelio/emisor/software_habilitar.html.twig', [
+            'form' => $form->createView(),
+            'software' => $software,
+            'resultado' => $resultado,
         ]);
     }
 }

@@ -40,6 +40,7 @@
                     <th>Test set id</th>
                     <th>Set de pruebas</th>
                     <th>Creado</th>
+                    <th></th>
                 </tr>
                 </thead>
                 <tbody>
@@ -57,10 +58,18 @@
                         <td class="id">{{ programa.test_set_id }}</td>
                         <td>{{ ui.estado(programa.set_pruebas_aceptado, 'Aceptado', 'Sin aceptar') }}</td>
                         <td class="fecha">{{ programa.creado_en|default(null) ? programa.creado_en|date('Y-m-d H:i', false) }}</td>
+                        {# Emite el Set de Pruebas y consulta su estado en la
+                           DIAN. Nobelio solo lo hace con facturacion y
+                           nomina, y sin el set aceptado. #}
+                        <td class="acciones">
+                            {% if programa.tipo|default('') in ['facturacion', 'nomina'] and not programa.set_pruebas_aceptado %}
+                                <a href="javascript:abrirVentana('{{ path('nobelio_software_habilitar', { 'id': programa.id }) }}', 'SoftwareHabilitar', 600, 900)">Habilitar</a>
+                            {% endif %}
+                        </td>
                     </tr>
                 {% else %}
                     <tr>
-                        <td colspan="8">
+                        <td colspan="9">
                             {% if total == 0 %}
                                 No hay software que mostrar.
                             {% else %}

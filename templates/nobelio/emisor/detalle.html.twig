@@ -157,6 +157,14 @@
                                 {% if programa.tipo|default('') == 'nomina' and not programa.set_pruebas_aceptado %}
                                     <a href="javascript:abrirVentana('{{ path('nobelio_software_nomina_prueba', { 'id': programa.id }) }}', 'NominaPrueba', 430, 640)">Crear</a>
                                 {% endif %}
+                                {# Emite el Set de Pruebas (documentos o
+                                   nominas de pruebas del emisor) y consulta
+                                   su estado en la DIAN hasta el veredicto.
+                                   Nobelio solo lo hace con facturacion y
+                                   nomina, y sin el set aceptado. #}
+                                {% if programa.tipo|default('') in ['facturacion', 'nomina'] and not programa.set_pruebas_aceptado %}
+                                    <a href="javascript:abrirVentana('{{ path('nobelio_software_habilitar', { 'id': programa.id }) }}', 'SoftwareHabilitar', 600, 900)">Habilitar</a>
+                                {% endif %}
                                 {# Pregunta a la DIAN las resoluciones de este
                                    software y las muestra en una ventana; no
                                    guarda nada. El de nomina no se numera con

@@ -1,0 +1,83 @@
+{% extends 'base_sin_menu.html.twig' %}
+{% import '_macros.html.twig' as ui %}
+{% block title %}Habilitar software · Talio{% endblock %}
+{% block ruta %}
+    Habilitar · Software <b>{{ software.identificador|default('') }}</b>
+{% endblock %}
+{% block content %}
+    {% set tiposSoftware = { 'nomina': 'Nómina', 'facturacion': 'Facturación', 'documento_equivalente': 'Documento equivalente' } %}
+    <div class="block">
+        {{ ui.cabecera('Software') }}
+        <dl class="ficha">
+            <dt>Id</dt>
+            <dd>{{ software.id|default('') }}</dd>
+            <dt>Identificador</dt>
+            <dd>{{ software.identificador|default('') }}</dd>
+            <dt>Tipo</dt>
+            <dd>{{ software.tipo_display|default(tiposSoftware[software.tipo|default('')]|default(software.tipo|default(''))) }}</dd>
+            <dt>Test set id</dt>
+            <dd>{{ software.test_set_id|default('') }}</dd>
+            <dt>Set de pruebas</dt>
+            <dd>{{ ui.estado(software.set_pruebas_aceptado|default(false), 'Aceptado', 'Sin aceptar') }}</dd>
+        </dl>
+    </div>
+
+    <div class="block">
+        {{ ui.cabecera('Set de pruebas') }}
+        {# Nobelio firma y envia lo pendiente y consulta lo enviado hasta el
+           veredicto, dentro de la misma peticion (hasta unos 75 segundos). Si
+           se corta, se vuelve a pulsar y sigue donde quedo sin reenviar nada.
+           Con el set ya aceptado no hay nada que emitir. #}
+        {% if not software.set_pruebas_aceptado|default(false) %}
+            {{ form_start(form, { 'attr': { 'onsubmit': "this.querySelector('button').disabled = true; this.querySelector('button').textContent = 'Procesando… (puede tardar hasta 75 s)'" } }) }}
+            <div class="filters">
+                {{ form_widget(form.btnHabilitar) }}
+            </div>
+            {{ form_end(form) }}
+        {% else %}
+            <p>El Set de Pruebas de este software ya fue aceptado por la DIAN.</p>
+        {% endif %}
+    </div>
+
+    {% if resultado %}
+        {% set documentos = resultado.documentos|default([]) %}
+        <div class="block">
+            {{ ui.cabecera('Documentos', documentos|length ~ ' registros') }}
+            <dl class="ficha">
+                <dt>Motivo</dt>
+                <dd>{{ resultado.motivo|default('') }}</dd>
+                <dt>Terminado</dt>
+                <dd>{{ ui.estado(resultado.terminado|default(false), 'Sí', 'No: vuelva a llamar') }}</dd>
+            </dl>
+            <div class="table-scroll">
+                <table class="data">
+                    <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Tipo</th>
+                        <th>Estado</th>
+                        <th>Error</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for documento in documentos %}
+                        {# Facturas y notas credito son documentos; nominas y
+                           notas de ajuste, nominas: cada uno abre su detalle. #}
+                        {% set esNomina = documento.tipo|default('') in ['nomina', 'nota_ajuste'] %}
+                        <tr>
+                            <td class="id">
+                                <a href="{{ path(esNomina ? 'nobelio_nomina_detalle' : 'nobelio_documento_detalle', { 'id': documento.id }) }}" target="_blank">{{ documento.numero|default(documento.id) }}</a>
+                            </td>
+                            <td>{{ documento.tipo|default('') }}</td>
+                            <td>{{ documento.estado|default('') }}</td>
+                            <td>{{ documento.error|default('') }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="4">Nobelio no devolvió documentos.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
